@@ -3,8 +3,9 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce (progress bar from dummyd2 & seb-d59)
-// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
-// @version             1.3.3
+// @include             https://www.waze.com/editor
+// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
+// @version             1.3.4
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0

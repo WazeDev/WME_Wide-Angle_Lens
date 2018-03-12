@@ -8,8 +8,9 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find map comments that match filter criteria
 // @author              vtpearce
-// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/.*$/
-// @version             0.0.2
+// @include             https://www.waze.com/editor
+// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
+// @version             0.0.3
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
