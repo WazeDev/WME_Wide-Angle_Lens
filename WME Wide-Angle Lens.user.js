@@ -5,7 +5,7 @@
 // @author              vtpearce (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.4.1
+// @version             1.3.5b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------------------
 var WMEWAL;
 (function (WMEWAL) {
-    var Version = "1.3.4.1";
+    var Version = "1.3.5b1";
     var ProgressBar = (function () {
         function ProgressBar(id) {
             this.div = $(id);
@@ -141,17 +141,44 @@ var WMEWAL;
         }
         if (typeof (Storage) !== "undefined") {
             if (localStorage[settingsKey]) {
+                var upd = false;
                 var settingsString = localStorage[settingsKey];
                 if (settingsString.substring(0, 1) === "~") {
                     // Compressed value - decompress
-                    settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
+                    console.log("Decompress UTF16 settings");
+                    settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
                 }
-                settings = JSON.parse(settingsString);
+                try {
+                    settings = JSON.parse(settingsString);
+                } catch (e) {
+                    settings = "";
+                    console.log("Using old decompress method");
+                    settingsString = localStorage[settingsKey];
+                    //console.debug(settingsKey +": "+settingsString);
+                    if (settingsString.substring(0, 1) === "~") {
+                        // Compressed value - decompress
+                        settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
+                        //console.debug(settingsKey +": "+settingsString);
+                        upd = true;
+                    }
+                    //console.log("Parsing JSON after decompress");
+                    settings = JSON.parse(settingsString);
+                    //console.log("Parsed");
+                }
+
+                if (typeof settings === "undefined" || settings === null || settings === "") {
+                    console.log("Using empty settings");
+                    settings = {
+                        SavedAreas: [],
+                        ActivePlugins: [],
+                        Version: Version
+                    };
+                }
+
                 settings.SavedAreas.sort(function (a, b) {
                     return a.name.localeCompare(b.name);
                 });
                 delete settingsString;
-                var upd = false;
                 if (!settings.hasOwnProperty("Version")) {
                     settings.Version = Version;
                     upd = true;
@@ -205,6 +232,9 @@ var WMEWAL;
             }
             if (CompareVersions(settings.Version, "1.3.3")) {
                 versionHistory += "\nv1.3.3: Updates to support latest version of WME Editor.";
+            }
+            if (CompareVersions(settings.Version, "1.3.5b1")) {
+                versionHistory += "\nv"+ Version +": Updates to support Firefox.";
             }
             alert(versionHistory);
             settings.Version = Version;
@@ -537,7 +567,7 @@ var WMEWAL;
                     geometryText: settings.SavedAreas[ix].geometry.toString()
                 });
             }
-            localStorage[settingsKey] = "~" + WMEWAL.LZString.compress(JSON.stringify(newSettings));
+            localStorage[settingsKey] = "~" + WMEWAL.LZString.compressToUTF16(JSON.stringify(newSettings));
         }
     }
     function importFile() {
