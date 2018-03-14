@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------------------
 var WMEWAL;
 (function (WMEWAL) {
-    var Version = "1.3.5b1";
+    var Version = GM_info.script.version;
     var ProgressBar = (function () {
         function ProgressBar(id) {
             this.div = $(id);
@@ -233,8 +233,8 @@ var WMEWAL;
             if (CompareVersions(settings.Version, "1.3.3")) {
                 versionHistory += "\nv1.3.3: Updates to support latest version of WME Editor.";
             }
-            if (CompareVersions(settings.Version, "1.3.5b1")) {
-                versionHistory += "\nv"+ Version +": Updates to support Firefox.";
+            if (CompareVersions(settings.Version, "1.3.5")) {
+                versionHistory += "\nv1.3.5: Updates to support Firefox.";
             }
             alert(versionHistory);
             settings.Version = Version;
