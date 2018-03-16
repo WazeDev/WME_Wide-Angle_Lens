@@ -61,12 +61,12 @@ var WMEWAL_Places;
         html += "<tr><td style='padding-left:20px'>" +
             "<select id='_wmewalPlacesCategory'>" +
             "<option value=''></option>";
-        for (var topIx = 0; topIx < Waze.Config.venues.categories.length; topIx++) {
-            var topCategory = Waze.Config.venues.categories[topIx];
+        for (var topIx = 0; topIx < W.Config.venues.categories.length; topIx++) {
+            var topCategory = W.Config.venues.categories[topIx];
             html += ("<option value='" + topCategory + "'>" + I18n.t("venues.categories." + topCategory) + "</option>");
-            var subCategories = Waze.Config.venues.subcategories[topCategory];
+            var subCategories = W.Config.venues.subcategories[topCategory];
             for (var subIx = 0; subIx < subCategories.length; subIx++) {
-                var subCategory = Waze.Config.venues.subcategories[topCategory][subIx];
+                var subCategory = W.Config.venues.subcategories[topCategory][subIx];
                 html += ("<option value='" + subCategory + "'>--" + I18n.t("venues.categories." + subCategory) + "</option>");
             }
         }
@@ -140,9 +140,9 @@ var WMEWAL_Places;
         selectState.empty();
         var stateObjs = [];
         stateObjs.push({ id: null, name: "" });
-        for (var s in Waze.model.states.objects) {
-            if (Waze.model.states.objects.hasOwnProperty(s)) {
-                var st = Waze.model.states.get(parseInt(s));
+        for (var s in W.model.states.objects) {
+            if (W.model.states.objects.hasOwnProperty(s)) {
+                var st = W.model.states.get(parseInt(s));
                 if (st.id !== 1 && st.name.length !== 0) {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -172,9 +172,9 @@ var WMEWAL_Places;
         selectLastModifiedBy.empty();
         var userObjs = [];
         userObjs.push({ id: null, name: "" });
-        for (var uo in Waze.model.users.objects) {
-            if (Waze.model.users.objects.hasOwnProperty(uo)) {
-                var u = Waze.model.users.get(parseInt(uo));
+        for (var uo in W.model.users.objects) {
+            if (W.model.users.objects.hasOwnProperty(uo)) {
+                var u = W.model.users.get(parseInt(uo));
                 if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
                     userObjs.push({ id: u.id, name: u.userName });
                 }
@@ -267,14 +267,14 @@ var WMEWAL_Places;
         }
         var selectedState = $("#_wmewalPlacesState").val();
         if (selectedState != null && selectedState.length !== 0) {
-            if (Waze.model.states.get(selectedState) == null) {
+            if (W.model.states.get(selectedState) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid state selection");
                 allOk = false;
             }
         }
         var selectedUser = $("#_wmewalPlacesLastModifiedBy").val();
         if (selectedUser != null && selectedUser.length > 0) {
-            if (Waze.model.users.get(selectedUser) == null) {
+            if (W.model.users.get(selectedUser) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid last modified user");
             }
         }
@@ -310,11 +310,11 @@ var WMEWAL_Places;
             s.CityRegex = pattern.length > 0 ? pattern : null;
             var selectedState = $("#_wmewalPlacesState").val();
             if (selectedState != null && selectedState.length > 0) {
-                s.State = Waze.model.states.get(parseInt(selectedState)).id;
+                s.State = W.model.states.get(parseInt(selectedState)).id;
             }
             var selectedUser = $("#_wmewalPlacesLastModifiedBy").val();
             if (selectedUser != null && selectedUser.length > 0) {
-                s.LastModifiedBy = Waze.model.users.get(selectedUser).id;
+                s.LastModifiedBy = W.model.users.get(selectedUser).id;
             }
             var selectedLockLevel = $("#_wmewalPlacesLockLevel").val();
             if (selectedLockLevel != null && selectedLockLevel.length > 0) {
@@ -389,7 +389,7 @@ var WMEWAL_Places;
             settings.State = null;
             stateName = null;
             if (selectedState != null && selectedState.length !== 0) {
-                state = Waze.model.states.get(selectedState);
+                state = W.model.states.get(selectedState);
                 settings.State = state.id;
                 stateName = state.name;
             }
@@ -399,7 +399,7 @@ var WMEWAL_Places;
             settings.LastModifiedBy = null;
             lastModifiedByName = null;
             if (selectedUser != null && selectedUser.length > 0) {
-                lastModifiedBy = Waze.model.users.get(parseInt(selectedUser));
+                lastModifiedBy = W.model.users.get(parseInt(selectedUser));
                 settings.LastModifiedBy = lastModifiedBy.id;
                 lastModifiedByName = lastModifiedBy.userName;
             }
@@ -490,7 +490,7 @@ var WMEWAL_Places;
                         continue;
                     }
                     var lastEditorID = venue.attributes.updatedBy || venue.attributes.createdBy;
-                    var lastEditor = Waze.model.users.get(lastEditorID);
+                    var lastEditor = W.model.users.get(lastEditorID);
                     var place = {
                         id: venue.attributes.id,
                         mainCategory: venue.getMainCategory(),
@@ -590,7 +590,7 @@ var WMEWAL_Places;
             for (var ixPlace = 0; ixPlace < places.length; ixPlace++) {
                 var place = places[ixPlace];
                 var plPlace = getPlacePL(place);
-                var latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
+                var latlon = OL.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
                 var categories = "";
                 for (var ixCategory = 0; ixCategory < place.categories.length; ixCategory++) {
                     if (ixCategory > 0) {
@@ -649,9 +649,9 @@ var WMEWAL_Places;
     function Init() {
         console.group(pluginName + ": Initializing");
         initCount++;
-        var objectToCheck = ["OpenLayers",
-            "Waze.location",
-            "Waze.Config.venues",
+        var objectToCheck = ["OL",
+            "W.location",
+            "W.Config.venues",
             "WMEWAL.RegisterPlugIn"];
         for (var i = 0; i < objectToCheck.length; i++) {
             var path = objectToCheck[i].split(".");
@@ -735,8 +735,8 @@ var WMEWAL_Places;
         WMEWAL.RegisterPlugIn(WMEWAL_Places);
     }
     function getPlacePL(place) {
-        var latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
-        var url = "https://www.waze.com/editor/?env=" + Waze.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&mode=0&venues=" + place.id;
+        var latlon = OL.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
+        var url = "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&mode=0&venues=" + place.id;
         return url;
     }
     function updateSettings() {

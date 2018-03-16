@@ -107,15 +107,15 @@ var WMEWAL;
     function WideAngleLens() {
         console.group("WMEWAL: Initializing");
         initCount++;
-        var objectToCheck = ["Waze.map",
-            "Waze.model.segments",
-            "Waze.model.venues",
-            "Waze.model.states",
-            "Waze.model.events",
-            "OpenLayers",
-            "Waze.vent",
-            "Waze.controller",
-            "Waze.model.actionManager",
+        var objectToCheck = ["W.map",
+            "W.model.segments",
+            "W.model.venues",
+            "W.model.states",
+            "W.model.events",
+            "OL",
+            "W.vent",
+            "W.controller",
+            "W.model.actionManager",
             "WazeWrap.Interface"];
         for (var i = 0; i < objectToCheck.length; i++) {
             var path = objectToCheck[i].split(".");
@@ -156,8 +156,8 @@ var WMEWAL;
                 }
                 for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
-                        settings.SavedAreas[ix].geometry = OpenLayers.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
-                        while (settings.SavedAreas[ix].geometry.CLASS_NAME === "OpenLayers.Geometry.Collection" &&
+                        settings.SavedAreas[ix].geometry = OL.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
+                        while (settings.SavedAreas[ix].geometry.CLASS_NAME === "OL.Geometry.Collection" &&
                             settings.SavedAreas[ix].geometry.components.length === 1) {
                             settings.SavedAreas[ix].geometry = settings.SavedAreas[ix].geometry.components[0];
                             upd = true;
@@ -182,7 +182,7 @@ var WMEWAL;
                 };
                 for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
-                        settings.SavedAreas[ix].geometry = OpenLayers.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
+                        settings.SavedAreas[ix].geometry = OL.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
                         delete settings.SavedAreas[ix].geometryText;
                     }
                 }
@@ -371,13 +371,13 @@ var WMEWAL;
     WMEWAL.IsMapCommentInArea = IsMapCommentInArea;
     function updateLayer() {
         var features = [];
-        var maLayer = Waze.map.getLayerByUniqueName(layerName);
+        var maLayer = W.map.getLayerByUniqueName(layerName);
         if (maLayer === null || typeof maLayer === "undefined") {
-            maLayer = new OpenLayers.Layer.Vector("Wide-Angle Lens Areas", {
+            maLayer = new OL.Layer.Vector("Wide-Angle Lens Areas", {
                 uniqueName: layerName
             });
             I18n.translations[I18n.currentLocale()].layers.name[layerName] = "Wide-Angle Lens Areas";
-            Waze.map.addUniqueLayer(maLayer);
+            W.map.addUniqueLayer(maLayer);
             maLayer.setVisibility(false);
         }
         maLayer.removeAllFeatures({
@@ -397,7 +397,7 @@ var WMEWAL;
                 fontOpacity: 0.85,
                 fontWeight: "bold"
             };
-            features.push(new OpenLayers.Feature.Vector(settings.SavedAreas[ixA].geometry.clone(), {
+            features.push(new OL.Feature.Vector(settings.SavedAreas[ixA].geometry.clone(), {
                 areaName: settings.SavedAreas[ixA].name
             }, style));
         }
@@ -411,23 +411,23 @@ var WMEWAL;
     }
     // function addLatLonArray(latLonArray, arrayName): void
     // {
-    //     let points: Array<OpenLayers.Geometry> = [];
+    //     let points: Array<OL.Geometry> = [];
     //     for (let i = 0; i < latLonArray.length; i++)
     //     {
-    //         points.push(new OpenLayers.Geometry.Point(latLonArray[i].lon, latLonArray[i].lat).transform(new OpenLayers.Projection("EPSG:4326"), Waze.map.getProjectionObject()));
+    //         points.push(new OL.Geometry.Point(latLonArray[i].lon, latLonArray[i].lat).transform(new OL.Projection("EPSG:4326"), W.map.getProjectionObject()));
     //     }
-    //     let ring = new OpenLayers.Geometry.LinearRing(points);
-    //     let polygon = new OpenLayers.Geometry.Polygon([ring]);
+    //     let ring = new OL.Geometry.LinearRing(points);
+    //     let polygon = new OL.Geometry.Polygon([ring]);
     //     savedAreas.push({name: arrayName, geometry: polygon});
     // }
     function addNewArea() {
         var theVenue = null;
         var count = 0;
-        for (var v in Waze.model.venues.objects) {
-            if (Waze.model.venues.objects.hasOwnProperty(v) === false) {
+        for (var v in W.model.venues.objects) {
+            if (W.model.venues.objects.hasOwnProperty(v) === false) {
                 continue;
             }
-            var venue = Waze.model.venues.objects[v];
+            var venue = W.model.venues.objects[v];
             if (venue.isPoint() === true) {
                 continue;
             }
@@ -459,10 +459,10 @@ var WMEWAL;
         };
         settings.SavedAreas.push(savedArea);
         updateSavedAreasList();
-        if (Waze.model.actionManager.canUndo()) {
+        if (W.model.actionManager.canUndo()) {
             if (confirm("Undo all edits (OK=Yes, Cancel=No)?")) {
                 /* tslint:disable:no-empty */
-                while (Waze.model.actionManager.undo()) {
+                while (W.model.actionManager.undo()) {
                 }
             }
         }
@@ -481,8 +481,8 @@ var WMEWAL;
         function getCenterFunc(index) {
             return function () {
                 var center = settings.SavedAreas[index].geometry.getCentroid();
-                var lonlat = new OpenLayers.LonLat(center.x, center.y);
-                Waze.map.setCenter(lonlat);
+                var lonlat = new OL.LonLat(center.x, center.y);
+                W.map.setCenter(lonlat);
             };
         }
         settings.SavedAreas.sort(function (a, b) {
@@ -545,13 +545,13 @@ var WMEWAL;
         var name = fileName.replace("." + fileExt, "");
         var reader = new FileReader();
         reader.onload = function (e) {
-            var parser = new OpenLayers.Format.WKT();
+            var parser = new OL.Format.WKT();
             var features = parser.read(e.target.result);
             var feature;
             while (features instanceof Array && features.length === 1) {
                 features = features[0];
             }
-            if (features instanceof OpenLayers.Feature.Vector) {
+            if (features instanceof OL.Feature.Vector) {
                 feature = features;
             }
             else {
@@ -559,9 +559,9 @@ var WMEWAL;
                 return;
             }
             // Assume geometry is in EPSG:4326 and reproject to Spherical Mercator
-            var fromProj = new OpenLayers.Projection("EPSG:4326");
+            var fromProj = new OL.Projection("EPSG:4326");
             var c = feature.geometry.clone();
-            c.transform(fromProj, Waze.map.getProjectionObject());
+            c.transform(fromProj, W.map.getProjectionObject());
             var savedArea = {
                 name: name,
                 geometry: c
@@ -577,8 +577,8 @@ var WMEWAL;
         }
         WMEWAL.areaToScan.calculateBounds();
         var bounds = WMEWAL.areaToScan.getBounds();
-        topLeft = new OpenLayers.Geometry.Point(bounds.left, bounds.top);
-        bottomRight = new OpenLayers.Geometry.Point(bounds.right, bounds.bottom);
+        topLeft = new OL.Geometry.Point(bounds.left, bounds.top);
+        bottomRight = new OL.Geometry.Point(bounds.right, bounds.bottom);
     }
     function scanExtent() {
         if (cancelled) {
@@ -589,16 +589,16 @@ var WMEWAL;
         var extentVenues = [];
         // Check to see if the current extent is completely within the area being searched
         // let allIn = true;
-        // let vertices = Waze.map.getExtent().toGeometry().getVertices();
+        // let vertices = W.map.getExtent().toGeometry().getVertices();
         // for (let ix = 0; ix < vertices.length && allIn; ix++) {
         //     allIn = allIn && geoCollection.intersects(vertices[ix]);
         // }
         // logDebug("Extent is " + (!allIn ? "NOT " : "") + "entirely within area");
         if (needSegments && segments != null) {
             logDebug("Collecting segments");
-            for (var seg in Waze.model.segments.objects) {
+            for (var seg in W.model.segments.objects) {
                 if (segments.indexOf(seg) === -1) {
-                    var segment = Waze.model.segments.get(parseInt(seg));
+                    var segment = W.model.segments.get(parseInt(seg));
                     if (segment != null) {
                         segments.push(seg);
                         extentSegments.push(segment);
@@ -609,9 +609,9 @@ var WMEWAL;
         }
         if (needVenues && venues != null) {
             logDebug("Collecting venues");
-            for (var ven in Waze.model.venues.objects) {
+            for (var ven in W.model.venues.objects) {
                 if (venues.indexOf(ven) === -1) {
-                    var venue = Waze.model.venues.get(ven);
+                    var venue = W.model.venues.get(ven);
                     if (venue != null) {
                         venues.push(ven);
                         extentVenues.push(venue);
@@ -659,12 +659,12 @@ var WMEWAL;
                     // Check to see if the new window would be within the boundaries of the original area
                     // Create a geometry object for the window boundaries
                     var points = [];
-                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY + (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY + (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY - (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY - (height / 2)));
-                    var lr = new OpenLayers.Geometry.LinearRing(points);
-                    var poly = new OpenLayers.Geometry.Polygon([lr]);
+                    points.push(new OL.Geometry.Point(currentX - (width / 2), currentY + (height / 2)));
+                    points.push(new OL.Geometry.Point(currentX + (width / 2), currentY + (height / 2)));
+                    points.push(new OL.Geometry.Point(currentX - (width / 2), currentY - (height / 2)));
+                    points.push(new OL.Geometry.Point(currentX + (width / 2), currentY - (height / 2)));
+                    var lr = new OL.Geometry.LinearRing(points);
+                    var poly = new OL.Geometry.Polygon([lr]);
                     inGeometry = WMEWAL.areaToScan && WMEWAL.areaToScan.intersects(poly);
                 }
             }
@@ -679,7 +679,7 @@ var WMEWAL;
         else {
             onModelReady(onOperationDone, false, null);
             logDebug("Moving map");
-            Waze.map.setCenter(new OpenLayers.LonLat(currentX, currentY));
+            W.map.setCenter(new OL.LonLat(currentX, currentY));
         }
     }
     function onOperationDone(e) {
@@ -695,13 +695,13 @@ var WMEWAL;
         var deferMapReady;
         function modelReadyResolve() {
             logDebug("mergeend, unregistering");
-            Waze.model.events.unregister("mergeend", null, modelReadyResolve);
+            W.model.events.unregister("mergeend", null, modelReadyResolve);
             deferModelReady.resolve();
         }
         function mapReadyResolve(e) {
             if (e.operation.id === "pending.road_data") {
                 logDebug("operationDone, unregistering");
-                Waze.vent.off("operationDone", mapReadyResolve);
+                W.vent.off("operationDone", mapReadyResolve);
                 deferMapReady.resolve();
             }
         }
@@ -714,29 +714,29 @@ var WMEWAL;
             else {
                 deferModelReady = $.Deferred();
                 logDebug("Registering for mergeend");
-                Waze.model.events.register("mergeend", null, modelReadyResolve);
+                W.model.events.register("mergeend", null, modelReadyResolve);
                 // function (dfd) {
                 //     let resolve = function () {
                 //         logDebug("mergeend, unregistering");
-                //         Waze.model.events.unregister("mergeend", null, resolve);
+                //         W.model.events.unregister("mergeend", null, resolve);
                 //         dfd.resolve();
                 //     };
                 //     logDebug("Registering for mergeend");
-                //     Waze.model.events.register("mergeend", null, resolve);
+                //     W.model.events.register("mergeend", null, resolve);
                 // });
                 deferMapReady = $.Deferred();
                 logDebug("Registering for operationDone");
-                Waze.vent.on("operationDone", mapReadyResolve);
+                W.vent.on("operationDone", mapReadyResolve);
                 // function (dfd) {
                 //     let resolve = function (e) {
                 //         if (e.operation.id === "pending.road_data") {
                 //             logDebug("operationDone, unregistering");
-                //             Waze.vent.off("operationDone", resolve);
+                //             W.vent.off("operationDone", resolve);
                 //             dfd.resolve();
                 //         }
                 //     };
                 //     logDebug("Registing for operationDone");
-                //     Waze.vent.on("operationDone", resolve);
+                //     W.vent.on("operationDone", resolve);
                 // });
                 var timerSet_1 = true;
                 var timer_1 = setTimeout(function () {
@@ -793,11 +793,11 @@ var WMEWAL;
         }
         if (currentCenter != null) {
             logDebug("Moving back to original location");
-            Waze.map.setCenter(currentCenter);
+            W.map.setCenter(currentCenter);
         }
         if (currentZoom != null) {
             logDebug("Resetting zoom");
-            Waze.map.zoomTo(currentZoom);
+            W.map.zoomTo(currentZoom);
         }
         segments = null;
         venues = null;
@@ -819,10 +819,10 @@ var WMEWAL;
         else if (index >= settings.SavedAreas.length) {
             return;
         }
-        var c = new OpenLayers.Geometry.Collection([settings.SavedAreas[index].geometry.clone()]);
+        var c = new OL.Geometry.Collection([settings.SavedAreas[index].geometry.clone()]);
         // Transform the collection to EPSG:4326
-        var toProj = new OpenLayers.Projection("EPSG:4326");
-        c.transform(Waze.map.getProjectionObject(), toProj);
+        var toProj = new OL.Projection("EPSG:4326");
+        c.transform(W.map.getProjectionObject(), toProj);
         var geoText = "data:text/plain;charset=utf-8," + c.toString();
         var encodedUri = encodeURI(geoText);
         var link = document.createElement("a");
@@ -939,8 +939,8 @@ var WMEWAL;
         info("Please don't touch anything during the scan");
         $("#_wmewalCancel").removeAttr("disabled");
         // Save current state
-        currentCenter = Waze.map.getCenter();
-        currentZoom = Waze.map.zoom;
+        currentCenter = W.map.getCenter();
+        currentZoom = W.map.zoom;
         layerToggle = [];
         var groups = $("div.layer-switcher li.group");
         groups.each(function (ix, g) {
@@ -1050,11 +1050,11 @@ var WMEWAL;
             }
         });
         // Reload road layers
-        if (!Waze.model.actionManager.canUndo()) {
-            for (var ix = 0; ix < Waze.map.roadLayers.length; ix++) {
-                Waze.map.roadLayers[ix].redraw(true);
+        if (!W.model.actionManager.canUndo()) {
+            for (var ix = 0; ix < W.map.roadLayers.length; ix++) {
+                W.map.roadLayers[ix].redraw(true);
             }
-            Waze.controller.reload();
+            W.controller.reload();
         }
         var minZoomLevel = 1;
         for (var ix = 0; ix < plugins.length; ix++) {
@@ -1065,8 +1065,8 @@ var WMEWAL;
             }
         }
         WMEWAL.zoomLevel = minZoomLevel;
-        Waze.map.zoomTo(WMEWAL.zoomLevel);
-        var extent = Waze.map.getExtent();
+        W.map.zoomTo(WMEWAL.zoomLevel);
+        var extent = W.map.getExtent();
         height = extent.getHeight();
         width = extent.getWidth();
         // Figure out how many horizontal and vertical viewports there are
@@ -1170,7 +1170,7 @@ var WMEWAL;
     }
     WMEWAL.TranslateRoadType = TranslateRoadType;
     function GenerateBasePL(lat, lon, zoom) {
-        return "https://www.waze.com/editor?env=" + Waze.location.code + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
+        return "https://www.waze.com/editor?env=" + W.location.code + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
     function CompareVersions(v1, v2) {

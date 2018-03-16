@@ -110,9 +110,9 @@ var WMEWAL_MapComments;
         selectLastModifiedBy.empty();
         var userObjs = [];
         userObjs.push({ id: null, name: "" });
-        for (var uo in Waze.model.users.objects) {
-            if (Waze.model.users.objects.hasOwnProperty(uo)) {
-                var u = Waze.model.users.get(parseInt(uo));
+        for (var uo in W.model.users.objects) {
+            if (W.model.users.objects.hasOwnProperty(uo)) {
+                var u = W.model.users.get(parseInt(uo));
                 if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
                     userObjs.push({ id: u.id, name: u.userName });
                 }
@@ -179,7 +179,7 @@ var WMEWAL_MapComments;
         var message = "";
         var selectedUser = $("#_wmewalMapCommentsLastModifiedBy").val();
         if (selectedUser != null && selectedUser.length > 0) {
-            if (Waze.model.users.get(selectedUser) == null) {
+            if (W.model.users.get(selectedUser) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid last modified user");
             }
         }
@@ -262,7 +262,7 @@ var WMEWAL_MapComments;
         };
         var selectedUser = $("#_wmewalMapCommentsLastModifiedBy").val();
         if (selectedUser != null && selectedUser.length > 0) {
-            s.LastModifiedBy = Waze.model.users.get(selectedUser).id;
+            s.LastModifiedBy = W.model.users.get(selectedUser).id;
         }
         var pattern = $("#_wmewalMapCommentsTitle").val();
         if (pattern !== "") {
@@ -314,7 +314,7 @@ var WMEWAL_MapComments;
             settings.TitleRegexIgnoreCase = s.TitleRegexIgnoreCase;
             lastModifiedBy = null;
             if (settings.LastModifiedBy !== null) {
-                lastModifiedBy = Waze.model.users.get(settings.LastModifiedBy);
+                lastModifiedBy = W.model.users.get(settings.LastModifiedBy);
                 lastModifiedByName = lastModifiedBy.userName;
             }
             titleRegex = null;
@@ -342,14 +342,14 @@ var WMEWAL_MapComments;
         }
     }
     function getPL(mapComment, lonlat) {
-        var url = "https://www.waze.com/editor/?env=" + Waze.location.code + "&lon=" + lonlat.lon + "&lat=" + lonlat.lat + "&zoom=5&mode=0&mapComments=" + mapComment.id;
+        var url = "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + lonlat.lon + "&lat=" + lonlat.lat + "&zoom=5&mode=0&mapComments=" + mapComment.id;
         return url;
     }
     function ScanExtent(segments, venues) {
         var def = $.Deferred();
-        for (var c in Waze.model.mapComments.objects) {
+        for (var c in W.model.mapComments.objects) {
             if (mc.indexOf(c) === -1) {
-                var mapComment = Waze.model.mapComments.get(c);
+                var mapComment = W.model.mapComments.get(c);
                 if (mapComment != null) {
                     mc.push(c);
                     if ((settings.LockLevel == null ||
@@ -396,7 +396,7 @@ var WMEWAL_MapComments;
                             continue;
                         }
                         var lastEditorID = mapComment.attributes.updatedBy || mapComment.attributes.createdBy;
-                        var lastEditor = Waze.model.users.get(lastEditorID);
+                        var lastEditor = W.model.users.get(lastEditorID);
                         var endDate = null;
                         var expirationDate = mapComment.attributes.endDate;
                         if (expirationDate != null) {
@@ -484,7 +484,7 @@ var WMEWAL_MapComments;
             }
             for (var ixmc = 0; ixmc < mapComments.length; ixmc++) {
                 var mapComment = mapComments[ixmc];
-                var lonlat = OpenLayers.Layer.SphericalMercator.inverseMercator(mapComment.center.x, mapComment.center.y);
+                var lonlat = OL.Layer.SphericalMercator.inverseMercator(mapComment.center.x, mapComment.center.y);
                 var pl = getPL(mapComment, lonlat);
                 var expirationDate = "";
                 if (mapComment.expirationDate != null) {
@@ -536,8 +536,8 @@ var WMEWAL_MapComments;
     function Init() {
         console.group(pluginName + ": Initializing");
         initCount++;
-        var objectToCheck = ["OpenLayers",
-            "Waze.location",
+        var objectToCheck = ["OL",
+            "W.location",
             "WMEWAL.RegisterPlugIn"];
         for (var i = 0; i < objectToCheck.length; i++) {
             var path = objectToCheck[i].split(".");

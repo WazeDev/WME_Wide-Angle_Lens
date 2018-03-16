@@ -186,9 +186,9 @@ var WMEWAL_Locks;
         selectState.empty();
         var stateObjs = [];
         stateObjs.push({ id: null, name: "" });
-        for (var s in Waze.model.states.objects) {
-            if (Waze.model.states.objects.hasOwnProperty(s)) {
-                var st = Waze.model.states.get(parseInt(s));
+        for (var s in W.model.states.objects) {
+            if (W.model.states.objects.hasOwnProperty(s)) {
+                var st = W.model.states.get(parseInt(s));
                 if (st.id !== 1 && st.name.length > 0) {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -279,7 +279,7 @@ var WMEWAL_Locks;
         }
         var selectedState = $("#_wmewalLocksState").val();
         if (selectedState != null && selectedState.length > 0) {
-            if (Waze.model.states.get(selectedState) == null) {
+            if (W.model.states.get(selectedState) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid state selection");
                 allOk = false;
             }
@@ -360,7 +360,7 @@ var WMEWAL_Locks;
             }
             var selectedState = $("#_wmewalLocksState").val();
             if (selectedState != null && selectedState.length > 0) {
-                s_1.State = Waze.model.states.get(parseInt(selectedState)).id;
+                s_1.State = W.model.states.get(parseInt(selectedState)).id;
             }
             var pattern = $("#_wmewalLocksName").val();
             if (pattern.length > 0) {
@@ -419,7 +419,7 @@ var WMEWAL_Locks;
             settings.State = null;
             stateName = null;
             if (selectedState != null && selectedState.length > 0) {
-                state = Waze.model.states.get(selectedState);
+                state = W.model.states.get(selectedState);
                 settings.State = state.id;
                 stateName = state.name;
             }
@@ -493,7 +493,7 @@ var WMEWAL_Locks;
             var address = s.getAddress();
             var thisStreet = null;
             if (sid != null) {
-                // let street = Waze.model.streets.get(sid);
+                // let street = W.model.streets.get(sid);
                 thisStreet = extentStreets.find(function (e) {
                     var matches = (e.id === sid && (e.lockLevel === (s.attributes.lockRank || 0) + 1) && e.roundaboutId === rId && e.roadType === s.attributes.roadType);
                     if (matches && (nameRegex != null || cityRegex != null)) {
@@ -516,7 +516,7 @@ var WMEWAL_Locks;
                     city: (address.city != null && address.city.attributes != null && address.city.attributes.name != null ? address.city.attributes.name : "No city"),
                     state: (address.state != null && address.state.name != null ? address.state.name : "No state"),
                     name: (address.street != null ? address.street.name : "No street"),
-                    geometries: new OpenLayers.Geometry.Collection(),
+                    geometries: new OL.Geometry.Collection(),
                     lockLevel: (s.attributes.lockRank || 0) + 1,
                     segments: [],
                     roundaboutId: rId,
@@ -525,7 +525,7 @@ var WMEWAL_Locks;
                 };
                 if (nameRegex != null) {
                     for (var ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
-                        var altStreet = Waze.model.streets.get(s.attributes.streetIDs[ixAlt]);
+                        var altStreet = W.model.streets.get(s.attributes.streetIDs[ixAlt]);
                         if (altStreet != null) {
                             thisStreet.altStreets.push({
                                 id: s.attributes.streetIDs[ixAlt],
@@ -643,13 +643,13 @@ var WMEWAL_Locks;
                             if (!nameMatched && segment.attributes.streetIDs != null) {
                                 for (var streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
                                     if (segment.attributes.streetIDs[streetIx] != null) {
-                                        var street = Waze.model.streets.get(segment.attributes.streetIDs[streetIx]);
+                                        var street = W.model.streets.get(segment.attributes.streetIDs[streetIx]);
                                         if (street != null) {
                                             if (nameRegex != null) {
                                                 nameMatched = nameRegex.test(street.name);
                                             }
                                             if (!nameMatched && cityRegex != null && street.cityID != null) {
-                                                var city = Waze.model.cities.get(street.cityID);
+                                                var city = W.model.cities.get(street.cityID);
                                                 if (city != null && city.hasName()) {
                                                     nameMatched = cityRegex.test(city.attributes.name);
                                                 }
@@ -672,7 +672,7 @@ var WMEWAL_Locks;
                     else if (!settings.ExcludeRoundabouts) {
                         var r = segment.getRoundabout();
                         for (var rIx = 0; rIx < r.segIDs.length; rIx++) {
-                            addSegment(Waze.model.segments.get(r.segIDs[rIx]), r.id);
+                            addSegment(W.model.segments.get(r.segIDs[rIx]), r.id);
                         }
                     }
                 }
@@ -802,7 +802,7 @@ var WMEWAL_Locks;
                 if (street.name == null && street.roundaboutId == null) {
                     for (var ixSeg = 0; ixSeg < street.segments.length; ixSeg++) {
                         var segment = street.segments[ixSeg];
-                        var latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
+                        var latlon = OL.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
                         var plSeg = getSegmentPL(segment);
                         if (isCSV) {
                             columnArray = [getStreetName(street)];
@@ -832,7 +832,7 @@ var WMEWAL_Locks;
                     }
                 }
                 else {
-                    var latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
+                    var latlon = OL.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
                     var plStreet = getStreetPL(street);
                     var altNames = "";
                     for (var ixAlt = 0; ixAlt < street.altStreets.length; ixAlt++) {
@@ -891,8 +891,8 @@ var WMEWAL_Locks;
     }
     WMEWAL_Locks.ScanCancelled = ScanCancelled;
     function getStreetPL(street) {
-        var latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
-        var url = "https://www.waze.com/editor/?env=" + Waze.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=" + WMEWAL.zoomLevel + "&segments=";
+        var latlon = OL.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
+        var url = "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=" + WMEWAL.zoomLevel + "&segments=";
         for (var ix = 0; ix < street.segments.length; ix++) {
             if (ix > 0) {
                 url += ",";
@@ -902,8 +902,8 @@ var WMEWAL_Locks;
         return url;
     }
     function getSegmentPL(segment) {
-        var latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
-        return "https://www.waze.com/editor/?env=" + Waze.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&segments=" + segment.id;
+        var latlon = OL.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
+        return "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&segments=" + segment.id;
     }
     function getStreetName(street) {
         return street.name || "No street";
@@ -912,9 +912,9 @@ var WMEWAL_Locks;
         console.group(pluginName + ": Initializing");
         initCount++;
         var objectToCheck = [
-            "Waze.location",
-            "Waze.model.states",
-            "OpenLayers",
+            "W.location",
+            "W.model.states",
+            "OL",
             "WMEWAL.RegisterPlugIn"];
         for (var i = 0; i < objectToCheck.length; i++) {
             var path = objectToCheck[i].split(".");
