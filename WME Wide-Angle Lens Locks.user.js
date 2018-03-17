@@ -5,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.6
+// @version             1.1.7b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -943,7 +943,13 @@ var WMEWAL_Locks;
                 settings = JSON.parse(localStorage[settingsKey]);
             }
             if (localStorage[savedSettingsKey]) {
-                savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                } catch (e) {
+                    console.debug("WMEWAL: "+ e);
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    updateSavedSettings();
+                }
             }
         }
         if (settings == null) {
@@ -981,7 +987,7 @@ var WMEWAL_Locks;
     }
     function updateSavedSettings() {
         if (typeof Storage !== "undefined") {
-            localStorage[savedSettingsKey] = WMEWAL.LZString.compress(JSON.stringify(savedSettings));
+            localStorage[savedSettingsKey] = WMEWAL.LZString.compressToUTF16(JSON.stringify(savedSettings));
         }
         updateSavedSettingsList();
     }

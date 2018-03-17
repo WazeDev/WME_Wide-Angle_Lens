@@ -10,7 +10,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.0.3
+// @version             0.0.4b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -334,7 +334,7 @@ var WMEWAL_MapComments;
     WMEWAL_MapComments.ScanStarted = ScanStarted;
     function updateSavedSettings() {
         if (typeof Storage !== "undefined") {
-            localStorage[savedSettingsKey] = WMEWAL.LZString.compress(JSON.stringify(savedSettings));
+            localStorage[savedSettingsKey] = WMEWAL.LZString.compressToUTF16(JSON.stringify(savedSettings));
         }
         updateSavedSettingsList();
     }
@@ -566,7 +566,13 @@ var WMEWAL_MapComments;
                 settings = JSON.parse(localStorage[settingsKey]);
             }
             if (localStorage[savedSettingsKey]) {
-                savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                } catch (e) {
+                    console.debug("WMEWAL: "+ e);
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    updateSavedSettings();
+                }
                 for (var ix = 0; ix < savedSettings.length; ix++) {
                     if (savedSettings[ix].Setting.hasOwnProperty("OutputTo")) {
                         delete savedSettings[ix].Setting.OutputTo;
