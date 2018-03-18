@@ -14,6 +14,8 @@
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
+// @updateURL           https://greasyfork.org/scripts/39524-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
+// @downloadURL         https://greasyfork.org/scripts/39524-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Places;

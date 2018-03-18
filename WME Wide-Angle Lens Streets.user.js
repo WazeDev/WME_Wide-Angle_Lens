@@ -9,6 +9,8 @@
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
+// @updateURL           https://greasyfork.org/scripts/39525-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
+// @downloadURL         https://greasyfork.org/scripts/39525-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Streets;

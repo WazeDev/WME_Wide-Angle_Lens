@@ -14,6 +14,8 @@
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
+// @updateURL           https://greasyfork.org/scripts/39523-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
+// @downloadURL         https://greasyfork.org/scripts/39523-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_MapComments;
