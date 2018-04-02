@@ -153,6 +153,7 @@ var WMEWAL;
                 } catch (e) {
                     settings = "";
                     console.log("Using old decompress method");
+                    localStorage[settingsKey +"Backup"] = localStorage[settingsKey];
                     settingsString = localStorage[settingsKey];
                     //console.debug(settingsKey +": "+settingsString);
                     if (settingsString.substring(0, 1) === "~") {
@@ -1206,7 +1207,7 @@ var WMEWAL;
     }
     WMEWAL.TranslateRoadType = TranslateRoadType;
     function GenerateBasePL(lat, lon, zoom) {
-        return "https://www.waze.com/editor?env=" + W.location.code + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
+        return "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
     function CompareVersions(v1, v2) {

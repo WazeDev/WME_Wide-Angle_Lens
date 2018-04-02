@@ -5,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.3b1
+// @version             1.4.3b2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -1327,6 +1327,7 @@ var WMEWAL_Streets;
                     savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
                 } catch (e) {
                     console.debug("WMEWAL: "+ e);
+                    localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
                     savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
                     updateSavedSettings();
                 }

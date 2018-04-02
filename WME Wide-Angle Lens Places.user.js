@@ -1,8 +1,3 @@
-/// <reference path="../typings/globals/openlayers/index.d.ts" />
-/// <reference path="../typings/I18n.d.ts" />
-/// <reference path="../typings/waze.d.ts" />
-/// <reference path="../typings/globals/jquery/index.d.ts" />
-/// <reference path="../WME Wide-Angle Lens/WME Wide-Angle Lens.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Places
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -10,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.5b1
+// @version             1.2.5b2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -684,6 +679,7 @@ var WMEWAL_Places;
                     savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
                 } catch (e) {
                     console.debug("WMEWAL: "+ e);
+                    localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
                     savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
                     updateSavedSettings();
                 }
