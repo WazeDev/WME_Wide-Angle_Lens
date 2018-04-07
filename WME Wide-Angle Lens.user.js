@@ -5,7 +5,7 @@
 // @author              vtpearce (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.5b2
+// @version             1.3.5b3
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -860,8 +860,8 @@ var WMEWAL;
         // Transform the collection to EPSG:4326
         var toProj = new OL.Projection("EPSG:4326");
         c.transform(W.map.getProjectionObject(), toProj);
-        var geoText = "data:text/plain;charset=utf-8," + c.toString();
-        var encodedUri = encodeURI(geoText);
+        var geoText = c.toString();
+        var encodedUri = "data:text/plain;charset=utf-8," + encodeURIComponent(geoText);
         var link = document.createElement("a");
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", settings.SavedAreas[index].name + ".wkt");

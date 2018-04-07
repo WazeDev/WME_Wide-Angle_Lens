@@ -5,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.0.4b2
+// @version             0.0.4b3
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -439,7 +439,7 @@ var WMEWAL_MapComments;
             var fileName = void 0;
             if (isCSV) {
                 lineArray = [];
-                columnArray = ["data:text/csv;charset=utf-8,Title,Lock Level,Geometry Type,Expiration Date,Last Editor,Created On,Updated On,Latitude,Longitude,Permalink"];
+                columnArray = ["Title,Lock Level,Geometry Type,Expiration Date,Last Editor,Created On,Updated On,Latitude,Longitude,Permalink"];
                 lineArray.push(columnArray);
                 fileName = "MapComments" + WMEWAL.areaName;
                 fileName += ".csv";
@@ -508,7 +508,7 @@ var WMEWAL_MapComments;
             }
             if (isCSV) {
                 var csvContent = lineArray.join("\n");
-                var encodedUri = encodeURI(csvContent);
+                var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
                 var link = document.createElement("a");
                 link.href = encodedUri;
                 link.setAttribute("download", fileName);

@@ -5,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.5b2
+// @version             1.2.5b3
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -532,7 +532,7 @@ var WMEWAL_Places;
             var fileName = void 0;
             if (isCSV) {
                 lineArray = [];
-                columnArray = ["data:text/csv;charset=utf-8,Name,Categories,City,State,Lock Level,Type,Ad Locked,Has Open Update Requests,Pending Approval,Street,House Number,Has External Provider Link,Last Editor,Latitude,Longitude,Permalink"];
+                columnArray = ["Name,Categories,City,State,Lock Level,Type,Ad Locked,Has Open Update Requests,Pending Approval,Street,House Number,Has External Provider Link,Last Editor,Latitude,Longitude,Permalink"];
                 lineArray.push(columnArray);
                 fileName = "Places_" + WMEWAL.areaName;
                 fileName += ".csv";
@@ -623,7 +623,7 @@ var WMEWAL_Places;
             }
             if (isCSV) {
                 var csvContent = lineArray.join("\n");
-                var encodedUri = encodeURI(csvContent);
+                var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
                 var link = document.createElement("a");
                 link.href = encodedUri;
                 link.setAttribute("download", fileName);
