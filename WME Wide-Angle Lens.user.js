@@ -5,7 +5,7 @@
 // @author              vtpearce (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.4
+// @version             1.3.4.1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------------------
 var WMEWAL;
 (function (WMEWAL) {
-    var Version = "1.3.3";
+    var Version = "1.3.4.1";
     var ProgressBar = (function () {
         function ProgressBar(id) {
             this.div = $(id);
@@ -199,6 +199,10 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.3.4.1")) {
+                versionHistory += "\nv1.3.4.1: ***BACKUP YOUR AREAS NOW!!***\nThe next version of WAL"+
+                                  " could potentially cause data loss.\nSee the forum thread for more info";
+            }
             if (CompareVersions(settings.Version, "1.3.3")) {
                 versionHistory += "\nv1.3.3: Updates to support latest version of WME Editor.";
             }
