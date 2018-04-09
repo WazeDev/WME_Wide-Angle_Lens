@@ -2,10 +2,10 @@
 // @name                WME Wide-Angle Lens
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
-// @author              vtpearce (progress bar from dummyd2 & seb-d59)
+// @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.5b3
+// @version             1.4.0rc
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -187,7 +187,8 @@ var WMEWAL;
                 for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
                         settings.SavedAreas[ix].geometry = OL.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
-                        while (settings.SavedAreas[ix].geometry.CLASS_NAME === "OL.Geometry.Collection" &&
+                        while ((settings.SavedAreas[ix].geometry.CLASS_NAME === "OL.Geometry.Collection" ||
+                                settings.SavedAreas[ix].geometry.CLASS_NAME === "OpenLayers.Geometry.Collection") &&
                             settings.SavedAreas[ix].geometry.components.length === 1) {
                             settings.SavedAreas[ix].geometry = settings.SavedAreas[ix].geometry.components[0];
                             upd = true;
@@ -227,15 +228,18 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.0")) {
+                versionHistory += "\nv1.4.0: Updates to support Firefox.";
+            }
             if (CompareVersions(settings.Version, "1.3.4.1")) {
                 versionHistory += "\nv1.3.4.1: ***BACKUP YOUR AREAS NOW!!***\nThe next version of WAL"+
                                   " could potentially cause data loss.\nSee the forum thread for more info";
             }
+            if (CompareVersions(settings.Version, "1.3.4")) {
+                versionHistory += "\nv1.3.4: Updates to WME URL";
+            }
             if (CompareVersions(settings.Version, "1.3.3")) {
                 versionHistory += "\nv1.3.3: Updates to support latest version of WME Editor.";
-            }
-            if (CompareVersions(settings.Version, "1.3.5")) {
-                versionHistory += "\nv1.3.5: Updates to support Firefox.";
             }
             alert(versionHistory);
             settings.Version = Version;
