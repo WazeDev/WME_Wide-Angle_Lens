@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.1
+// @version             1.4.2b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -268,7 +268,7 @@ var WMEWAL;
     }
     function makeTab() {
         var userTabs = $("#user-info");
-        var navTabs = $("ul.nav-tabs", userTabs);
+        var navTabs = $("ul.nav-tabs", userTabs).filter(":first");
         var tabContent = $(".tab-content", userTabs).filter(":first");
         navTabs.append("<li><a href='#sidepanel-wme-wal' data-toggle='tab'>WAL</a></li>");
         var addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens</h3></div>");
