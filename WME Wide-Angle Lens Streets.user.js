@@ -5,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.3b3
+// @version             1.5.0b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -1323,13 +1323,18 @@ var WMEWAL_Streets;
                 settings = JSON.parse(localStorage[settingsKey]);
             }
             if (localStorage[savedSettingsKey]) {
-                try {
-                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
-                } catch (e) {
-                    console.debug("WMEWAL: "+ e);
+                savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                {
+                    console.log(pluginName + ": decompressFromUTF16 failed, attempting decompress");
                     localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
                     savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
                     updateSavedSettings();
+                }
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                {
+                    console.debug(pluginName + ": decompress failed, savedSettings unrecoverable. Using blank");
+                    savedSettings = [];
                 }
                 for (var ix = 0; ix < savedSettings.length; ix++) {
                     if (savedSettings[ix].Setting.hasOwnProperty("OutputTo")) {

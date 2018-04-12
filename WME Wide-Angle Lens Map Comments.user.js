@@ -561,13 +561,18 @@ var WMEWAL_MapComments;
                 settings = JSON.parse(localStorage[settingsKey]);
             }
             if (localStorage[savedSettingsKey]) {
-                try {
-                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
-                } catch (e) {
-                    console.debug("WMEWAL: "+ e);
+                savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                {
+                    console.debug(pluginName + ": decompressFromUTF16 failed, attempting decompress");
                     localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
                     savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
                     updateSavedSettings();
+                }
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                {
+                    console.debug(pluginName + ": decompress failed, savedSettings unrecoverable. Using blank");
+                    savedSettings = [];
                 }
                 for (var ix = 0; ix < savedSettings.length; ix++) {
                     if (savedSettings[ix].Setting.hasOwnProperty("OutputTo")) {

@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.0rc
+// @version             1.4.0rc1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -148,9 +148,8 @@ var WMEWAL;
                     console.log("Decompress UTF16 settings");
                     settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
                 }
-                try {
-                    settings = JSON.parse(settingsString);
-                } catch (e) {
+                settings = JSON.parse(settingsString);
+                if (typeof settings === "undefined" || settings === null || settings === "") {
                     settings = "";
                     console.log("Using old decompress method");
                     localStorage[settingsKey +"Backup"] = localStorage[settingsKey];
