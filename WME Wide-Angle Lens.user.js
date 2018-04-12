@@ -146,7 +146,9 @@ var WMEWAL;
                 if (settingsString.substring(0, 1) === "~") {
                     // Compressed value - decompress
                     console.log("Decompress UTF16 settings");
-                    settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
+                    try {
+                        settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
+                    } catch (e) {}
                 }
                 settings = JSON.parse(settingsString);
                 if (typeof settings === "undefined" || settings === null || settings === "") {
@@ -157,7 +159,9 @@ var WMEWAL;
                     //console.debug(settingsKey +": "+settingsString);
                     if (settingsString.substring(0, 1) === "~") {
                         // Compressed value - decompress
-                        settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
+                        try {
+                            settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
+                        } catch (e) {}
                         //console.debug(settingsKey +": "+settingsString);
                         upd = true;
                     }

@@ -1323,18 +1323,22 @@ var WMEWAL_Streets;
                 settings = JSON.parse(localStorage[settingsKey]);
             }
             if (localStorage[savedSettingsKey]) {
-                savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                } catch (e) {}
                 if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
                 {
                     console.log(pluginName + ": decompressFromUTF16 failed, attempting decompress");
                     localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
-                    savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    try {
+                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    } catch (e) {}
+                    if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                    {
+                        console.debug(pluginName + ": decompress failed, savedSettings unrecoverable. Using blank");
+                        savedSettings = [];
+                    }
                     updateSavedSettings();
-                }
-                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
-                {
-                    console.debug(pluginName + ": decompress failed, savedSettings unrecoverable. Using blank");
-                    savedSettings = [];
                 }
                 for (var ix = 0; ix < savedSettings.length; ix++) {
                     if (savedSettings[ix].Setting.hasOwnProperty("OutputTo")) {
