@@ -5,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.0.4b3
+// @version             0.1.0b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
