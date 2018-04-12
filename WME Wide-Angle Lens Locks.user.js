@@ -5,7 +5,7 @@
 // @author              vtpearce
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.6
+// @version             1.1.7b3
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -725,7 +725,7 @@ var WMEWAL_Locks;
             var fileName = void 0;
             if (isCSV) {
                 lineArray = [];
-                columnArray = ["data:text/csv;charset=utf-8,Name"];
+                columnArray = ["Name"];
                 if (includeAltNames) {
                     columnArray.push("Alt Names");
                 }
@@ -872,7 +872,7 @@ var WMEWAL_Locks;
             }
             if (isCSV) {
                 var csvContent = lineArray.join("\n");
-                var encodedUri = encodeURI(csvContent);
+                var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
                 var link = document.createElement("a");
                 link.href = encodedUri;
                 link.setAttribute("download", fileName);
@@ -943,7 +943,14 @@ var WMEWAL_Locks;
                 settings = JSON.parse(localStorage[settingsKey]);
             }
             if (localStorage[savedSettingsKey]) {
-                savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                } catch (e) {
+                    console.debug("WMEWAL: "+ e);
+                    localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    updateSavedSettings();
+                }
             }
         }
         if (settings == null) {
@@ -981,7 +988,7 @@ var WMEWAL_Locks;
     }
     function updateSavedSettings() {
         if (typeof Storage !== "undefined") {
-            localStorage[savedSettingsKey] = WMEWAL.LZString.compress(JSON.stringify(savedSettings));
+            localStorage[savedSettingsKey] = WMEWAL.LZString.compressToUTF16(JSON.stringify(savedSettings));
         }
         updateSavedSettingsList();
     }
