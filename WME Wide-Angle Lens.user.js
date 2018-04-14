@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.0rc2
+// @version             1.4.0
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -145,7 +145,7 @@ var WMEWAL;
                 var settingsString = localStorage[settingsKey];
                 if (settingsString.substring(0, 1) === "~") {
                     // Compressed value - decompress
-                    console.log("Decompress UTF16 settings");
+                    //console.log("Decompress UTF16 settings");
                     try {
                         settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
                     } catch (e) {}
@@ -153,18 +153,18 @@ var WMEWAL;
                 settings = JSON.parse(settingsString);
                 if (typeof settings === "undefined" || settings === null || settings === "") {
                     settings = "";
-                    console.log("Using old decompress method");
+                    console.debug("WMEWAL: Using old decompress method");
                     localStorage[settingsKey +"Backup"] = localStorage[settingsKey];
                     settingsString = localStorage[settingsKey];
-                    //console.debug(settingsKey +": "+settingsString);
+
                     if (settingsString.substring(0, 1) === "~") {
                         // Compressed value - decompress
                         try {
                             settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
                         } catch (e) {}
-                        //console.debug(settingsKey +": "+settingsString);
+
                         if (typeof settings === "undefined" || settings === null || settings === "") {
-                            console.log("Using empty settings");
+                            console.debug("WMEWAL: Unable to decompress! Using empty settings");
                             settings = {
                                 SavedAreas: [],
                                 ActivePlugins: [],

@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.0b1
+// @version             1.2.0
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -948,7 +948,7 @@ var WMEWAL_Locks;
                 } catch (e) {}
                 if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
                 {
-                    console.log(pluginName + ": decompressFromUTF16 failed, attempting decompress");
+                    console.debug(pluginName + ": decompressFromUTF16 failed, attempting decompress");
                     localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
                     try {
                         savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
