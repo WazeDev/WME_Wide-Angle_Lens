@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.0rc1
+// @version             1.4.0rc2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -163,20 +163,19 @@ var WMEWAL;
                             settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
                         } catch (e) {}
                         //console.debug(settingsKey +": "+settingsString);
+                        if (typeof settings === "undefined" || settings === null || settings === "") {
+                            console.log("Using empty settings");
+                            settings = {
+                                SavedAreas: [],
+                                ActivePlugins: [],
+                                Version: Version
+                            };
+                        }
                         upd = true;
                     }
                     //console.log("Parsing JSON after decompress");
                     settings = JSON.parse(settingsString);
                     //console.log("Parsed");
-                }
-
-                if (typeof settings === "undefined" || settings === null || settings === "") {
-                    console.log("Using empty settings");
-                    settings = {
-                        SavedAreas: [],
-                        ActivePlugins: [],
-                        Version: Version
-                    };
                 }
 
                 settings.SavedAreas.sort(function (a, b) {

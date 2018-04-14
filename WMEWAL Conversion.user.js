@@ -12,7 +12,7 @@
 
 (function() {
     "use strict";
-    
+
     var keysToLoad = ["WMEWAL_Settings",
         "WMEWALCitiesSavedSettings",
         "WMEWALLocksSavedSettings",
@@ -82,7 +82,7 @@
             });
         }
     } // End convertWALSettings()
-    
+
     // =============================================================
     // LZString functions
     // Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
