@@ -2,10 +2,10 @@
 // @name                WME Wide-Angle Lens
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
-// @author              vtpearce (progress bar from dummyd2 & seb-d59)
+// @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.4.1
+// @version             1.4.0
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------------------
 var WMEWAL;
 (function (WMEWAL) {
-    var Version = "1.3.4.1";
+    var Version = GM_info.script.version;
     var ProgressBar = (function () {
         function ProgressBar(id) {
             this.div = $(id);
@@ -141,17 +141,47 @@ var WMEWAL;
         }
         if (typeof (Storage) !== "undefined") {
             if (localStorage[settingsKey]) {
+                var upd = false;
                 var settingsString = localStorage[settingsKey];
                 if (settingsString.substring(0, 1) === "~") {
                     // Compressed value - decompress
-                    settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
+                    //console.log("Decompress UTF16 settings");
+                    try {
+                        settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
+                    } catch (e) {}
                 }
                 settings = JSON.parse(settingsString);
+                if (typeof settings === "undefined" || settings === null || settings === "") {
+                    settings = "";
+                    console.debug("WMEWAL: Using old decompress method");
+                    localStorage[settingsKey +"Backup"] = localStorage[settingsKey];
+                    settingsString = localStorage[settingsKey];
+
+                    if (settingsString.substring(0, 1) === "~") {
+                        // Compressed value - decompress
+                        try {
+                            settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
+                        } catch (e) {}
+
+                        if (typeof settings === "undefined" || settings === null || settings === "") {
+                            console.debug("WMEWAL: Unable to decompress! Using empty settings");
+                            settings = {
+                                SavedAreas: [],
+                                ActivePlugins: [],
+                                Version: Version
+                            };
+                        }
+                        upd = true;
+                    }
+                    //console.log("Parsing JSON after decompress");
+                    settings = JSON.parse(settingsString);
+                    //console.log("Parsed");
+                }
+
                 settings.SavedAreas.sort(function (a, b) {
                     return a.name.localeCompare(b.name);
                 });
                 delete settingsString;
-                var upd = false;
                 if (!settings.hasOwnProperty("Version")) {
                     settings.Version = Version;
                     upd = true;
@@ -159,7 +189,8 @@ var WMEWAL;
                 for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
                         settings.SavedAreas[ix].geometry = OL.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
-                        while (settings.SavedAreas[ix].geometry.CLASS_NAME === "OL.Geometry.Collection" &&
+                        while ((settings.SavedAreas[ix].geometry.CLASS_NAME === "OL.Geometry.Collection" ||
+                                settings.SavedAreas[ix].geometry.CLASS_NAME === "OpenLayers.Geometry.Collection") &&
                             settings.SavedAreas[ix].geometry.components.length === 1) {
                             settings.SavedAreas[ix].geometry = settings.SavedAreas[ix].geometry.components[0];
                             upd = true;
@@ -199,9 +230,15 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.0")) {
+                versionHistory += "\nv1.4.0: Updates to support Firefox.";
+            }
             if (CompareVersions(settings.Version, "1.3.4.1")) {
                 versionHistory += "\nv1.3.4.1: ***BACKUP YOUR AREAS NOW!!***\nThe next version of WAL"+
                                   " could potentially cause data loss.\nSee the forum thread for more info";
+            }
+            if (CompareVersions(settings.Version, "1.3.4")) {
+                versionHistory += "\nv1.3.4: Updates to WME URL";
             }
             if (CompareVersions(settings.Version, "1.3.3")) {
                 versionHistory += "\nv1.3.3: Updates to support latest version of WME Editor.";
@@ -537,7 +574,7 @@ var WMEWAL;
                     geometryText: settings.SavedAreas[ix].geometry.toString()
                 });
             }
-            localStorage[settingsKey] = "~" + WMEWAL.LZString.compress(JSON.stringify(newSettings));
+            localStorage[settingsKey] = "~" + WMEWAL.LZString.compressToUTF16(JSON.stringify(newSettings));
         }
     }
     function importFile() {
@@ -829,8 +866,8 @@ var WMEWAL;
         // Transform the collection to EPSG:4326
         var toProj = new OL.Projection("EPSG:4326");
         c.transform(W.map.getProjectionObject(), toProj);
-        var geoText = "data:text/plain;charset=utf-8," + c.toString();
-        var encodedUri = encodeURI(geoText);
+        var geoText = c.toString();
+        var encodedUri = "data:text/plain;charset=utf-8," + encodeURIComponent(geoText);
         var link = document.createElement("a");
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", settings.SavedAreas[index].name + ".wkt");
@@ -1176,7 +1213,7 @@ var WMEWAL;
     }
     WMEWAL.TranslateRoadType = TranslateRoadType;
     function GenerateBasePL(lat, lon, zoom) {
-        return "https://www.waze.com/editor?env=" + W.location.code + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
+        return "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
     function CompareVersions(v1, v2) {

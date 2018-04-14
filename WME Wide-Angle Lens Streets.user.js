@@ -2,10 +2,10 @@
 // @name                WME Wide-Angle Lens Streets
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets that match filter criteria
-// @author              vtpearce
+// @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.2
+// @version             1.5.0
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -928,7 +928,7 @@ var WMEWAL_Streets;
             var fileName = void 0;
             if (isCSV) {
                 lineArray = [];
-                columnArray = ["data:text/csv;charset=utf-8,Name"];
+                columnArray = ["Name"];
                 if (includeAltNames) {
                     columnArray.push("Alt Names");
                 }
@@ -1206,7 +1206,7 @@ var WMEWAL_Streets;
             }
             if (isCSV) {
                 var csvContent = lineArray.join("\n");
-                var encodedUri = encodeURI(csvContent);
+                var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
                 var link = document.createElement("a");
                 link.href = encodedUri;
                 link.setAttribute("download", fileName);
@@ -1323,7 +1323,23 @@ var WMEWAL_Streets;
                 settings = JSON.parse(localStorage[settingsKey]);
             }
             if (localStorage[savedSettingsKey]) {
-                savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                } catch (e) {}
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                {
+                    console.debug(pluginName + ": decompressFromUTF16 failed, attempting decompress");
+                    localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
+                    try {
+                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    } catch (e) {}
+                    if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                    {
+                        console.debug(pluginName + ": decompress failed, savedSettings unrecoverable. Using blank");
+                        savedSettings = [];
+                    }
+                    updateSavedSettings();
+                }
                 for (var ix = 0; ix < savedSettings.length; ix++) {
                     if (savedSettings[ix].Setting.hasOwnProperty("OutputTo")) {
                         delete savedSettings[ix].Setting.OutputTo;
@@ -1406,7 +1422,7 @@ var WMEWAL_Streets;
     }
     function updateSavedSettings() {
         if (typeof Storage !== "undefined") {
-            localStorage[savedSettingsKey] = WMEWAL.LZString.compress(JSON.stringify(savedSettings));
+            localStorage[savedSettingsKey] = WMEWAL.LZString.compressToUTF16(JSON.stringify(savedSettings));
         }
         updateSavedSettingsList();
     }
