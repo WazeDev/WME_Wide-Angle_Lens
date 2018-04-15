@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.0
+// @version             1.4.1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -146,11 +146,11 @@ var WMEWAL;
                 if (settingsString.substring(0, 1) === "~") {
                     // Compressed value - decompress
                     //console.log("Decompress UTF16 settings");
-                    try {
-                        settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
-                    } catch (e) {}
+                    settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
                 }
-                settings = JSON.parse(settingsString);
+                try {
+                        settings = JSON.parse(settingsString);
+                } catch (e) {}
                 if (typeof settings === "undefined" || settings === null || settings === "") {
                     settings = "";
                     console.debug("WMEWAL: Using old decompress method");
@@ -159,20 +159,20 @@ var WMEWAL;
 
                     if (settingsString.substring(0, 1) === "~") {
                         // Compressed value - decompress
-                        try {
-                            settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
-                        } catch (e) {}
-
-                        if (typeof settings === "undefined" || settings === null || settings === "") {
-                            console.debug("WMEWAL: Unable to decompress! Using empty settings");
-                            settings = {
-                                SavedAreas: [],
-                                ActivePlugins: [],
-                                Version: Version
-                            };
-                        }
-                        upd = true;
+                        settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
                     }
+                    try {
+                        settings = JSON.parse(settingsString);
+                    } catch (e) {}
+                    if (typeof settings === "undefined" || settings === null || settings === "") {
+                        console.warn("WMEWAL: Unable to decompress! Using empty settings");
+                        settings = {
+                            SavedAreas: [],
+                            ActivePlugins: [],
+                            Version: Version
+                        };
+                    }
+                    upd = true;
                     //console.log("Parsing JSON after decompress");
                     settings = JSON.parse(settingsString);
                     //console.log("Parsed");
@@ -230,6 +230,9 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.1")) {
+                versionHistory += "\nv1.4.1: Hotfix for 1.4.0";
+            }
             if (CompareVersions(settings.Version, "1.4.0")) {
                 versionHistory += "\nv1.4.0: Updates to support Firefox.";
             }
