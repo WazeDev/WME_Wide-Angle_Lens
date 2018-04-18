@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.2b1
+// @version             1.4.2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -271,7 +271,7 @@ var WMEWAL;
         var navTabs = $("ul.nav-tabs", userTabs).filter(":first");
         var tabContent = $(".tab-content", userTabs).filter(":first");
         navTabs.append("<li><a href='#sidepanel-wme-wal' data-toggle='tab'>WAL</a></li>");
-        var addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens</h3></div>");
+        var addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens <span style='font-size:11px;'>v"+ Version +"</span></h3></div>");
         var pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(addon);
         var pb$ = $("<div/>").attr("id", "wal-progressBar").css({ width: "100%", display: "none" }).appendTo(pbi);
         pb$.append($("<div/>").addClass("wal-progressBarBG"));
