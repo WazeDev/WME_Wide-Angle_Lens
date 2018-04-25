@@ -5,12 +5,12 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.0
+// @version             1.3.1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @updateURL           https://greasyfork.org/scripts/39524-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
-// @downloadURL         https://greasyfork.org/scripts/39524-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
+// @updateURL           https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Places;
@@ -28,7 +28,7 @@ var WMEWAL_Places;
     var settingsKey = "WMEWALPlacesSettings";
     var savedSettingsKey = "WMEWALPlacesSavedSettings";
     var settings = null;
-    var savedSettings = [];
+    var savedSettings = null;
     var places;
     var nameRegex = null;
     var cityRegex = null;

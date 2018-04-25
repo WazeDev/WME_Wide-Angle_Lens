@@ -5,12 +5,12 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.0
+// @version             1.2.1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @updateURL           https://greasyfork.org/scripts/39522-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
-// @downloadURL         https://greasyfork.org/scripts/39522-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
+// @updateURL           https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Locks;
@@ -33,7 +33,7 @@ var WMEWAL_Locks;
     var settingsKey = "WMEWALLocksSettings";
     var savedSettingsKey = "WMEWALLocksSavedSettings";
     var settings = null;
-    var savedSettings = [];
+    var savedSettings = null;
     var streets = null;
     var state;
     var stateName;

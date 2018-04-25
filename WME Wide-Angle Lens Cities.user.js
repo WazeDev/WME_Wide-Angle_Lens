@@ -5,12 +5,12 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.0
+// @version             1.1.1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @updateURL           https://greasyfork.org/scripts/39521-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
-// @downloadURL         https://greasyfork.org/scripts/39521-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
+// @updateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Cities;
@@ -28,7 +28,7 @@ var WMEWAL_Cities;
     var settingsKey = "WMEWALCitiesSettings";
     var savedSettingsKey = "WMEWALCitiesSavedSettings";
     var settings = null;
-    var savedSettings = [];
+    var savedSettings = null;
     var streets = null;
     var state;
     var stateName;
