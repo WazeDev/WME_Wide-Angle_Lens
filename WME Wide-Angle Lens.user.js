@@ -5,13 +5,13 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.2
+// @version             1.4.2b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @updateURL           https://greasyfork.org/scripts/39526-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
-// @downloadURL         https://greasyfork.org/scripts/39526-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
+// @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL;
@@ -61,6 +61,7 @@ var WMEWAL;
         RoadType[RoadType["Railroad"] = 4096] = "Railroad";
         RoadType[RoadType["RunwayTaxiway"] = 8192] = "RunwayTaxiway";
         RoadType[RoadType["ParkingLotRoad"] = 16384] = "ParkingLotRoad";
+        RoadType[RoadType["Alley"] = 32768] = "Alley";
     })(WMEWAL.RoadType || (WMEWAL.RoadType = {}));
     var RoadType = WMEWAL.RoadType;
     var topLeft = null;
@@ -1169,6 +1170,8 @@ var WMEWAL;
                 return RoadType.RunwayTaxiway;
             case 20:
                 return RoadType.ParkingLotRoad;
+            case 22:
+                return RoadType.Alley;
             default:
                 return 0;
         }
@@ -1206,6 +1209,8 @@ var WMEWAL;
                 return 19;
             case RoadType.ParkingLotRoad:
                 return 20;
+            case RoadType.Alley:
+                return 22;
             default:
                 return 0;
         }
