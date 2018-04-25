@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.1
+// @version             1.5.2b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -136,6 +136,8 @@ var WMEWAL_Streets;
             "<label for='_wmewalStreetsRoadTypePrimary' class='wal-label'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet)) + "</label></div>" +
             "<div><input type='checkbox' id='_wmewalStreetsRoadTypeStreet' name='_wmewalStreetsRoadType' value='" + WMEWAL.RoadType.Street.toString() + "'/>" +
             "<label for='_wmewalStreetsRoadTypeStreet' class='wal-label'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Street)) + "</label></div>" +
+            "<div><input type='checkbox' id='_wmewalStreetsRoadTypeAlley' name='_wmewalStreetsRoadType' value='" + WMEWAL.RoadType.Alley.toString() + "'/>" +
+            "<label for='_wmewalStreetsRoadTypeAlley' class='wal-label'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Alley)) + "</label></div>" +
             "<div><input type='checkbox' id='_wmewalStreetsRoadTypeUnpaved' name='_wmewalStreetsRoadType' value='" + WMEWAL.RoadType.Unpaved.toString() + "'/>" +
             "<label for='_wmewalStreetsRoadTypeUnpaved' class='wal-label'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Unpaved)) + "</label></div>" +
             "<div><input type='checkbox' id='_wmewalStreetsRoadTypePLR' name='_wmewalStreetsRoadType' value='" + WMEWAL.RoadType.ParkingLotRoad.toString() + "'/>" +
@@ -310,6 +312,7 @@ var WMEWAL_Streets;
         $("#_wmewalStreetsRoadTypeMinorHighway").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.MinorHighway);
         $("#_wmewalStreetsRoadTypePrimary").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.PrimaryStreet);
         $("#_wmewalStreetsRoadTypeStreet").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Street);
+        $("#_wmewalStreetsRoadTypeAlley").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Alley);
         $("#_wmewalStreetsRoadTypeUnpaved").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Unpaved);
         $("#_wmewalStreetsRoadTypePLR").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.ParkingLotRoad);
         $("#_wmewalStreetsRoadTypePrivate").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.PrivateRoad);
