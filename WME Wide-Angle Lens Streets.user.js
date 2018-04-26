@@ -5,14 +5,16 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.2b2
+// @version             1.5.2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @zzupdateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
-// @zzdownloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
+// @updateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
 // ==/UserScript==
-// ---------------------------------------------------------------------------------------
+
+/*global W, OL, $, WazeWrap, WMEWAL*/
+
 var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     var Direction;

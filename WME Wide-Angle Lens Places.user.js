@@ -12,7 +12,9 @@
 // @updateURL           https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
 // ==/UserScript==
-// ---------------------------------------------------------------------------------------
+
+/*global W, OL, $, WazeWrap, WMEWAL*/
+
 var WMEWAL_Places;
 (function (WMEWAL_Places) {
     var Operation;
