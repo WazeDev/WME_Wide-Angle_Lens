@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.1
+// @version             1.3.2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -28,7 +28,7 @@ var WMEWAL_Places;
     var settingsKey = "WMEWALPlacesSettings";
     var savedSettingsKey = "WMEWALPlacesSavedSettings";
     var settings = null;
-    var savedSettings = null;
+    var savedSettings = "";
     var places;
     var nameRegex = null;
     var cityRegex = null;
