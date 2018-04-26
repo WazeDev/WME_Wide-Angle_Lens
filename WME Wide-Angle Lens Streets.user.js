@@ -5,12 +5,12 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.2b1
+// @version             1.5.2b2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @updateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
-// @downloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
+// @zzupdateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
+// @zzdownloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Streets;
@@ -53,7 +53,7 @@ var WMEWAL_Streets;
     var settingsKey = "WMEWALStreetsSettings";
     var savedSettingsKey = "WMEWALStreetsSavedSettings";
     var settings = null;
-    var savedSettings = null;
+    var savedSettings = "";
     var streets = null;
     var state;
     var stateName;
@@ -652,9 +652,9 @@ var WMEWAL_Streets;
             if (thisStreet == null) {
                 thisStreet = {
                     id: sid,
-                    city: (address.city != null && address.city.attributes != null && address.city.attributes.name != null) ? address.city.attributes.name : "No city",
-                    state: (address.state != null && address.state.name != null) ? address.state.name : "No state",
-                    name: address.street != null ? address.street.name : null,
+                    city: ((address && !address.attributes.isEmpty && address.attributes.city.hasName()) ? address.attributes.city.attributes.name : "No City"),
+                    state: ((address && !address.attributes.isEmpty) ? address.attributes.state.name : "No State"),
+                    name: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : null),
                     geometries: new OL.Geometry.Collection(),
                     lockLevel: (s.attributes.lockRank || 0) + 1,
                     segments: [],
@@ -700,9 +700,9 @@ var WMEWAL_Streets;
                     var newSegment = false;
                     var address = segment.getAddress();
                     if (state != null) {
-                        if (address != null && address.state != null) {
-                            if (settings.StateOperation === Operation.Equal && address.state.id !== state.id ||
-                                settings.StateOperation === Operation.NotEqual && address.state.id === state.id) {
+                        if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
+                            if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
+                                settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
                                 continue;
                             }
                         }
@@ -806,16 +806,16 @@ var WMEWAL_Streets;
                         }
                     }
                     if (settings.HasNoName) {
-                        if (!address.street || address.street.isEmpty ||
-                            address.street.name === null || address.street.name.trim().length === 0) {
+                        if (!address || !address.attributes || address.attributes.isEmpty || !address.attributes.street || address.attributes.street.isEmpty ||
+                            address.attributes.street.name === null || address.attributes.street.name.trim().length === 0) {
                             issues = issues | Issue.NoName;
                         }
                     }
                     if (settings.HasNoCity) {
-                        if (!address.city || address.city.isEmpty() ||
-                            !address.city.hasName || !address.city.attributes ||
-                            address.city.attributes.isEmpty || address.city.attributes.name === null ||
-                            address.city.attributes.name.trim().length == 0) {
+                        if (!address || !address.attributes || address.attributes.isEmpty || !address.attributes.city || address.attributes.city.isEmpty() ||
+                            !address.attributes.city.hasName || !address.attributes.city.attributes ||
+                            address.attributes.city.attributes.isEmpty || address.attributes.city.attributes.name === null ||
+                            address.attributes.city.attributes.name.trim().length == 0) {
                             issues = issues | Issue.NoCity;
                         }
                     }
@@ -830,12 +830,12 @@ var WMEWAL_Streets;
                     }
                     if (nameRegex != null || cityRegex != null) {
                         var nameMatched = false;
-                        if (address != null) {
-                            if (nameRegex != null && address.street != null && !address.street.isEmpty) {
-                                nameMatched = nameRegex.test(address.street.name);
+                        if (address != null && address.attributes != null && !address.attributes.isEmpty) {
+                            if (nameRegex != null && address.attributes.street != null && !address.attributes.street.isEmpty) {
+                                nameMatched = nameRegex.test(address.attributes.street.name);
                             }
-                            if (!nameMatched && cityRegex != null && address.city != null && address.city.hasName()) {
-                                nameMatched = cityRegex.test(address.city.attributes.name);
+                            if (!nameMatched && cityRegex != null && address.attributes.city != null && address.attributes.city.hasName()) {
+                                nameMatched = cityRegex.test(address.attributes.city.attributes.name);
                             }
                             if (!nameMatched && segment.attributes.streetIDs != null && segment.attributes.streetIDs.length > 0) {
                                 for (var streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {

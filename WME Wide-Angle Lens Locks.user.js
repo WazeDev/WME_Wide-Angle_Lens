@@ -5,12 +5,12 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.1
+// @version             1.2.2b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @updateURL           https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
-// @downloadURL         https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
+// @zzupdateURL           https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
+// @zzdownloadURL         https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Locks;
@@ -33,7 +33,7 @@ var WMEWAL_Locks;
     var settingsKey = "WMEWALLocksSettings";
     var savedSettingsKey = "WMEWALLocksSavedSettings";
     var settings = null;
-    var savedSettings = null;
+    var savedSettings = "";
     var streets = null;
     var state;
     var stateName;
@@ -502,8 +502,8 @@ var WMEWAL_Locks;
                         // Test for alt names
                         for (var ixAlt = 0; ixAlt < e.altStreets.length && matches; ixAlt++) {
                             matches = false;
-                            for (var ixSegAlt = 0; ixSegAlt < address.altStreets.length && !matches; ixSegAlt++) {
-                                if (e.altStreets[ixAlt].id === address.altStreets[ixSegAlt].id) {
+                            for (var ixSegAlt = 0; ixSegAlt < address.attributes.altStreets.length && !matches; ixSegAlt++) {
+                                if (e.altStreets[ixAlt].id === address.attributes.altStreets[ixSegAlt].id) {
                                     matches = true;
                                 }
                             }
@@ -515,9 +515,9 @@ var WMEWAL_Locks;
             if (thisStreet == null) {
                 thisStreet = {
                     id: sid,
-                    city: (address.city != null && address.city.attributes != null && address.city.attributes.name != null ? address.city.attributes.name : "No city"),
-                    state: (address.state != null && address.state.name != null ? address.state.name : "No state"),
-                    name: (address.street != null ? address.street.name : "No street"),
+                    city: ((address && !address.attributes.isEmpty && address.attributes.city.hasName()) ? address.attributes.city.attributes.name : "No City"),
+                    state: ((address && !address.attributes.isEmpty) ? address.attributes.state.name : "No State"),
+                    name: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : "No street"),
                     geometries: new OL.Geometry.Collection(),
                     lockLevel: (s.attributes.lockRank || 0) + 1,
                     segments: [],
@@ -552,9 +552,9 @@ var WMEWAL_Locks;
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
                     var address = segment.getAddress();
                     if (state != null) {
-                        if (address != null && address.state != null) {
-                            if (settings.StateOperation === Operation.Equal && address.state.id !== state.id ||
-                                settings.StateOperation === Operation.NotEqual && address.state.id === state.id) {
+                        if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
+                            if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
+                                settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
                                 continue;
                             }
                         }
@@ -635,12 +635,12 @@ var WMEWAL_Locks;
                     }
                     if (nameRegex != null || cityRegex != null) {
                         var nameMatched = false;
-                        if (address != null) {
-                            if (nameRegex != null && address.street != null) {
-                                nameMatched = nameRegex.test(address.street.name);
+                        if (address != null && address.attributes != null && !address.attributes.isEmpty) {
+                            if (nameRegex != null && address.attributes.street != null) {
+                                nameMatched = nameRegex.test(address.attributes.street.name);
                             }
-                            if (!nameMatched && cityRegex != null && address.city != null && address.city.hasName()) {
-                                nameMatched = cityRegex.test(address.city.attributes.name);
+                            if (!nameMatched && cityRegex != null && address.attributes.city != null && address.attributes.city.hasName()) {
+                                nameMatched = cityRegex.test(address.attributes.city.attributes.name);
                             }
                             if (!nameMatched && segment.attributes.streetIDs != null) {
                                 for (var streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
