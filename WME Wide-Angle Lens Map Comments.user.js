@@ -5,14 +5,16 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.1.1
+// @version             0.1.2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
 // @updateURL           https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
 // ==/UserScript==
-// ---------------------------------------------------------------------------------------
+
+/*global W, OL, $, WazeWrap, WMEWAL*/
+
 var WMEWAL_MapComments;
 (function (WMEWAL_MapComments) {
     var Operation;
@@ -28,7 +30,7 @@ var WMEWAL_MapComments;
     var settingsKey = "WMEWALMapCommentsSettings";
     var savedSettingsKey = "WMEWALMapCommentsSavedSettings";
     var settings = null;
-    var savedSettings = null;
+    var savedSettings = "";
     var mapComments;
     var titleRegex = null;
     var commentRegex = null;
