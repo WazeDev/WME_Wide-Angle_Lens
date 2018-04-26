@@ -5,12 +5,12 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.1
+// @version             1.1.2b2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @updateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
-// @downloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
+// @zzupdateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
+// @zzdownloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Cities;
@@ -28,7 +28,7 @@ var WMEWAL_Cities;
     var settingsKey = "WMEWALCitiesSettings";
     var savedSettingsKey = "WMEWALCitiesSavedSettings";
     var settings = null;
-    var savedSettings = null;
+    var savedSettings = "";
     var streets = null;
     var state;
     var stateName;
@@ -82,6 +82,8 @@ var WMEWAL_Cities;
             "<label for='_wmewalCitiesRoadTypePrimary' style='margin-left: 8px'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet)) + "</label></div>" +
             "<div><input type='checkbox' id='_wmewalCitiesRoadTypeStreet' name='_wmewalCitiesRoadType' value='" + WMEWAL.RoadType.Street.toString() + "'/>" +
             "<label for='_wmewalCitiesRoadTypeStreet' style='margin-left: 8px'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Street)) + "</label></div>" +
+            "<div><input type='checkbox' id='_wmewalCitiesRoadTypeAlley' name='_wmewalCitiesRoadType' value='" + WMEWAL.RoadType.Alley.toString() + "'/>" +
+            "<label for='_wmewalCitiesRoadTypeAlley' style='margin-left: 8px'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Alley)) + "</label></div>" +
             "<div><input type='checkbox' id='_wmewalCitiesRoadTypeUnpaved' name='_wmewalCitiesRoadType' value='" + WMEWAL.RoadType.Unpaved.toString() + "'/>" +
             "<label for='_wmewalCitiesRoadTypeUnpaved' style='margin-left: 8px'>" + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Unpaved)) + "</label></div>" +
             "<div><input type='checkbox' id='_wmewalCitiesRoadTypePLR' name='_wmewalCitiesRoadType' value='" + WMEWAL.RoadType.ParkingLotRoad.toString() + "'/>" +
@@ -208,6 +210,7 @@ var WMEWAL_Cities;
         $("#_wmewalCitiesRoadTypeMinorHighway").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.MinorHighway);
         $("#_wmewalCitiesRoadTypePrimary").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.PrimaryStreet);
         $("#_wmewalCitiesRoadTypeStreet").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Street);
+        $("#_wmewalCitiesRoadTypeAlley").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Alley);
         $("#_wmewalCitiesRoadTypeUnpaved").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Unpaved);
         $("#_wmewalCitiesRoadTypePLR").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.ParkingLotRoad);
         $("#_wmewalCitiesRoadTypePrivate").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.PrivateRoad);
@@ -434,8 +437,8 @@ var WMEWAL_Cities;
             if (thisStreet == null) {
                 thisStreet = {
                     id: sid,
-                    state: (address.state != null && address.state.name != null ? address.state.name : "No state"),
-                    name: (address.street != null ? address.street.name : "No street"),
+                    state: ((address && !address.attributes.isEmpty) ? address.attributes.state.name : "No State"),
+                    name: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : "No street"),
                     geometries: new OL.Geometry.Collection(),
                     lockLevel: (s.attributes.lockRank || 0) + 1,
                     segments: [],
@@ -470,9 +473,9 @@ var WMEWAL_Cities;
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
                     var address = segment.getAddress();
                     if (state != null) {
-                        if (address != null && address.state != null) {
-                            if (settings.StateOperation === Operation.Equal && address.state.id !== state.id ||
-                                settings.StateOperation === Operation.NotEqual && address.state.id === state.id) {
+                        if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
+                            if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
+                                settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
                                 return "continue";
                             }
                         }
@@ -502,9 +505,9 @@ var WMEWAL_Cities;
                     }
                     if (cityRegex != null) {
                         var nameMatched = false;
-                        if (address != null) {
-                            if (address.city != null && address.city.hasName()) {
-                                nameMatched = cityRegex.test(address.city.attributes.name);
+                        if (address.attributes != null && !address.attributes.isEmpty) {
+                            if (address.attributes.city != null && address.attributes.city.hasName()) {
+                                nameMatched = cityRegex.test(address.attributes.city.attributes.name);
                             }
                             if (!nameMatched) {
                                 for (var altIx = 0; altIx < altCityNames_1.length && !nameMatched; altIx++) {
@@ -526,11 +529,11 @@ var WMEWAL_Cities;
                     var cityShouldBe = "";
                     var incorrectCity = "";
                     var anyBlankCity = false;
-                    if (address.city && address.city.hasName()) {
+                    if (address.attributes != null && address.attributes.city && address.attributes.city.hasName()) {
                         cityNames.push({
                             hasName: true,
-                            name: address.city.attributes.name,
-                            compressedName: address.city.attributes.name.replace(spaceRegex, "")
+                            name: address.attributes.city.attributes.name,
+                            compressedName: address.attributes.city.attributes.name.replace(spaceRegex, "")
                         });
                     }
                     else {
