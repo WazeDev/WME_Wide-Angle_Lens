@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.3
+// @version             1.4.3.1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -176,9 +176,6 @@ var WMEWAL;
                         };
                     }
                     upd = true;
-                    //console.log("Parsing JSON after decompress");
-                    settings = JSON.parse(settingsString);
-                    //console.log("Parsed");
                 }
 
                 settings.SavedAreas.sort(function (a, b) {
@@ -233,6 +230,9 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.3.1")) {
+                versionHistory += "\nv1.4.3.1: Fix for Firefox unable to load settings";
+            }
             if (CompareVersions(settings.Version, "1.4.1")) {
                 versionHistory += "\nv1.4.1: Hotfix for 1.4.0";
             }
