@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.2
+// @version             1.2.3
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -873,10 +873,12 @@ var WMEWAL_Locks;
                 }
             }
             if (isCSV) {
-                var csvContent = lineArray.join("\n");
-                var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+                var csvContent = encodeURIComponent(lineArray.join("\n"));
+                //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+                var blob = new Blob([csvContent], {type: "data:text/csv;charset=utf-8;"});
                 var link = document.createElement("a");
-                link.href = encodedUri;
+                var url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
                 link.setAttribute("download", fileName);
                 var node = document.body.appendChild(link);
                 link.click();

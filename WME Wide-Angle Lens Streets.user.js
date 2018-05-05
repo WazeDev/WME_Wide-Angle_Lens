@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.2
+// @version             1.5.3
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -46,6 +46,7 @@ var WMEWAL_Streets;
         Issue[Issue["NoName"] = 512] = "NoName";
         Issue[Issue["NoCity"] = 1024] = "NoCity";
         Issue[Issue["RoutingPreference"] = 2048] = "RoutingPreference";
+        Issue[Issue["UnknownDirection"] = 4096] = "UnknownDirection";
     })(Issue || (Issue = {}));
     var pluginName = "WMEWAL-Streets";
     WMEWAL_Streets.Title = "Streets";
@@ -172,6 +173,8 @@ var WMEWAL_Streets;
             "<label for='_wmewalStreetsHasRestrictions' class='wal-label'>Has time-based restrictions</label></td></tr>";
         html += "<tr><td><input id='_wmewalStreetsHasTurnRestrictions' type='checkbox'/>" +
             "<label for='_wmewalStreetsHasTurnRestrictions' class='wal-label'>Has time-based turn restrictions</label></td></tr>";
+        html += "<tr><td><input id='_wmewalStreetsUnknownDirection' type='checkbox'/>" +
+            "<label for='_wmewalStreetsUnknownDirection' class='wal-label'>Unknown Direction</label></td></tr>";
         html += "<tr><td><input id='_wmewalStreetsHasRestrictedJunctionArrow' type='checkbox'/>" +
             "<label for='_wmewalStreetsHasRestrictedJunctionArrow' class='wal-label'>Has restricted junction arrow</label></td></tr>";
         html += "<tr><td><input id='_wmewalStreetsHasUTurn' type='checkbox'/>" +
@@ -329,6 +332,7 @@ var WMEWAL_Streets;
         $("#_wmewalStreetsExcludeRoundabouts").prop("checked", settings.ExcludeRoundabouts);
         $("#_wmewalStreetsExcludeJunctionBoxes").prop("checked", settings.ExcludeJunctionBoxes);
         $("#_wmewalStreetsDirection").val(settings.Direction);
+        $("#_wmewalStreetsUnknownDirection").prop("checked", settings.UnknownDirection);
         $("#_wmewalStreetsHasRestrictions").prop("checked", settings.HasTimeBasedRestrictions);
         $("#_wmewalStreetsHasTurnRestrictions").prop("checked", settings.HasTimeBasedTurnRestrictions);
         $("#_wmewalStreetsHasRestrictedJunctionArrow").prop("checked", settings.HasRestrictedJunctionArrow);
@@ -437,6 +441,7 @@ var WMEWAL_Streets;
                 HasTimeBasedRestrictions: $("#_wmewalStreetsHasRestrictions").prop("checked"),
                 HasTimeBasedTurnRestrictions: $("#_wmewalStreetsHasTurnRestrictions").prop("checked"),
                 HasRestrictedJunctionArrow: $("#_wmewalStreetsHasRestrictedJunctionArrow").prop("checked"),
+                UnknownDirection: $("#_wmewalStreetsUnknownDirection").prop("checked"),
                 HasUTurn: $("#_wmewalStreetsHasUTurn").prop("checked"),
                 HasSoftTurns: $("#_wmewalStreetsHasSoftTurns").prop("checked"),
                 HasUnnecessaryJunctionNode: false,
@@ -576,6 +581,7 @@ var WMEWAL_Streets;
             settings.HasTimeBasedRestrictions = $("#_wmewalStreetsHasRestrictions").prop("checked");
             settings.HasTimeBasedTurnRestrictions = $("#_wmewalStreetsHasTurnRestrictions").prop("checked");
             settings.HasRestrictedJunctionArrow = $("#_wmewalStreetsHasRestrictedJunctionArrow").prop("checked");
+            settings.UnknownDirection = $("#_wmewalStreetsUnknownDirection").prop("checked");
             settings.HasUTurn = $("#_wmewalStreetsHasUTurn").prop("checked");
             settings.HasSoftTurns = $("#_wmewalStreetsHasSoftTurns").prop("checked");
             settings.HasUnnecessaryJunctionNode = false;
@@ -605,6 +611,7 @@ var WMEWAL_Streets;
                 || settings.HasTimeBasedRestrictions
                 || settings.HasTimeBasedTurnRestrictions
                 || settings.HasRestrictedJunctionArrow
+                || settings.UnknownDirection
                 || settings.HasUTurn
                 || settings.HasSoftTurns
                 || settings.SegmentLength
@@ -766,6 +773,16 @@ var WMEWAL_Streets;
                         }
                         if (hasRestrictedTurns) {
                             issues = issues | Issue.RestrictedJunctionArrows;
+                            newSegment = true;
+                        }
+                    }
+                    if (settings.UnknownDirection) {
+                        var hasNoDirection = false;
+                        if (segment.getDirection() === 0 ) {
+                            hasNoDirection = true
+                        }
+                        if (hasNoDirection) {
+                            issues = issues | Issue.UnknownDirection;
                             newSegment = true;
                         }
                     }
@@ -1027,6 +1044,9 @@ var WMEWAL_Streets;
                 if (settings.HasRestrictedJunctionArrow) {
                     w.document.write("<br/>Has restricted junction arrows (red arrows)");
                 }
+                if (settings.UnknownDirection) {
+                    w.document.write("<br/>Unknown direction");
+                }
                 if (settings.HasUTurn) {
                     w.document.write("<br/>Has u-turn");
                 }
@@ -1210,10 +1230,12 @@ var WMEWAL_Streets;
                 }
             }
             if (isCSV) {
-                var csvContent = lineArray.join("\n");
-                var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+                var csvContent = encodeURIComponent(lineArray.join("\n"));
+                //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+                var blob = new Blob([csvContent], {type: "data:text/csv;charset=utf-8;"});
                 var link = document.createElement("a");
-                link.href = encodedUri;
+                var url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
                 link.setAttribute("download", fileName);
                 var node = document.body.appendChild(link);
                 link.click();
@@ -1373,6 +1395,7 @@ var WMEWAL_Streets;
                 HasTimeBasedRestrictions: false,
                 HasTimeBasedTurnRestrictions: false,
                 HasRestrictedJunctionArrow: false,
+                UnknownDirection: false,
                 HasUTurn: false,
                 HasSoftTurns: false,
                 HasUnnecessaryJunctionNode: false,
@@ -1410,6 +1433,9 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty("NonNeutralRoutingPreference")) {
                 settings.NonNeutralRoutingPreference = false;
+            }
+            if (!settings.hasOwnProperty("UnknownDirection")) {
+                settings.UnknownDirection = false;
             }
         }
         console.log("Initialized");
