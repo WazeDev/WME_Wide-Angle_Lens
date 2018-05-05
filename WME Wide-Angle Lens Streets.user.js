@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.3
+// @version             1.5.4
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -56,7 +56,7 @@ var WMEWAL_Streets;
     var settingsKey = "WMEWALStreetsSettings";
     var savedSettingsKey = "WMEWALStreetsSavedSettings";
     var settings = null;
-    var savedSettings = "";
+    var savedSettings = [];
     var streets = null;
     var state;
     var stateName;
@@ -1353,14 +1353,14 @@ var WMEWAL_Streets;
                 try {
                     savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
                 } catch (e) {}
-                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0)
                 {
                     console.debug(pluginName + ": decompressFromUTF16 failed, attempting decompress");
                     localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
                     try {
                         savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
                     } catch (e) {}
-                    if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings === "")
+                    if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0)
                     {
                         console.debug(pluginName + ": decompress failed, savedSettings unrecoverable. Using blank");
                         savedSettings = [];
