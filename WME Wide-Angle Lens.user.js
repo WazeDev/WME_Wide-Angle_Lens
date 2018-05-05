@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.3.1
+// @version             1.4.4
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -94,21 +94,6 @@ var WMEWAL;
     var pb = null;
     var initCount = 0;
     var layerCheckboxAdded = false;
-    function bootstrap_WideAngleLens() {
-        // let bGreasemonkeyServiceDefined: boolean = false;
-        // try {
-        //     bGreasemonkeyServiceDefined = (typeof Components.interfaces.gmIGreasemonkeyService === "object");
-        // }
-        // catch (err) { /* Ignore */ }
-        // if (typeof unsafeWindow === "undefined" || !bGreasemonkeyServiceDefined) {
-        //     unsafeWindow = (function () {
-        //         let dummyElem: HTMLParagraphElement = document.createElement("p");
-        //         dummyElem.setAttribute("onclick", "return window;");
-        //         return dummyElem.onclick(null);
-        //     })();
-        // }
-        setTimeout(WideAngleLens, 1000);
-    }
     function WideAngleLens() {
         console.group("WMEWAL: Initializing");
         initCount++;
@@ -230,23 +215,33 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
-            if (CompareVersions(settings.Version, "1.4.3.1")) {
+            if (CompareVersions(settings.Version, "1.4.4") < 0) {
+                versionHistory += "\nv1.4.4: Show tab when changing mode or unit\n"+
+                                    "        Always hide segments when scanning";
+            }
+            if (CompareVersions(settings.Version, "1.4.3.1") < 0) {
                 versionHistory += "\nv1.4.3.1: Fix for Firefox unable to load settings";
             }
-            if (CompareVersions(settings.Version, "1.4.1")) {
+            if (CompareVersions(settings.Version, "1.4.3") < 0) {
+                versionHistory += "\nv1.4.3: Add Alley road type and fixes for WME release";
+            }
+            if (CompareVersions(settings.Version, "1.4.2") < 0) {
+                versionHistory += "\nv1.4.2: Fix tab placement";
+            }
+            if (CompareVersions(settings.Version, "1.4.1") < 0) {
                 versionHistory += "\nv1.4.1: Hotfix for 1.4.0";
             }
-            if (CompareVersions(settings.Version, "1.4.0")) {
+            if (CompareVersions(settings.Version, "1.4.0") < 0) {
                 versionHistory += "\nv1.4.0: Updates to support Firefox.";
             }
-            if (CompareVersions(settings.Version, "1.3.4.1")) {
+            /*if (CompareVersions(settings.Version, "1.3.4.1") < 0) {
                 versionHistory += "\nv1.3.4.1: ***BACKUP YOUR AREAS NOW!!***\nThe next version of WAL"+
                                   " could potentially cause data loss.\nSee the forum thread for more info";
-            }
-            if (CompareVersions(settings.Version, "1.3.4")) {
+            }*/
+            if (CompareVersions(settings.Version, "1.3.4") < 0) {
                 versionHistory += "\nv1.3.4: Updates to WME URL";
             }
-            if (CompareVersions(settings.Version, "1.3.3")) {
+            if (CompareVersions(settings.Version, "1.3.3") < 0) {
                 versionHistory += "\nv1.3.3: Updates to support latest version of WME Editor.";
             }
             alert(versionHistory);
@@ -267,6 +262,23 @@ var WMEWAL;
         console.log("Initialized");
         console.groupEnd();
         makeTab();
+
+        //recreate tab here
+        // Editing mode changed to/from event mode
+        if (W.app.modeController) {
+            W.app.modeController.model.bind("change:mode", function (model, modeId) {
+                if (modeId === 0 && $("#sidepanel-wme-wal").length === 0) {
+                    logDebug("Mode changed");
+                    recreateTab();
+                }
+            });
+        }
+
+        // Unit switched (imperial/metric)
+        if (W.prefs) {
+            W.prefs.on("change:isImperial", recreateTab);
+        }
+
         window["WMEWAL"] = WMEWAL;
     }
     function makeTab() {
@@ -328,6 +340,15 @@ var WMEWAL;
                 }
             }
             updateSettings();
+        });
+    }
+    function recreateTab() {
+        logDebug("Tab stuff");
+        makeTab();
+        plugins.forEach(function(plugin) {
+            logDebug("Running for plugin: "+plugin.Title);
+            updatePluginList();
+            addPluginTab(plugin);
         });
     }
     function info(text) {
@@ -1029,34 +1050,9 @@ var WMEWAL;
                     }
                     break;
                 case "layer-switcher-group_road":
-                    if (needSegments) {
-                        if (!$(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
-                        }
-                        // Loop through each child in the group
-                        $(g).find("ul.children > li > div.toggler input[type=checkbox]").each(function (ixChild, c) {
-                            switch ($(c).attr("id")) {
-                                case "layer-switcher-item_road":
-                                    if (!$(c).prop("checked")) {
-                                        $(c).trigger("click");
-                                        layerToggle.push($(c).attr("id"));
-                                    }
-                                    break;
-                                default:
-                                    if ($(c).prop("checked")) {
-                                        $(c).trigger("click");
-                                        layerToggle.push($(c).attr("id"));
-                                    }
-                                    break;
-                            }
-                        });
-                    }
-                    else {
-                        if ($(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
-                        }
+                    if ($(groupToggle).prop("checked")) {
+                        $(groupToggle).trigger("click");
+                        layerToggle.push($(groupToggle).attr("id"));
                     }
                     break;
                 case "layer-switcher-group_display":
@@ -1716,5 +1712,5 @@ var WMEWAL;
         return LZString;
     })();
     /* tslint:enable */
-    bootstrap_WideAngleLens();
+    setTimeout(WideAngleLens, 1000);
 })(WMEWAL || (WMEWAL = {}));
