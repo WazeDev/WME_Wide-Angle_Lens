@@ -292,6 +292,26 @@ var WMEWAL_Cities;
                                 compressedName: feature.style.label.replace(/\s/g, "")
                             });
                         }
+                    } else if (feature.attributes) {
+                        if (feature.attributes.labelText && feature.attributes.labelText.length > 0) {
+                            console.log("Checking to see if " + feature.attributes.labelText + " is in area");
+                            if (feature.geometry.intersects(WMEWAL.areaToScan)) {
+                                cityPolygons.push({
+                                    name: feature.attributes.labelText,
+                                    geometry: feature.geometry.clone(),
+                                    compressedName: feature.attributes.labelText.replace(/\s/g, "")
+                                });
+                            } else if (feature.attributes.name && feature.attributes.name.length > 0) {
+                                console.log("Checking to see if " + feature.attributes.name + " is in area");
+                                if (feature.geometry.intersects(WMEWAL.areaToScan)) {
+                                    cityPolygons.push({
+                                        name: feature.attributes.name,
+                                        geometry: feature.geometry.clone(),
+                                        compressedName: feature.attributes.name.replace(/\s/g, "")
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
                 if (cityPolygons.length === 0) {
