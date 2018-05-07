@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.3
+// @version             1.1.3b2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -293,7 +293,16 @@ var WMEWAL_Cities;
                             });
                         }
                     } else if (feature.attributes) {
-                        if (feature.attributes.labelText && feature.attributes.labelText.length > 0) {
+                        if (feature.attributes.name && feature.attributes.name.length > 0) {
+                            console.log("Checking to see if " + feature.attributes.name + " is in area");
+                            if (feature.geometry.intersects(WMEWAL.areaToScan)) {
+                                cityPolygons.push({
+                                    name: feature.attributes.name,
+                                    geometry: feature.geometry.clone(),
+                                    compressedName: feature.attributes.name.replace(/\s/g, "")
+                                });
+                            }
+                        } else if (feature.attributes.labelText && feature.attributes.labelText.length > 0) {
                             console.log("Checking to see if " + feature.attributes.labelText + " is in area");
                             if (feature.geometry.intersects(WMEWAL.areaToScan)) {
                                 cityPolygons.push({
@@ -301,17 +310,8 @@ var WMEWAL_Cities;
                                     geometry: feature.geometry.clone(),
                                     compressedName: feature.attributes.labelText.replace(/\s/g, "")
                                 });
-                            } else if (feature.attributes.name && feature.attributes.name.length > 0) {
-                                console.log("Checking to see if " + feature.attributes.name + " is in area");
-                                if (feature.geometry.intersects(WMEWAL.areaToScan)) {
-                                    cityPolygons.push({
-                                        name: feature.attributes.name,
-                                        geometry: feature.geometry.clone(),
-                                        compressedName: feature.attributes.name.replace(/\s/g, "")
-                                    });
-                                }
-                            }
-                        }
+                            } 
+                        } 
                     }
                 }
                 if (cityPolygons.length === 0) {
