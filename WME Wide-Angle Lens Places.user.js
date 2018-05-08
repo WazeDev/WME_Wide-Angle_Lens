@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.4.1
+// @version             1.3.5b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -41,6 +41,7 @@ var WMEWAL_Places;
     var initCount = 0;
     var Version = "1.2.3";
     function GetTab() {
+        var rpp = "RESIDENCE_HOME";
         var html = "<table style='border-collapse:separate;border-spacing:0px 1px;'>";
         html += "<tbody>";
         html += "<tr><td style='font-size:1.2em'><b>Output To:</b></td></tr>";
@@ -69,6 +70,7 @@ var WMEWAL_Places;
                 html += ("<option value='" + subCategory + "'>--" + I18n.t("venues.categories." + subCategory) + "</option>");
             }
         }
+        html += "<option value='" + rpp + "'>" + I18n.t("venues.categories." + rpp) + "</option>";
         html += "</select></td></tr>";
         html += "<tr><td><b>Lock Level:</b></td></tr>" +
             "<tr><td style='padding-left: 20px'>" +
@@ -545,7 +547,7 @@ var WMEWAL_Places;
                 w.document.write("<h2>Area: " + WMEWAL.areaName + "</h2>");
                 w.document.write("<b>Filters</b>");
                 if (settings.Category != null) {
-                    w.document.write("<br/>Category: " + I18n.t("venue.categories." + settings.Category));
+                    w.document.write("<br/>Category: " + I18n.t("venues.categories." + settings.Category));
                 }
                 if (settings.LockLevel != null) {
                     w.document.write("<br/>Lock Level " + (settings.LockLevelOperation === Operation.NotEqual ? "does not equal " : "equals ") + settings.LockLevel.toString());
