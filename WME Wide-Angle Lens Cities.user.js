@@ -5,12 +5,12 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.3
+// @version             1.1.4
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
-// @zzupdateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
-// @zzdownloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
+// @updateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
 // ==/UserScript==
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Cities;
@@ -292,6 +292,26 @@ var WMEWAL_Cities;
                                 compressedName: feature.style.label.replace(/\s/g, "")
                             });
                         }
+                    } else if (feature.attributes) {
+                        if (feature.attributes.name && feature.attributes.name.length > 0) {
+                            console.log("Checking to see if " + feature.attributes.name + " is in area");
+                            if (feature.geometry.intersects(WMEWAL.areaToScan)) {
+                                cityPolygons.push({
+                                    name: feature.attributes.name,
+                                    geometry: feature.geometry.clone(),
+                                    compressedName: feature.attributes.name.replace(/\s/g, "")
+                                });
+                            }
+                        } else if (feature.attributes.labelText && feature.attributes.labelText.length > 0) {
+                            console.log("Checking to see if " + feature.attributes.labelText + " is in area");
+                            if (feature.geometry.intersects(WMEWAL.areaToScan)) {
+                                cityPolygons.push({
+                                    name: feature.attributes.labelText,
+                                    geometry: feature.geometry.clone(),
+                                    compressedName: feature.attributes.labelText.replace(/\s/g, "")
+                                });
+                            } 
+                        } 
                     }
                 }
                 if (cityPolygons.length === 0) {
@@ -754,7 +774,7 @@ var WMEWAL_Cities;
                 }
             }
             if (isCSV) {
-                var csvContent = encodeURIComponent(lineArray.join("\n"));
+                var csvContent = lineArray.join("\n");
                 //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
                 var blob = new Blob([csvContent], {type: "data:text/csv;charset=utf-8;"});
                 var link = document.createElement("a");
