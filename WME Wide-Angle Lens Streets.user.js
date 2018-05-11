@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.4.1
+// @version             1.5.4.2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -734,7 +734,7 @@ var WMEWAL_Streets;
                             (segment.attributes.revDirection && (segment.attributes.revMaxSpeed == null || segment.attributes.revMaxSpeedUnverified)))) {
                         issues = issues | Issue.NoSpeedLimit;
                     }
-                    if (settings.HasTimeBasedRestrictions && segment.getRestrictionCount() > 0) {
+                    if (settings.HasTimeBasedRestrictions && segment.getDrivingRestrictionCount() > 0) {
                         issues = issues | Issue.TimeBasedRestrictions;
                     }
                     if (settings.HasTimeBasedTurnRestrictions) {
