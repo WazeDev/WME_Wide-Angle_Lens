@@ -976,8 +976,27 @@ var WMEWAL_Streets;
                 for (var rt in WMEWAL.RoadType) {
                     if (WMEWAL.RoadType.hasOwnProperty(rt)) {
                         var mask = parseInt(rt);
-                        if (!isNaN(mask) && settings.RoadTypeMask & mask) {
-                            fileName += "_" + WMEWAL.RoadType[mask.toString()];
+                        let RTMask = settings.RoadTypeMask;
+                        if (!isNaN(mask)) {
+                            if (RTMask & 65535) {
+                                filename += "_AllRoads";
+                                break;
+                            }
+                            else if (RTMask & 60) { // All highways
+                                fileName += "_" + I18n.t("segments.road_types.highways");
+                                RTMask = RTMask & (65535-60);
+                            }
+                            else if (RTMask & 32771) { // All local roads (PS, St, Alley)
+                                fileName += "_LocalRoads";
+                                RTMask = RTMask & (65535-32771);
+                            }
+                            else if (RTMask & 2688) { // All walking trails
+                                fileName += "_WalkingTrails";
+                                RTMask = RTMask & (65535-2688);
+                            }
+                            else if (RTMask & mask) {
+                                fileName += "_" + WMEWAL.RoadType[mask.toString()];
+                            }
                         }
                     }
                 }
