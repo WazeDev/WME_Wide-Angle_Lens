@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.5b1
+// @version             1.5.5b2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -979,7 +979,7 @@ var WMEWAL_Streets;
                         let RTMask = settings.RoadTypeMask;
                         if (!isNaN(mask)) {
                             if (RTMask & 65535) {
-                                filename += "_AllRoads";
+                                fileName += "_AllRoads";
                                 break;
                             }
                             else if (RTMask & 60) { // All highways
