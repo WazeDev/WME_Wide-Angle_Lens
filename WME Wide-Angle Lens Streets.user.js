@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.5b4
+// @version             1.5.5b5
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -982,19 +982,19 @@ var WMEWAL_Streets;
                                 fileName += "_AllRoads";
                                 break;
                             }
-                            else if (RTMask & 60) { // All highways
+                            else if (RTMask === (RTMask | 60)) { // All highways
                                 fileName += "_" + I18n.t("segment.categories.highways").replace(/\s+/g, "_");
                                 RTMask = RTMask & (65535-60);
                             }
-                            else if (RTMask & 32771) { // All local roads (PS, St, Alley)
+                            else if (RTMask === (RTMask |  32771)) { // All local roads (PS, St, Alley)
                                 fileName += "_" + I18n.t("segment.categories.streets").replace(/\s+/g, "_");
                                 RTMask = RTMask & (65535-32771);
                             }
-                            else if (RTMask & 17728) { // Other drivable roads
+                            else if (RTMask === (RTMask |  17728)) { // Other drivable roads
                                 fileName += "_" + I18n.t("segment.categories.other_drivable").replace(/\s+/g, "_");
                                 RTMask = RTMask & (65535-17728);
                             }
-                            else if (RTMask & 14976) { // Non-drivable roads, including pedestrian paths
+                            else if (RTMask === (RTMask |  14976)) { // Non-drivable roads, including pedestrian paths
                                 fileName += "_" + I18n.t("segment.categories.non_drivable").replace(/\s+/g, "_");
                                 RTMask = RTMask & (65535-14976);
                             }
