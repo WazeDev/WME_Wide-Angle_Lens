@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.5b5
+// @version             1.5.5
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -67,7 +67,7 @@ var WMEWAL_Streets;
     var roundabouts = null;
     var detectIssues = false;
     var initCount = 0;
-    var Version = "1.4.1";
+    var Version = GM_info.script.version;
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
@@ -1463,7 +1463,7 @@ var WMEWAL_Streets;
         }
         console.log("Initialized");
         console.groupEnd();
-        if (compareVersions(settings.Version, Version) < 0) {
+        /*if (compareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME WAL Streets Plugin\nv" + Version + "\n\nWhat's New\n--------";
             if (compareVersions(settings.Version, "1.4.1")) {
                 versionHistory += "\nv1.4.1: Find segments with non-neutral routing preference.";
@@ -1471,7 +1471,7 @@ var WMEWAL_Streets;
             alert(versionHistory);
             settings.Version = Version;
             updateSettings();
-        }
+        }*/
         WMEWAL.RegisterPlugIn(WMEWAL_Streets);
     }
     function updateSavedSettings() {
