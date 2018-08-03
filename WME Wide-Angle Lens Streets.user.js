@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.4.2
+// @version             1.5.5
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -67,7 +67,7 @@ var WMEWAL_Streets;
     var roundabouts = null;
     var detectIssues = false;
     var initCount = 0;
-    var Version = "1.4.1";
+    var Version = GM_info.script.version;
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
@@ -237,7 +237,7 @@ var WMEWAL_Streets;
         stateObjs.push({ id: null, name: "" });
         for (var s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
-                var st = W.model.states.get(parseInt(s));
+                var st = W.model.states.getObjectById(parseInt(s));
                 if (st.id !== 1 && st.name !== "") {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -269,7 +269,7 @@ var WMEWAL_Streets;
         userObjs.push({ id: null, name: "" });
         for (var uo in W.model.users.objects) {
             if (W.model.users.objects.hasOwnProperty(uo)) {
-                var u = W.model.users.get(parseInt(uo));
+                var u = W.model.users.getObjectById(parseInt(uo));
                 if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
                     userObjs.push({ id: u.id, name: u.userName });
                 }
@@ -374,13 +374,13 @@ var WMEWAL_Streets;
         }
         var selectedState = $("#_wmewalStreetsState").val();
         if (selectedState != null && selectedState.length > 0) {
-            if (W.model.states.get(selectedState) == null) {
+            if (W.model.states.getObjectById(selectedState) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid state selection");
             }
         }
         var selectedUser = $("#_wmewalStreetsLastModifiedBy").val();
         if (selectedUser != null && selectedUser.length > 0) {
-            if (W.model.users.get(selectedUser) == null) {
+            if (W.model.users.getObjectById(selectedUser) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid last modified user");
             }
         }
@@ -461,11 +461,11 @@ var WMEWAL_Streets;
             });
             var selectedState = $("#_wmewalStreetsState").val();
             if (selectedState != null && selectedState.length > 0) {
-                s_1.State = W.model.states.get(selectedState).id;
+                s_1.State = W.model.states.getObjectById(selectedState).id;
             }
             var selectedUser = $("#_wmewalStreetsLastModifiedBy").val();
             if (selectedUser != null && selectedUser.length > 0) {
-                s_1.LastModifiedBy = W.model.users.get(selectedUser).id;
+                s_1.LastModifiedBy = W.model.users.getObjectById(selectedUser).id;
             }
             var pattern = $("#_wmewalStreetsName").val();
             if (pattern !== "") {
@@ -538,7 +538,7 @@ var WMEWAL_Streets;
             settings.State = null;
             stateName = null;
             if (selectedState != null && selectedState.length > 0) {
-                state = W.model.states.get(parseInt(selectedState));
+                state = W.model.states.getObjectById(parseInt(selectedState));
                 settings.State = state.id;
                 stateName = state.name;
             }
@@ -548,7 +548,7 @@ var WMEWAL_Streets;
             settings.LastModifiedBy = null;
             lastModifiedByName = null;
             if (selectedUser != null && selectedUser.length > 0) {
-                lastModifiedBy = W.model.users.get(parseInt(selectedUser));
+                lastModifiedBy = W.model.users.getObjectById(parseInt(selectedUser));
                 settings.LastModifiedBy = lastModifiedBy.id;
                 lastModifiedByName = lastModifiedBy.userName;
             }
@@ -634,7 +634,7 @@ var WMEWAL_Streets;
         function addSegment(s, rId, issues, newSegment) {
             var sid = s.attributes.primaryStreetID;
             var lastEditorID = s.attributes.updatedBy || s.attributes.createdBy;
-            var lastEditor = W.model.users.get(lastEditorID);
+            var lastEditor = W.model.users.getObjectById(lastEditorID);
             var address = s.getAddress();
             var thisStreet = null;
             if (sid != null && !newSegment) {
@@ -677,7 +677,7 @@ var WMEWAL_Streets;
                 };
                 if (nameRegex != null || settings.IncludeAltNames) {
                     for (var ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
-                        var altStreet = W.model.streets.get(s.attributes.streetIDs[ixAlt]);
+                        var altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
                         if (altStreet != null) {
                             thisStreet.altStreets.push({
                                 id: s.attributes.streetIDs[ixAlt],
@@ -859,13 +859,13 @@ var WMEWAL_Streets;
                             if (!nameMatched && segment.attributes.streetIDs != null && segment.attributes.streetIDs.length > 0) {
                                 for (var streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
                                     if (segment.attributes.streetIDs[streetIx] != null) {
-                                        var street = W.model.streets.get(segment.attributes.streetIDs[streetIx]);
+                                        var street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
                                         if (street != null) {
                                             if (nameRegex != null) {
                                                 nameMatched = nameRegex.test(street.name);
                                             }
                                             if (!nameMatched && cityRegex != null && street.cityID != null) {
-                                                var city = W.model.cities.get(street.cityID);
+                                                var city = W.model.cities.getObjectById(street.cityID);
                                                 if (city != null && city.hasName()) {
                                                     nameMatched = cityRegex.test(city.attributes.name);
                                                 }
@@ -973,11 +973,34 @@ var WMEWAL_Streets;
                 columnArray.push("Permalink");
                 lineArray.push(columnArray);
                 fileName = "Streets_" + WMEWAL.areaName;
+                let RTMask = settings.RoadTypeMask;
                 for (var rt in WMEWAL.RoadType) {
                     if (WMEWAL.RoadType.hasOwnProperty(rt)) {
                         var mask = parseInt(rt);
-                        if (!isNaN(mask) && settings.RoadTypeMask & mask) {
-                            fileName += "_" + WMEWAL.RoadType[mask.toString()];
+                        if (!isNaN(mask)) {
+                            if (RTMask === 65535) {
+                                fileName += "_AllRoads";
+                                break;
+                            }
+                            else if (RTMask === (RTMask | 60)) { // All highways
+                                fileName += "_" + I18n.t("segment.categories.highways").replace(/\s+/g, "_");
+                                RTMask = RTMask & (65535-60);
+                            }
+                            else if (RTMask === (RTMask |  32771)) { // All local roads (PS, St, Alley)
+                                fileName += "_" + I18n.t("segment.categories.streets").replace(/\s+/g, "_");
+                                RTMask = RTMask & (65535-32771);
+                            }
+                            else if (RTMask === (RTMask |  17728)) { // Other drivable roads
+                                fileName += "_" + I18n.t("segment.categories.other_drivable").replace(/\s+/g, "_");
+                                RTMask = RTMask & (65535-17728);
+                            }
+                            else if (RTMask === (RTMask |  14976)) { // Non-drivable roads, including pedestrian paths
+                                fileName += "_" + I18n.t("segment.categories.non_drivable").replace(/\s+/g, "_");
+                                RTMask = RTMask & (65535-14976);
+                            }
+                            else if (RTMask & mask) {
+                                fileName += "_" + WMEWAL.RoadType[mask.toString()];
+                            }
                         }
                     }
                 }
@@ -1440,7 +1463,7 @@ var WMEWAL_Streets;
         }
         console.log("Initialized");
         console.groupEnd();
-        if (compareVersions(settings.Version, Version) < 0) {
+        /*if (compareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME WAL Streets Plugin\nv" + Version + "\n\nWhat's New\n--------";
             if (compareVersions(settings.Version, "1.4.1")) {
                 versionHistory += "\nv1.4.1: Find segments with non-neutral routing preference.";
@@ -1448,7 +1471,7 @@ var WMEWAL_Streets;
             alert(versionHistory);
             settings.Version = Version;
             updateSettings();
-        }
+        }*/
         WMEWAL.RegisterPlugIn(WMEWAL_Streets);
     }
     function updateSavedSettings() {

@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.4
+// @version             1.4.5
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -215,6 +215,9 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.5") < 0) {
+                versionHistory += "\nv1.4.5: Fixes for the latest release of WME";
+            }
             if (CompareVersions(settings.Version, "1.4.4") < 0) {
                 versionHistory += "\nv1.4.4: Show tab when changing mode or unit\n"+
                                     "        Always hide segments when scanning";
@@ -668,7 +671,7 @@ var WMEWAL;
             logDebug("Collecting segments");
             for (var seg in W.model.segments.objects) {
                 if (segments.indexOf(seg) === -1) {
-                    var segment = W.model.segments.get(parseInt(seg));
+                    var segment = W.model.segments.getObjectById(parseInt(seg));
                     if (segment != null) {
                         segments.push(seg);
                         extentSegments.push(segment);
@@ -681,7 +684,7 @@ var WMEWAL;
             logDebug("Collecting venues");
             for (var ven in W.model.venues.objects) {
                 if (venues.indexOf(ven) === -1) {
-                    var venue = W.model.venues.get(ven);
+                    var venue = W.model.venues.getObjectById(ven);
                     if (venue != null) {
                         venues.push(ven);
                         extentVenues.push(venue);
