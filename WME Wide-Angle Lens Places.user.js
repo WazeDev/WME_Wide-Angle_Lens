@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.5
+// @version             1.3.6
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -143,7 +143,7 @@ var WMEWAL_Places;
         stateObjs.push({ id: null, name: "" });
         for (var s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
-                var st = W.model.states.get(parseInt(s));
+                var st = W.model.states.getObjectById(parseInt(s));
                 if (st.id !== 1 && st.name.length !== 0) {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -175,7 +175,7 @@ var WMEWAL_Places;
         userObjs.push({ id: null, name: "" });
         for (var uo in W.model.users.objects) {
             if (W.model.users.objects.hasOwnProperty(uo)) {
-                var u = W.model.users.get(parseInt(uo));
+                var u = W.model.users.getObjectById(parseInt(uo));
                 if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
                     userObjs.push({ id: u.id, name: u.userName });
                 }
@@ -268,14 +268,14 @@ var WMEWAL_Places;
         }
         var selectedState = $("#_wmewalPlacesState").val();
         if (selectedState != null && selectedState.length !== 0) {
-            if (W.model.states.get(selectedState) == null) {
+            if (W.model.states.getObjectById(selectedState) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid state selection");
                 allOk = false;
             }
         }
         var selectedUser = $("#_wmewalPlacesLastModifiedBy").val();
         if (selectedUser != null && selectedUser.length > 0) {
-            if (W.model.users.get(selectedUser) == null) {
+            if (W.model.users.getObjectById(selectedUser) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid last modified user");
             }
         }
@@ -311,11 +311,11 @@ var WMEWAL_Places;
             s.CityRegex = pattern.length > 0 ? pattern : null;
             var selectedState = $("#_wmewalPlacesState").val();
             if (selectedState != null && selectedState.length > 0) {
-                s.State = W.model.states.get(parseInt(selectedState)).id;
+                s.State = W.model.states.getObjectById(parseInt(selectedState)).id;
             }
             var selectedUser = $("#_wmewalPlacesLastModifiedBy").val();
             if (selectedUser != null && selectedUser.length > 0) {
-                s.LastModifiedBy = W.model.users.get(selectedUser).id;
+                s.LastModifiedBy = W.model.users.getObjectById(selectedUser).id;
             }
             var selectedLockLevel = $("#_wmewalPlacesLockLevel").val();
             if (selectedLockLevel != null && selectedLockLevel.length > 0) {
@@ -390,7 +390,7 @@ var WMEWAL_Places;
             settings.State = null;
             stateName = null;
             if (selectedState != null && selectedState.length !== 0) {
-                state = W.model.states.get(selectedState);
+                state = W.model.states.getObjectById(selectedState);
                 settings.State = state.id;
                 stateName = state.name;
             }
@@ -400,7 +400,7 @@ var WMEWAL_Places;
             settings.LastModifiedBy = null;
             lastModifiedByName = null;
             if (selectedUser != null && selectedUser.length > 0) {
-                lastModifiedBy = W.model.users.get(parseInt(selectedUser));
+                lastModifiedBy = W.model.users.getObjectById(parseInt(selectedUser));
                 settings.LastModifiedBy = lastModifiedBy.id;
                 lastModifiedByName = lastModifiedBy.userName;
             }
@@ -491,7 +491,7 @@ var WMEWAL_Places;
                         continue;
                     }
                     var lastEditorID = venue.attributes.updatedBy || venue.attributes.createdBy;
-                    var lastEditor = W.model.users.get(lastEditorID);
+                    var lastEditor = W.model.users.getObjectById(lastEditorID);
                     var place = {
                         id: venue.attributes.id,
                         mainCategory: venue.getMainCategory(),

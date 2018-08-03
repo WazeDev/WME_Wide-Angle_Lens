@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.4.1
+// @version             1.2.5
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -192,7 +192,7 @@ var WMEWAL_Locks;
         stateObjs.push({ id: null, name: "" });
         for (var s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
-                var st = W.model.states.get(parseInt(s));
+                var st = W.model.states.getObjectById(parseInt(s));
                 if (st.id !== 1 && st.name.length > 0) {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -283,7 +283,7 @@ var WMEWAL_Locks;
         }
         var selectedState = $("#_wmewalLocksState").val();
         if (selectedState != null && selectedState.length > 0) {
-            if (W.model.states.get(selectedState) == null) {
+            if (W.model.states.getObjectById(selectedState) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid state selection");
                 allOk = false;
             }
@@ -364,7 +364,7 @@ var WMEWAL_Locks;
             }
             var selectedState = $("#_wmewalLocksState").val();
             if (selectedState != null && selectedState.length > 0) {
-                s_1.State = W.model.states.get(parseInt(selectedState)).id;
+                s_1.State = W.model.states.getObjectById(parseInt(selectedState)).id;
             }
             var pattern = $("#_wmewalLocksName").val();
             if (pattern.length > 0) {
@@ -423,7 +423,7 @@ var WMEWAL_Locks;
             settings.State = null;
             stateName = null;
             if (selectedState != null && selectedState.length > 0) {
-                state = W.model.states.get(selectedState);
+                state = W.model.states.getObjectById(selectedState);
                 settings.State = state.id;
                 stateName = state.name;
             }
@@ -497,7 +497,7 @@ var WMEWAL_Locks;
             var address = s.getAddress();
             var thisStreet = null;
             if (sid != null) {
-                // let street = W.model.streets.get(sid);
+                // let street = W.model.streets.getObjectById(sid);
                 thisStreet = extentStreets.find(function (e) {
                     var matches = (e.id === sid && (e.lockLevel === (s.attributes.lockRank || 0) + 1) && e.roundaboutId === rId && e.roadType === s.attributes.roadType);
                     if (matches && (nameRegex != null || cityRegex != null)) {
@@ -529,7 +529,7 @@ var WMEWAL_Locks;
                 };
                 if (nameRegex != null) {
                     for (var ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
-                        var altStreet = W.model.streets.get(s.attributes.streetIDs[ixAlt]);
+                        var altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
                         if (altStreet != null) {
                             thisStreet.altStreets.push({
                                 id: s.attributes.streetIDs[ixAlt],
@@ -647,13 +647,13 @@ var WMEWAL_Locks;
                             if (!nameMatched && segment.attributes.streetIDs != null) {
                                 for (var streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
                                     if (segment.attributes.streetIDs[streetIx] != null) {
-                                        var street = W.model.streets.get(segment.attributes.streetIDs[streetIx]);
+                                        var street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
                                         if (street != null) {
                                             if (nameRegex != null) {
                                                 nameMatched = nameRegex.test(street.name);
                                             }
                                             if (!nameMatched && cityRegex != null && street.cityID != null) {
-                                                var city = W.model.cities.get(street.cityID);
+                                                var city = W.model.cities.getObjectById(street.cityID);
                                                 if (city != null && city.hasName()) {
                                                     nameMatched = cityRegex.test(city.attributes.name);
                                                 }
@@ -676,7 +676,7 @@ var WMEWAL_Locks;
                     else if (!settings.ExcludeRoundabouts) {
                         var r = segment.getRoundabout();
                         for (var rIx = 0; rIx < r.segIDs.length; rIx++) {
-                            addSegment(W.model.segments.get(r.segIDs[rIx]), r.id);
+                            addSegment(W.model.segments.getObjectById(r.segIDs[rIx]), r.id);
                         }
                     }
                 }

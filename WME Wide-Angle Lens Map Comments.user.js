@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.1.4.1
+// @version             0.1.5
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -111,7 +111,7 @@ var WMEWAL_MapComments;
         userObjs.push({ id: null, name: "" });
         for (var uo in W.model.users.objects) {
             if (W.model.users.objects.hasOwnProperty(uo)) {
-                var u = W.model.users.get(parseInt(uo));
+                var u = W.model.users.getObjectById(parseInt(uo));
                 if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
                     userObjs.push({ id: u.id, name: u.userName });
                 }
@@ -178,7 +178,7 @@ var WMEWAL_MapComments;
         var message = "";
         var selectedUser = $("#_wmewalMapCommentsLastModifiedBy").val();
         if (selectedUser != null && selectedUser.length > 0) {
-            if (W.model.users.get(selectedUser) == null) {
+            if (W.model.users.getObjectById(selectedUser) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid last modified user");
             }
         }
@@ -261,7 +261,7 @@ var WMEWAL_MapComments;
         };
         var selectedUser = $("#_wmewalMapCommentsLastModifiedBy").val();
         if (selectedUser != null && selectedUser.length > 0) {
-            s.LastModifiedBy = W.model.users.get(selectedUser).id;
+            s.LastModifiedBy = W.model.users.getObjectById(selectedUser).id;
         }
         var pattern = $("#_wmewalMapCommentsTitle").val();
         if (pattern !== "") {
@@ -313,7 +313,7 @@ var WMEWAL_MapComments;
             settings.TitleRegexIgnoreCase = s.TitleRegexIgnoreCase;
             lastModifiedBy = null;
             if (settings.LastModifiedBy !== null) {
-                lastModifiedBy = W.model.users.get(settings.LastModifiedBy);
+                lastModifiedBy = W.model.users.getObjectById(settings.LastModifiedBy);
                 lastModifiedByName = lastModifiedBy.userName;
             }
             titleRegex = null;
@@ -348,7 +348,7 @@ var WMEWAL_MapComments;
         var def = $.Deferred();
         for (var c in W.model.mapComments.objects) {
             if (mc.indexOf(c) === -1) {
-                var mapComment = W.model.mapComments.get(c);
+                var mapComment = W.model.mapComments.getObjectById(c);
                 if (mapComment != null) {
                     mc.push(c);
                     if ((settings.LockLevel == null ||
@@ -395,7 +395,7 @@ var WMEWAL_MapComments;
                             continue;
                         }
                         var lastEditorID = mapComment.attributes.updatedBy || mapComment.attributes.createdBy;
-                        var lastEditor = W.model.users.get(lastEditorID);
+                        var lastEditor = W.model.users.getObjectById(lastEditorID);
                         var endDate = null;
                         var expirationDate = mapComment.attributes.endDate;
                         if (expirationDate != null) {
