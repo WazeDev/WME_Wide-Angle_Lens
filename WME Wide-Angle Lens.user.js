@@ -215,6 +215,9 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.5") < 0) {
+                versionHistory += "\nv1.4.5: Fixes for the latest release of WME";
+            }
             if (CompareVersions(settings.Version, "1.4.4") < 0) {
                 versionHistory += "\nv1.4.4: Show tab when changing mode or unit\n"+
                                     "        Always hide segments when scanning";
