@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.6
+// @version             1.3.7
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -82,6 +82,10 @@ var WMEWAL_Places;
             "<option value='1'>1</option>" +
             "<option value='2'>2</option>" +
             "<option value='3'>3</option>" +
+            "<option value='4'>4</option>" +
+            "<option value='5'>5</option>" +
+            "<option value='6'>6</option>" +
+            "<option value='7'>7</option>" +
             "</select></td></tr>";
         html += "<tr><td><b>Name RegEx</b></td></tr>";
         html += "<tr><td style='padding-left: 20px'>" +

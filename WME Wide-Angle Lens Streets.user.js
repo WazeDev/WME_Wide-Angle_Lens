@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.5
+// @version             1.5.6
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -98,7 +98,8 @@ var WMEWAL_Streets;
             "<option value='3'>3</option>" +
             "<option value='4'>4</option>" +
             "<option value='5'>5</option>" +
-            "<option value='6'>6</option></select></td></tr>";
+            "<option value='6'>6</option>" +
+            "<option value='7'>7</option></select></td></tr>";
         html += "<tr><td><b>Name RegEx:</b></td></tr>";
         html += "<tr><td class='wal-indent'><input type='text' id='_wmewalStreetsName' class='wal-textbox'/><br/>" +
             "<input id='_wmewalStreetsIgnoreCase' type='checkbox'/>" +
