@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.5
+// @version             1.4.6
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -215,6 +215,9 @@ var WMEWAL;
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.6") < 0) {
+                versionHistory += "\nv1.4.6: Fixes for the latest release of WME";
+            }
             if (CompareVersions(settings.Version, "1.4.5") < 0) {
                 versionHistory += "\nv1.4.5: Fixes for the latest release of WME";
             }
@@ -1222,7 +1225,7 @@ var WMEWAL;
     }
     WMEWAL.TranslateRoadType = TranslateRoadType;
     function GenerateBasePL(lat, lon, zoom) {
-        return "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
+        return "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
     function CompareVersions(v1, v2) {

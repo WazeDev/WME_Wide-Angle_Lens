@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.7
+// @version             1.3.8
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -657,7 +657,7 @@ var WMEWAL_Places;
         console.group(pluginName + ": Initializing");
         initCount++;
         var objectToCheck = ["OL",
-            "W.location",
+            "W.app",
             "W.Config.venues",
             "WMEWAL.RegisterPlugIn"];
         for (var i = 0; i < objectToCheck.length; i++) {
@@ -759,7 +759,7 @@ var WMEWAL_Places;
     }
     function getPlacePL(place) {
         var latlon = OL.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
-        var url = "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&mode=0&venues=" + place.id;
+        var url = "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&mode=0&venues=" + place.id;
         return url;
     }
     function updateSettings() {

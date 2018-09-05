@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.1.5
+// @version             0.1.6
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -341,7 +341,7 @@ var WMEWAL_MapComments;
         }
     }
     function getPL(mapComment, lonlat) {
-        var url = "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + lonlat.lon + "&lat=" + lonlat.lat + "&zoom=5&mode=0&mapComments=" + mapComment.id;
+        var url = "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + lonlat.lon + "&lat=" + lonlat.lat + "&zoom=5&mode=0&mapComments=" + mapComment.id;
         return url;
     }
     function ScanExtent(segments, venues) {
@@ -538,7 +538,7 @@ var WMEWAL_MapComments;
         console.group(pluginName + ": Initializing");
         initCount++;
         var objectToCheck = ["OL",
-            "W.location",
+            "W.app",
             "WMEWAL.RegisterPlugIn"];
         for (var i = 0; i < objectToCheck.length; i++) {
             var path = objectToCheck[i].split(".");

@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.6
+// @version             1.5.7
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -99,7 +99,8 @@ var WMEWAL_Streets;
             "<option value='4'>4</option>" +
             "<option value='5'>5</option>" +
             "<option value='6'>6</option>" +
-            "<option value='7'>7</option></select></td></tr>";
+            "<option value='7'>7</option>" +
+            "</select></td></tr>";
         html += "<tr><td><b>Name RegEx:</b></td></tr>";
         html += "<tr><td class='wal-indent'><input type='text' id='_wmewalStreetsName' class='wal-textbox'/><br/>" +
             "<input id='_wmewalStreetsIgnoreCase' type='checkbox'/>" +
@@ -1280,7 +1281,7 @@ var WMEWAL_Streets;
     WMEWAL_Streets.ScanCancelled = ScanCancelled;
     function getStreetPL(street) {
         var latlon = OL.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
-        var url = "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=" + WMEWAL.zoomLevel + "&segments=";
+        var url = "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=" + WMEWAL.zoomLevel + "&segments=";
         for (var ix = 0; ix < street.segments.length; ix++) {
             if (ix > 0) {
                 url += ",";
@@ -1291,7 +1292,7 @@ var WMEWAL_Streets;
     }
     function getSegmentPL(segment) {
         var latlon = OL.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
-        return "https://www.waze.com/editor/?env=" + W.location.code + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&segments=" + segment.id;
+        return "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + latlon.lon + "&lat=" + latlon.lat + "&zoom=5&segments=" + segment.id;
     }
     function getStreetName(street) {
         return street.name || "No street";
@@ -1345,7 +1346,7 @@ var WMEWAL_Streets;
         console.group(pluginName + ": Initializing");
         initCount++;
         var objectToCheck = [
-            "W.location",
+            "W.app",
             "W.model.states",
             "OL",
             "WMEWAL.RegisterPlugIn"];
