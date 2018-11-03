@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.8
+// @version             1.3.9
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -513,7 +513,9 @@ var WMEWAL_Places;
                         houseNumber: venue.attributes.houseNumber || "",
                         streetName: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : "") || "",
                         hasExternalProvider: venue.attributes.externalProviderIDs != null && venue.attributes.externalProviderIDs.length > 0,
-                        lastEditor: (lastEditor && lastEditor.userName) || ""
+                        lastEditor: (lastEditor && lastEditor.userName) || "",
+                        url: venue.attributes.url || "",
+                        hasHours: venue.getOpeningHours().length > 0
                     };
                     places.push(place);
                 }
@@ -540,7 +542,7 @@ var WMEWAL_Places;
             var fileName = void 0;
             if (isCSV) {
                 lineArray = [];
-                columnArray = ["Name,Categories,City,State,Lock Level,Type,Ad Locked,Has Open Update Requests,Pending Approval,Street,House Number,Has External Provider Link,Last Editor,Latitude,Longitude,Permalink"];
+                columnArray = ["Name,Categories,City,State,Lock Level,Type,Ad Locked,Has Open Update Requests,Pending Approval,Street,House Number,Has External Provider Link,Website,Has Hours,Last Editor,Latitude,Longitude,Permalink"];
                 lineArray.push(columnArray);
                 fileName = "Places_" + WMEWAL.areaName;
                 fileName += ".csv";
@@ -590,7 +592,7 @@ var WMEWAL_Places;
                     w.document.write("<br/>Pending approval");
                 }
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><thead><tr><th>Name</th><th>Categories</th><th>City</th><th>State</th>");
-                w.document.write("<th>Lock Level</th><th>Type</th><th>Ad Locked</th><th>Has Open Update Requests</th><th>Pending Approval</th><th>Street</th><th>House Number</th><th>Has External Provider Link</th><th>Last Editor</th><th>Latitude</th><th>Longitude</th><th>Permalink</th></tr><thead><tbody>");
+                w.document.write("<th>Lock Level</th><th>Type</th><th>Ad Locked</th><th>Has Open Update Requests</th><th>Pending Approval</th><th>Street</th><th>House Number</th><th>Has External Provider Link</th><th>Website</th><th>Has Hours</th><th>Last Editor</th><th>Latitude</th><th>Longitude</th><th>Permalink</th></tr><thead><tbody>");
             }
             for (var ixPlace = 0; ixPlace < places.length; ixPlace++) {
                 var place = places[ixPlace];
@@ -606,7 +608,7 @@ var WMEWAL_Places;
                 if (isCSV) {
                     columnArray = ["\"" + place.name + "\"", "\"" + categories + "\"", "\"" + place.city + "\"", "\"" + place.state + "\"", place.lockLevel.toString(),
                         place.placeType, (place.adLocked ? "Yes" : "No"), (place.hasOpenUpdateRequests ? "Yes" : "No"), (place.isApproved ? "No" : "Yes"),
-                        place.streetName, place.houseNumber, (place.hasExternalProvider ? "Yes" : "No"),
+                        place.streetName, place.houseNumber, (place.hasExternalProvider ? "Yes" : "No"), '"' + place.url + '"', (place.hasHours ? "Yes" : "No"),
                         "\"" + place.lastEditor + "\"",
                         latlon.lat.toString(), latlon.lon.toString(), "\"" + plPlace + "\""];
                     lineArray.push(columnArray);
@@ -623,6 +625,8 @@ var WMEWAL_Places;
                     w.document.write("<td>" + place.streetName + "</td>");
                     w.document.write("<td>" + place.houseNumber + "</td>");
                     w.document.write("<td>" + (place.hasExternalProvider ? "Yes" : "No") + "</td>");
+                    w.document.write("<td>" + place.url + "</td>");
+                    w.document.write("<td>" + (place.hasHours ? "Yes" : "No") + "</td>");
                     w.document.write("<td>" + place.lastEditor + "</td>");
                     w.document.write("<td>" + latlon.lat.toString() + "</td>");
                     w.document.write("<td>" + latlon.lon.toString() + "</td>");
