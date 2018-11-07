@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.9
+// @version             1.3.10
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -13,7 +13,7 @@
 // @downloadURL         https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
 // ==/UserScript==
 
-/*global W, OL, $, WazeWrap, WMEWAL*/
+/*global W, OL, I18n, $, WazeWrap, WMEWAL*/
 
 var WMEWAL_Places;
 (function (WMEWAL_Places) {
@@ -515,6 +515,7 @@ var WMEWAL_Places;
                         hasExternalProvider: venue.attributes.externalProviderIDs != null && venue.attributes.externalProviderIDs.length > 0,
                         lastEditor: (lastEditor && lastEditor.userName) || "",
                         url: venue.attributes.url || "",
+                        phone: venue.attributes.phone || "",
                         hasHours: venue.getOpeningHours().length > 0
                     };
                     places.push(place);
@@ -542,7 +543,7 @@ var WMEWAL_Places;
             var fileName = void 0;
             if (isCSV) {
                 lineArray = [];
-                columnArray = ["Name,Categories,City,State,Lock Level,Type,Ad Locked,Has Open Update Requests,Pending Approval,Street,House Number,Has External Provider Link,Website,Has Hours,Last Editor,Latitude,Longitude,Permalink"];
+                columnArray = ["Name,Categories,City,State,Lock Level,Type,Ad Locked,Has Open Update Requests,Pending Approval,Street,House Number,Has External Provider Link,Website,Phone Number,Has Hours,Last Editor,Latitude,Longitude,Permalink"];
                 lineArray.push(columnArray);
                 fileName = "Places_" + WMEWAL.areaName;
                 fileName += ".csv";
@@ -592,7 +593,7 @@ var WMEWAL_Places;
                     w.document.write("<br/>Pending approval");
                 }
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><thead><tr><th>Name</th><th>Categories</th><th>City</th><th>State</th>");
-                w.document.write("<th>Lock Level</th><th>Type</th><th>Ad Locked</th><th>Has Open Update Requests</th><th>Pending Approval</th><th>Street</th><th>House Number</th><th>Has External Provider Link</th><th>Website</th><th>Has Hours</th><th>Last Editor</th><th>Latitude</th><th>Longitude</th><th>Permalink</th></tr><thead><tbody>");
+                w.document.write("<th>Lock Level</th><th>Type</th><th>Ad Locked</th><th>Has Open Update Requests</th><th>Pending Approval</th><th>Street</th><th>House Number</th><th>Has External Provider Link</th><th>Website</th><th>Phone Number</th><th>Has Hours</th><th>Last Editor</th><th>Latitude</th><th>Longitude</th><th>Permalink</th></tr><thead><tbody>");
             }
             for (var ixPlace = 0; ixPlace < places.length; ixPlace++) {
                 var place = places[ixPlace];
@@ -608,9 +609,8 @@ var WMEWAL_Places;
                 if (isCSV) {
                     columnArray = ["\"" + place.name + "\"", "\"" + categories + "\"", "\"" + place.city + "\"", "\"" + place.state + "\"", place.lockLevel.toString(),
                         place.placeType, (place.adLocked ? "Yes" : "No"), (place.hasOpenUpdateRequests ? "Yes" : "No"), (place.isApproved ? "No" : "Yes"),
-                        place.streetName, place.houseNumber, (place.hasExternalProvider ? "Yes" : "No"), '"' + place.url + '"', (place.hasHours ? "Yes" : "No"),
-                        "\"" + place.lastEditor + "\"",
-                        latlon.lat.toString(), latlon.lon.toString(), "\"" + plPlace + "\""];
+                        place.streetName, place.houseNumber, (place.hasExternalProvider ? "Yes" : "No"), '"' + place.url + '"', '"' + place.phone + '"', 
+                        (place.hasHours ? "Yes" : "No"), "\"" + place.lastEditor + "\"", latlon.lat.toString(), latlon.lon.toString(), "\"" + plPlace + "\""];
                     lineArray.push(columnArray);
                 }
                 if (isTab) {
@@ -625,7 +625,10 @@ var WMEWAL_Places;
                     w.document.write("<td>" + place.streetName + "</td>");
                     w.document.write("<td>" + place.houseNumber + "</td>");
                     w.document.write("<td>" + (place.hasExternalProvider ? "Yes" : "No") + "</td>");
-                    w.document.write("<td>" + place.url + "</td>");
+                    w.document.write("<td>" + (place.url === "" ? place.url : (/^http/.test(place.url) ? 
+                        '<a href="' + place.url + '">' + place.url + '</a>' : 
+                        '<a href="http://' + place.url + '">' + place.url + '</a>')) + "</td>");
+                    w.document.write("<td>" + place.phone + "</td>")
                     w.document.write("<td>" + (place.hasHours ? "Yes" : "No") + "</td>");
                     w.document.write("<td>" + place.lastEditor + "</td>");
                     w.document.write("<td>" + latlon.lat.toString() + "</td>");
