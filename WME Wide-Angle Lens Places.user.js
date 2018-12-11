@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.10
+// @version             1.3.11
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -607,33 +607,33 @@ var WMEWAL_Places;
                     categories += I18n.t("venues.categories." + place.categories[ixCategory]);
                 }
                 if (isCSV) {
-                    columnArray = ["\"" + place.name + "\"", "\"" + categories + "\"", "\"" + place.city + "\"", "\"" + place.state + "\"", place.lockLevel.toString(),
+                    columnArray = [`"${place.name}"`, `"${categories}"`, `"${place.city}"`, `"${place.state}"`, place.lockLevel.toString(),
                         place.placeType, (place.adLocked ? "Yes" : "No"), (place.hasOpenUpdateRequests ? "Yes" : "No"), (place.isApproved ? "No" : "Yes"),
-                        place.streetName, place.houseNumber, (place.hasExternalProvider ? "Yes" : "No"), '"' + place.url + '"', '"' + place.phone + '"', 
-                        (place.hasHours ? "Yes" : "No"), "\"" + place.lastEditor + "\"", latlon.lat.toString(), latlon.lon.toString(), "\"" + plPlace + "\""];
+                        `"${place.streetName}"`, `"${place.houseNumber}"`, (place.hasExternalProvider ? "Yes" : "No"), `"${place.url}"`, `"${place.phone}"`, 
+                        (place.hasHours ? "Yes" : "No"), `"${place.lastEditor}"`, latlon.lat.toString(), latlon.lon.toString(), `"${plPlace}"`];
                     lineArray.push(columnArray);
                 }
                 if (isTab) {
-                    w.document.write("<tr><td>" + place.name + "</td><td>" + categories + "</td>");
-                    w.document.write("<td>" + place.city + "</td>");
-                    w.document.write("<td>" + place.state + "</td>");
-                    w.document.write("<td>" + place.lockLevel.toString() + "</td>");
-                    w.document.write("<td>" + place.placeType + "</td>");
-                    w.document.write("<td>" + (place.adLocked ? "Yes" : "No") + "</td>");
-                    w.document.write("<td>" + (place.hasOpenUpdateRequests ? "Yes" : "No") + "</td>");
-                    w.document.write("<td>" + (place.isApproved ? "No" : "Yes") + "</td>");
-                    w.document.write("<td>" + place.streetName + "</td>");
-                    w.document.write("<td>" + place.houseNumber + "</td>");
-                    w.document.write("<td>" + (place.hasExternalProvider ? "Yes" : "No") + "</td>");
-                    w.document.write("<td>" + (place.url === "" ? place.url : (/^http/.test(place.url) ? 
-                        '<a href="' + place.url + '">' + place.url + '</a>' : 
-                        '<a href="http://' + place.url + '">' + place.url + '</a>')) + "</td>");
-                    w.document.write("<td>" + place.phone + "</td>")
-                    w.document.write("<td>" + (place.hasHours ? "Yes" : "No") + "</td>");
-                    w.document.write("<td>" + place.lastEditor + "</td>");
-                    w.document.write("<td>" + latlon.lat.toString() + "</td>");
-                    w.document.write("<td>" + latlon.lon.toString() + "</td>");
-                    w.document.write("<td><a href=\'" + plPlace + "\' target=\'_blank\'>Permalink</a></td></tr>");
+                    w.document.write(`<tr><td>${place.name}</td><td>${categories}</td>`);
+                    w.document.write(`<td>${place.city}</td>`);
+                    w.document.write(`<td>${place.state}</td>`);
+                    w.document.write(`<td>${place.lockLevel.toString()}</td>`);
+                    w.document.write(`<td>${place.placeType}</td>`);
+                    w.document.write(`<td>${place.adLocked ? "Yes" : "No"}</td>`);
+                    w.document.write(`<td>${place.hasOpenUpdateRequests ? "Yes" : "No"}</td>`);
+                    w.document.write(`<td>${place.isApproved ? "No" : "Yes"}</td>`);
+                    w.document.write(`<td>${place.streetName}</td>`);
+                    w.document.write(`<td>${place.houseNumber}</td>`);
+                    w.document.write(`<td>${place.hasExternalProvider ? "Yes" : "No"}</td>`);
+                    w.document.write(`<td>${place.url === "" ? place.url : 
+                        `<a href="${/^http/.test(place.url) ? '' : 'http://'}${place.url}">${place.url}</a>`
+                    }</td>`);
+                    w.document.write(`<td>${place.phone}</td>`)
+                    w.document.write(`<td>${place.hasHours ? "Yes" : "No"}</td>`);
+                    w.document.write(`<td>${place.lastEditor}</td>`);
+                    w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                    w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                    w.document.write(`<td><a href='${plPlace}' target='_blank'>Permalink</a></td></tr>`);
                 }
             }
             if (isCSV) {
