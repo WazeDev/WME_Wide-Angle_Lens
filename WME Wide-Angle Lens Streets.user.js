@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.7
+// @version             1.5.8
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -77,8 +77,10 @@ var WMEWAL_Streets;
             "<option value='csv'>CSV File</option>" +
             "<option value='tab'>Browser Tab</option>" +
             "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
-        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeAlt', name='_wmewalStreetsIncludeAlt'>" +
-            "<label for='_wmewalStreetsIncludeAlt' style='margin-left:8px;'>Include Alt Names in output</label></td></tr>";
+        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeAlt' name='_wmewalStreetsIncludeAlt'>" +
+            "<label for='_wmewalStreetsIncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>";
+        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeASC' name='_wmewalStreetsIncludeASC'>" +
+            "<label for='_wmewalStreetsIncludeASC' style='margin-left:8px;'>Include Avg Speed Cams</label></td></tr>";
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Saved Filters</td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
             "<select id='_wmewalStreetsSavedSettings'/><br/>" +
@@ -305,6 +307,7 @@ var WMEWAL_Streets;
     function updateUI() {
         $("#_wmewalStreetsOutputTo").val(settings.OutputTo);
         $("#_wmewalStreetsIncludeAlt").prop("checked", settings.IncludeAltNames);
+        $("#_wmewalStreetsIncludeASC").prop("checked", settings.IncludeASC);
         $("#_wmewalStreetsLockLevel").val(settings.LockLevel);
         $("#_wmewalStreetsLockLevelOp").val(settings.LockLevelOperation || Operation.Equal.toString());
         $("#_wmewalStreetsName").val(settings.Regex || "");
@@ -437,6 +440,7 @@ var WMEWAL_Streets;
                 EditableByMe: $("#_wmewalStreetsEditable").prop("checked"),
                 NoSpeedLimit: $("#_wmewalStreetsNoSpeedLimit").prop("checked"),
                 IncludeAltNames: $("#_wmewalStreetsIncludeAlt").prop("checked"),
+                IncludeASC: $("#_wmewalStreetsIncludeASC").prop("checked"),
                 Direction: null,
                 CityRegex: null,
                 CityRegexIgnoreCase: $("#_wmewalStreetsCityIgnoreCase").prop("checked"),
@@ -531,6 +535,7 @@ var WMEWAL_Streets;
             roundabouts = [];
             settings.OutputTo = $("#_wmewalStreetsOutputTo").val();
             settings.IncludeAltNames = $("#_wmewalStreetsIncludeAlt").prop("checked");
+            settings.IncludeASC = $("#_wmewalStreetsIncludeASC").prop("checked");
             settings.RoadTypeMask = 0;
             $("input[name=_wmewalStreetsRoadType]:checked").each(function (ix, e) {
                 settings.RoadTypeMask = settings.RoadTypeMask | parseInt(e.value);
@@ -675,7 +680,8 @@ var WMEWAL_Streets;
                     direction: determineDirection(s),
                     issues: issues,
                     length: s.attributes.length,
-                    lastEditor: lastEditor.userName
+                    lastEditor: lastEditor.userName,
+                    asc: (s.getFlagAttribute('fwdSpeedCamera') || s.getFlagAttribute('revSpeedCamera') ? 'Yes' : 'No'),
                 };
                 if (nameRegex != null || settings.IncludeAltNames) {
                     for (var ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
@@ -944,6 +950,7 @@ var WMEWAL_Streets;
             var isCSV = (outputTo === "csv" || outputTo === "both");
             var isTab = (outputTo === "tab" || outputTo === "both");
             var includeAltNames = (nameRegex != null || settings.IncludeAltNames || cityRegex != null);
+            var includeASC = settings.IncludeASC;
             var includeDirection = (settings.Direction != null);
             var includeLength = settings.SegmentLength;
             var lineArray = void 0;
@@ -955,6 +962,9 @@ var WMEWAL_Streets;
                 columnArray = ["Name"];
                 if (includeAltNames) {
                     columnArray.push("Alt Names");
+                }
+                if (includeASC) {
+                    columnArray.push("Has ASC");
                 }
                 columnArray.push("City");
                 columnArray.push("State");
@@ -1131,6 +1141,9 @@ var WMEWAL_Streets;
                 if (includeAltNames) {
                     w.document.write("<th>Alt Names</th>");
                 }
+                if (includeASC) {
+                    w.document.write("<th>Has ASC</th>");
+                }
                 w.document.write("<th>City</th><th>State</th>");
                 w.document.write("<th>Road Type</th><th>Lock Level</th>");
                 if (includeDirection) {
@@ -1157,6 +1170,9 @@ var WMEWAL_Streets;
                             if (includeAltNames) {
                                 columnArray.push("");
                             }
+                            if (includeASC) {
+                                columnArray.push(street.asc);
+                            }
                             columnArray.push("\"" + street.city + "\"");
                             columnArray.push("\"" + street.state + "\"");
                             columnArray.push("\"" + roadTypeText + "\"");
@@ -1180,6 +1196,9 @@ var WMEWAL_Streets;
                             w.document.write("<tr><td>" + getStreetName(street) + "</td>");
                             if (includeAltNames) {
                                 w.document.write("<td>&nbsp;</td>");
+                            }
+                            if (includeASC) {
+                                w.document.write(`<td>${street.asc}</td>`);
                             }
                             w.document.write("<td>" + street.city + "</td>");
                             w.document.write("<td>" + street.state + "</td>");
@@ -1213,6 +1232,9 @@ var WMEWAL_Streets;
                         if (includeAltNames) {
                             columnArray.push("\"" + altNames + "\"");
                         }
+                        if (includeASC) {
+                            columnArray.push(street.asc);
+                        }
                         columnArray.push("\"" + street.city + "\"");
                         columnArray.push("\"" + street.state + "\"");
                         columnArray.push("\"" + roadTypeText + "\"");
@@ -1236,6 +1258,9 @@ var WMEWAL_Streets;
                         w.document.write("<tr><td>" + getStreetName(street) + "</td>");
                         if (includeAltNames) {
                             w.document.write("<td>" + altNames + "</td>");
+                        }
+                        if (includeASC) {
+                            w.document.write(`<td>${street.asc}</td>`);
                         }
                         w.document.write("<td>" + street.city + "</td>");
                         w.document.write("<td>" + street.state + "</td>");
@@ -1433,7 +1458,8 @@ var WMEWAL_Streets;
                 HasNoName: false,
                 HasNoCity: false,
                 Version: Version,
-                NonNeutralRoutingPreference: false
+                NonNeutralRoutingPreference: false,
+                IncludeASC: false,
             };
         }
         else {
@@ -1461,6 +1487,9 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty("UnknownDirection")) {
                 settings.UnknownDirection = false;
+            }
+            if (!settings.hasOwnProperty("IncludeASC")) {
+                settings.IncludeASC = false;
             }
         }
         console.log("Initialized");
