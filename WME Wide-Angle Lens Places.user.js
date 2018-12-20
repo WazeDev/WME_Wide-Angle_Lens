@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.11
+// @version             1.3.12
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -44,19 +44,19 @@ var WMEWAL_Places;
         var rpp = "RESIDENCE_HOME";
         var html = "<table style='border-collapse:separate;border-spacing:0px 1px;'>";
         html += "<tbody>";
-        html += "<tr><td style='font-size:1.2em'><b>Output To:</b></td></tr>";
-        html += "<tr><td style='padding-left:20px'>" +
-            "<select id='_wmewalPlacesOutputTo'>" +
-            "<option value='csv'>CSV File</option>" +
-            "<option value='tab'>Browser Tab</option>" +
-            "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
-        html += "<tr><td style='border-top: 1px solid; font-size: 1.2em'><b>Saved Filters</b></td></tr>";
+        // html += "<tr><td class='wal-heading' ><b>Output To:</b></td></tr>";
+        // html += "<tr><td style='padding-left:20px'>" +
+        //     "<select id='_wmewalPlacesOutputTo'>" +
+        //     "<option value='csv'>CSV File</option>" +
+        //     "<option value='tab'>Browser Tab</option>" +
+        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
+        html += "<tr><td class='wal-heading'><b>Saved Filters</b></td></tr>";
         html += "<tr><td style='padding-left: 20px; padding-bottom: 8px'>" +
             "<select id='_wmewalPlacesSavedSettings'/><br/>" +
             "<button class='btn btn-primary' id='_wmewalPlacesLoadSetting' title='Load'>Load</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalPlacesSaveSetting' title='Save'>Save</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalPlacesDeleteSetting' title='Delete'>Delete</button></td></tr>";
-        html += "<tr><td style='border-top: 1px solid; padding-top: 4px;font-size:1.2em'><b>Filters</b></td></tr>";
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'><b>Filters</b></td></tr>";
         html += "<tr><td><b>Category:</b></td></tr>";
         html += "<tr><td style='padding-left:20px'>" +
             "<select id='_wmewalPlacesCategory'>" +
@@ -211,7 +211,7 @@ var WMEWAL_Places;
         }
     }
     function updateUI() {
-        $("#_wmewalPlacesOutputTo").val(settings.OutputTo);
+        // $("#_wmewalPlacesOutputTo").val(settings.OutputTo);
         $("#_wmewalPlacesCategory").val(settings.Category);
         $("#_wmewalPlacesLockLevel").val(settings.LockLevel);
         $("#_wmewalPlacesLockLevelOp").prop("checked", settings.LockLevelOperation || Operation.Equal);
@@ -235,7 +235,7 @@ var WMEWAL_Places;
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        settings.OutputTo = $("#_wmewalPlacesOutputTo").val();
+        // settings.OutputTo = $("#_wmewalPlacesOutputTo").val();
         var savedSetting = savedSettings[selectedSetting].Setting;
         for (var name_1 in savedSetting) {
             if (settings.hasOwnProperty(name_1)) {
@@ -372,7 +372,7 @@ var WMEWAL_Places;
         var allOk = validateSettings();
         if (allOk) {
             places = [];
-            settings.OutputTo = $("#_wmewalPlacesOutputTo").val();
+            // settings.OutputTo = $("#_wmewalPlacesOutputTo").val();
             settings.RegexIgnoreCase = $("#_wmewalPlacesIgnoreCase").prop("checked");
             var pattern = $("#_wmewalPlacesName").val();
             settings.Regex = null;
@@ -534,7 +534,7 @@ var WMEWAL_Places;
             places.sort(function (a, b) {
                 return a.name.localeCompare(b.name);
             });
-            var outputTo = $("#_wmewalPlacesOutputTo").val();
+            var outputTo = $("#_wmewalScanOutputTo").val();
             var isCSV = (outputTo === "csv" || outputTo === "both");
             var isTab = (outputTo === "tab" || outputTo === "both");
             var lineArray = void 0;

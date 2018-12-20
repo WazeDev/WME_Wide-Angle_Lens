@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.8
+// @version             1.5.9
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -71,22 +71,26 @@ var WMEWAL_Streets;
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
-        html += "<tr><td class='wal-heading'>Output To:</td></tr>";
-        html += "<tr><td style='padding-left:20px'>" +
-            "<select id='_wmewalStreetsOutputTo'>" +
-            "<option value='csv'>CSV File</option>" +
-            "<option value='tab'>Browser Tab</option>" +
-            "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
-        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeAlt' name='_wmewalStreetsIncludeAlt'>" +
-            "<label for='_wmewalStreetsIncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>";
-        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeASC' name='_wmewalStreetsIncludeASC'>" +
-            "<label for='_wmewalStreetsIncludeASC' style='margin-left:8px;'>Include Avg Speed Cams</label></td></tr>";
+        // html += "<tr><td class='wal-heading'>Output To:</td></tr>";
+        // html += "<tr><td style='padding-left:20px'>" +
+        //     "<select id='_wmewalStreetsOutputTo'>" +
+        //     "<option value='csv'>CSV File</option>" +
+        //     "<option value='tab'>Browser Tab</option>" +
+        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
+
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Saved Filters</td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
             "<select id='_wmewalStreetsSavedSettings'/><br/>" +
             "<button class='btn btn-primary' id='_wmewalStreetsLoadSetting' title='Load'>Load</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalStreetsSaveSetting' title='Save'>Save</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalStreetsDeleteSetting' title='Delete'>Delete</button></td></tr>";
+
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Display options</td></tr>";
+        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeAlt' name='_wmewalStreetsIncludeAlt'>" +
+            "<label for='_wmewalStreetsIncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>";
+        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeASC' name='_wmewalStreetsIncludeASC'>" +
+            "<label for='_wmewalStreetsIncludeASC' style='margin-left:8px;'>Include Avg Speed Cams</label></td></tr>";
+
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Filters (All Of These)</td></tr>";
         html += "<tr><td><b>Lock Level:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
@@ -170,6 +174,7 @@ var WMEWAL_Streets;
             "<label for='_wmewalStreetsExcludeRoundabouts' class='wal-label'>Exclude Roundabouts</label></td></tr>";
         html += "<tr><td><input id='_wmewalStreetsExcludeJunctionBoxes' type='checkbox' checked='checked'/>" +
             "<label for='_wmewalStreetsExcludeJunctionBoxes' class='wal-label'>Exclude Junction Boxes</label></td></tr>";
+
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any Of These)</td></tr>";
         html += "<tr><td><input id='_wmewalStreetsNoSpeedLimit' type='checkbox'/>" +
             "<label for='_wmewalStreetsNoSpeedLimit' class='wal-label'>No speed limit</label></td></tr>";
@@ -305,7 +310,7 @@ var WMEWAL_Streets;
         }
     }
     function updateUI() {
-        $("#_wmewalStreetsOutputTo").val(settings.OutputTo);
+        // $("#_wmewalStreetsOutputTo").val(settings.OutputTo);
         $("#_wmewalStreetsIncludeAlt").prop("checked", settings.IncludeAltNames);
         $("#_wmewalStreetsIncludeASC").prop("checked", settings.IncludeASC);
         $("#_wmewalStreetsLockLevel").val(settings.LockLevel);
@@ -359,7 +364,7 @@ var WMEWAL_Streets;
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        settings.OutputTo = $("#_wmewalStreetsOutputTo").val();
+        // settings.OutputTo = $("#_wmewalStreetsOutputTo").val();
         var savedSetting = savedSettings[selectedSetting].Setting;
         for (var name_1 in savedSetting) {
             if (settings.hasOwnProperty(name_1)) {
@@ -533,7 +538,7 @@ var WMEWAL_Streets;
         if (allOk) {
             streets = [];
             roundabouts = [];
-            settings.OutputTo = $("#_wmewalStreetsOutputTo").val();
+            // settings.OutputTo = $("#_wmewalStreetsOutputTo").val();
             settings.IncludeAltNames = $("#_wmewalStreetsIncludeAlt").prop("checked");
             settings.IncludeASC = $("#_wmewalStreetsIncludeASC").prop("checked");
             settings.RoadTypeMask = 0;
@@ -946,7 +951,7 @@ var WMEWAL_Streets;
                 }
                 return 0;
             });
-            var outputTo = $("#_wmewalStreetsOutputTo").val();
+            var outputTo = $("#_wmewalScanOutputTo").val();
             var isCSV = (outputTo === "csv" || outputTo === "both");
             var isTab = (outputTo === "tab" || outputTo === "both");
             var includeAltNames = (nameRegex != null || settings.IncludeAltNames || cityRegex != null);

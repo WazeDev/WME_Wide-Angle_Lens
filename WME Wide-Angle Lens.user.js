@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.6
+// @version             1.4.7
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -157,6 +157,7 @@ var WMEWAL;
                         settings = {
                             SavedAreas: [],
                             ActivePlugins: [],
+                            OutputTo: 'csv',
                             Version: Version
                         };
                     }
@@ -196,6 +197,7 @@ var WMEWAL;
                 settings = {
                     SavedAreas: savedAreas,
                     ActivePlugins: [],
+                    OutputTo: 'csv',
                     Version: Version
                 };
                 for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
@@ -209,12 +211,16 @@ var WMEWAL;
                 settings = {
                     SavedAreas: [],
                     ActivePlugins: [],
+                    OutputTo: 'csv',
                     Version: Version
                 };
             }
         }
         if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
+            if (CompareVersions(settings.Version, "1.4.7") < 0) {
+                versionHistory += "\nv1.4.7: Choose output on scan tab for all plugins";
+            }
             if (CompareVersions(settings.Version, "1.4.6") < 0) {
                 versionHistory += "\nv1.4.6: Fixes for the latest release of WME";
             }
@@ -298,12 +304,14 @@ var WMEWAL;
         pb$.append($("<div/>").addClass("wal-progressBarBG"));
         pb$.append($("<span/>").addClass("wal-progressBarFG").text("100%"));
         pbi.append("<div id='wal-info'/>");
-        var addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs'/>").appendTo(addon);
+        var addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(addon);
         addonTabs.append("<li class='active'><a data-toggle='tab' href='#sidepanel-wmewal-scan'>Scan</a></li>");
         addonTabs.append("<li><a data-toggle='tab' href='#sidepanel-wmewal-areas'>Areas</a></li>");
         var addonTabContent = $("<div class='tab-content'/>").appendTo(addon);
         var tabScan = $("<div class='tab-pane active' id='sidepanel-wmewal-scan'/>").appendTo(addonTabContent);
-        tabScan.append("<div><b>Active Plug-Ins</b><div id='_wmewalPlugins'></div><hr/>");
+        tabScan.append("<div><b>Output to: </b><select class='form-control' id='_wmewalScanOutputTo'><option value='csv'>CSV File</option><option value='tab'>Browser Tab</option>" +
+        "<option value='both'>Both CSV File and Browser Tab</option></select></div><hr/>");
+        tabScan.append("<div><b>Active Plug-Ins</b><div id='_wmewalPlugins'></div>");
         tabScan.append("<div><b>Scan</b><div id='_wmewalOptionsSavedAreas' name='_wmewalSavedAreas'/></div>");
         tabScan.append("<hr/>");
         var divButtons = $("<div/>").appendTo(tabScan);
@@ -322,6 +330,8 @@ var WMEWAL;
         divImportArea.append("<div><input type='file' id='_wmewalImportFileName' accept='.wkt'/></div><div><button class='btn btn-primary' id='_wmewalImportFile' title='Import'>Import</input></div>");
         tabContent.append(addon);
         updateSavedAreasList();
+        $("#_wmewalScanOutputTo").val(settings.OutputTo || "csv");
+        $("#_wmewalScanOutputTo").on("change", updateSettings);
         $("#_wmewalAddNewArea").on("click", addNewArea);
         $("#_wmewalCancel").on("click", cancel);
         $("#_wmewalScan").on("click", scanArea);
@@ -599,6 +609,7 @@ var WMEWAL;
             var newSettings = {
                 SavedAreas: [],
                 ActivePlugins: settings.ActivePlugins,
+                OutputTo: $("#_wmewalScanOutputTo").val(),
                 Version: settings.Version
             };
             for (var ix = 0; ix < settings.SavedAreas.length; ix++) {

@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.1.6
+// @version             0.1.7
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -41,13 +41,13 @@ var WMEWAL_MapComments;
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
-        html += "<tr><td class='wal-heading'>Output To:</td></tr>";
-        html += "<tr><td style='padding-left:20px'>" +
-            "<select id='_wmewalMapCommentsOutputTo'>" +
-            "<option value='csv'>CSV File</option>" +
-            "<option value='tab'>Browser Tab</option>" +
-            "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
-        html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Saved Filters</td></tr>";
+        // html += "<tr><td class='wal-heading'>Output To:</td></tr>";
+        // html += "<tr><td style='padding-left:20px'>" +
+        //     "<select id='_wmewalMapCommentsOutputTo'>" +
+        //     "<option value='csv'>CSV File</option>" +
+        //     "<option value='tab'>Browser Tab</option>" +
+        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
+        html += "<tr><td class='wal-heading'>Saved Filters</td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
             "<select id='_wmewalMapCommentsSavedSettings'/><br/>" +
             "<button class='btn btn-primary' id='_wmewalMapCommentsLoadSetting' title='Load'>Load</button>" +
@@ -143,7 +143,7 @@ var WMEWAL_MapComments;
         }
     }
     function updateUI() {
-        $("#_wmewalMapCommentsOutputTo").val(settings.OutputTo);
+        // $("#_wmewalMapCommentsOutputTo").val(settings.OutputTo);
         $("#_wmewalMapCommentsLockLevel").val(settings.LockLevel);
         $("#_wmewalMapCommentsLockLevelOp").val(settings.LockLevelOperation || Operation.Equal.toString());
         $("#_wmewalMapCommentsTitle").val(settings.TitleRegex || "");
@@ -165,7 +165,7 @@ var WMEWAL_MapComments;
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        settings.OutputTo = $("#_wmewalMapCommentsOutputTo").val();
+        // settings.OutputTo = $("#_wmewalMapCommentsOutputTo").val();
         var savedSetting = savedSettings[selectedSetting].Setting;
         for (var name_1 in savedSetting) {
             if (settings.hasOwnProperty(name_1)) {
@@ -299,7 +299,7 @@ var WMEWAL_MapComments;
         if (allOk) {
             mapComments = [];
             mc = [];
-            settings.OutputTo = $("#_wmewalMapCommentsOutputTo").val();
+            // settings.OutputTo = $("#_wmewalMapCommentsOutputTo").val();
             var s = getSettings();
             settings.CommentRegex = s.CommentRegex;
             settings.CommentRegexIgnoreCase = s.CommentRegexIgnoreCase;
@@ -432,7 +432,7 @@ var WMEWAL_MapComments;
             mapComments.sort(function (a, b) {
                 return a.title.localeCompare(b.title);
             });
-            var outputTo = $("#_wmewalMapCommentsOutputTo").val();
+            var outputTo = $("#_wmewalScanOutputTo").val();
             var isCSV = (outputTo === "csv" || outputTo === "both");
             var isTab = (outputTo === "tab" || outputTo === "both");
             var lineArray = void 0;

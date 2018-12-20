@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.6
+// @version             1.1.7
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -38,24 +38,24 @@ var WMEWAL_Cities;
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
-        html += "<tr><td style='font-size:1.2em'><b>Output To:</b></td></tr>";
-        html += "<tr><td style='padding-left:20px'>" +
-            "<select id='_wmewalCitiesOutputTo'>" +
-            "<option value='csv'>CSV File</option>" +
-            "<option value='tab'>Browser Tab</option>" +
-            "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
-        html += "<tr><td style='border-top: 1px solid; padding-top: 4px;font-size:1.2em'><b>Settings</b></td></tr>";
+        // html += "<tr><td class='wal-heading' ><b>Output To:</b></td></tr>";
+        // html += "<tr><td style='padding-left:20px'>" +
+        //     "<select id='_wmewalCitiesOutputTo'>" +
+        //     "<option value='csv'>CSV File</option>" +
+        //     "<option value='tab'>Browser Tab</option>" +
+        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
+        html += "<tr><td class='wal-heading' class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Settings</b></td></tr>";
         html += "<tr><td><b>Polygon Layer:</b></td></tr>";
         html += "<tr><td style='padding-left: 20px'>" +
             "<select id='_wmewalCitiesLayer'/>" +
             "</td></tr>";
-        html += "<tr><td style='border-top: 1px solid; font-size: 1.2em'><b>Saved Filters</b></td></tr>";
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid;'><b>Saved Filters</b></td></tr>";
         html += "<tr><td style='padding-left: 20px; padding-bottom: 8px'>" +
             "<select id='_wmewalCitiesSavedSettings'/><br/>" +
             "<button class='btn btn-primary' id='_wmewalCitiesLoadSetting' title='Load'>Load</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalCitiesSaveSetting' title='Save'>Save</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalCitiesDeleteSetting' title='Delete'>Delete</button></td></tr>";
-        html += "<tr><td style='border-top: 1px solid; padding-top: 4px;font-size:1.2em'><b>Filters</b></td></tr>";
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Filters</b></td></tr>";
         html += "<tr><td><b>City RegEx:</b></td></tr>";
         html += "<tr><td style='padding-left: 20px'><input type='text' id='_wmewalCitiesCity' class='wal-textbox'/><br/>" +
             "<input id='_wmewalCitiesCityIgnoreCase' type='checkbox'/>" +
@@ -199,7 +199,7 @@ var WMEWAL_Cities;
         }
     }
     function updateUI() {
-        $("#_wmewalCitiesOutputTo").val(settings.OutputTo);
+        // $("#_wmewalCitiesOutputTo").val(settings.OutputTo);
         $("#_wmewalCitiesCity").val(settings.CityRegex || "");
         $("#_wmewalCitiesCityIgnoreCase").prop("checked", settings.CityRegexIgnoreCase);
         $("#_wmewalCitiesState").val(settings.State);
@@ -229,7 +229,7 @@ var WMEWAL_Cities;
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        settings.OutputTo = $("#_wmewalCitiesOutputTo").val();
+        // settings.OutputTo = $("#_wmewalCitiesOutputTo").val();
         var savedSetting = savedSettings[selectedSetting].Setting;
         for (var name_1 in savedSetting) {
             if (settings.hasOwnProperty(name_1)) {
@@ -391,7 +391,7 @@ var WMEWAL_Cities;
         var allOk = validateSettings();
         if (allOk) {
             streets = [];
-            settings.OutputTo = $("#_wmewalCitiesOutputTo").val();
+            // settings.OutputTo = $("#_wmewalCitiesOutputTo").val();
             settings.PolygonLayerUniqueName = $("#_wmewalCitiesLayer").val();
             settings.RoadTypeMask = 0;
             $("input[name=_wmewalCitiesRoadType]:checked").each(function (ix, e) {
@@ -659,7 +659,7 @@ var WMEWAL_Cities;
                 }
                 return 0;
             });
-            var outputTo = $("#_wmewalCitiesOutputTo").val();
+            var outputTo = $("#_wmewalScanOutputTo").val();
             var isCSV = (outputTo === "csv" || outputTo === "both");
             var isTab = (outputTo === "tab" || outputTo === "both");
             var lineArray = void 0;

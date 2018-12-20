@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.6
+// @version             1.2.7
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -45,19 +45,19 @@ var WMEWAL_Locks;
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
-        html += "<tr><td style='font-size:1.2em'><b>Output To:</b></td></tr>";
-        html += "<tr><td style='padding-left:20px'>" +
-            "<select id='_wmewalLocksOutputTo'>" +
-            "<option value='csv'>CSV File</option>" +
-            "<option value='tab'>Browser Tab</option>" +
-            "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
-        html += "<tr><td style='border-top: 1px solid; font-size: 1.2em'><b>Saved Settings</b></td></tr>";
+        // html += "<tr><td class='wal-heading' ><b>Output To:</b></td></tr>";
+        // html += "<tr><td style='padding-left:20px'>" +
+        //     "<select id='_wmewalLocksOutputTo'>" +
+        //     "<option value='csv'>CSV File</option>" +
+        //     "<option value='tab'>Browser Tab</option>" +
+        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid;><b>Saved Settings</b></td></tr>";
         html += "<tr><td style='padding-left: 20px; padding-bottom: 8px'>" +
             "<select id='_wmewalLocksSavedSettings'/><br/>" +
             "<button class='btn btn-primary' id='_wmewalLocksLoadSetting' title='Load'>Load</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalLocksSaveSetting' title='Save'>Save</button>" +
             "<button class='btn btn-primary' style='margin-left: 4px;' id='_wmewalLocksDeleteSetting' title='Delete'>Delete</button></td></tr>";
-        html += "<tr><td style='border-top: 1px solid; padding-top: 4px;font-size:1.2em'><b>Lock Levels</b></td></tr>";
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Lock Levels</b></td></tr>";
         html += "<tr><td><table style='border-collapse: separate; border-spacing: 0px'>";
         html += "<tr><td><b>Include in output</b></td>" +
             "<td><select id='_wmewalLocksIncludeInOutput'>" +
@@ -123,7 +123,7 @@ var WMEWAL_Locks;
             "<option value='6'>6</option></select>" +
             "</td></tr>";
         html += "</table></td></tr>";
-        html += "<tr><td style='border-top: 1px solid; padding-top: 4px;font-size:1.2em'><b>Filters</b></td></tr>";
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Filters</b></td></tr>";
         html += "<tr><td><b>Name RegEx:</b></td></tr>";
         html += "<tr><td style='padding-left: 20px'><input type='text' id='_wmewalLocksName' class='wal-textbox'/><br/>" +
             "<input id='_wmewalLocksIgnoreCase' type='checkbox'/>" +
@@ -224,7 +224,7 @@ var WMEWAL_Locks;
         }
     }
     function updateUI() {
-        $("#_wmewalLocksOutputTo").val(settings.OutputTo);
+        // $("#_wmewalLocksOutputTo").val(settings.OutputTo);
         $("#_wmewalLocksIncludeInOutput").val(settings.IncludeInOutput);
         $("#_wmewalLocksStreet").val(settings.StreetLockLevel);
         $("#_wmewalLocksPrimaryStreet").val(settings.PrimaryStreetLockLevel);
@@ -262,7 +262,7 @@ var WMEWAL_Locks;
             return;
         }
         var savedSetting = savedSettings[selectedSetting].Setting;
-        settings.OutputTo = $("#_wmewalLocksOutputTo").val();
+        // settings.OutputTo = $("#_wmewalLocksOutputTo").val();
         for (var name_1 in savedSetting) {
             if (settings.hasOwnProperty(name_1)) {
                 settings[name_1] = savedSetting[name_1];
@@ -413,7 +413,7 @@ var WMEWAL_Locks;
         var allOk = validateSettings();
         streets = [];
         if (allOk) {
-            settings.OutputTo = $("#_wmewalLocksOutputTo").val();
+            // settings.OutputTo = $("#_wmewalLocksOutputTo").val();
             settings.RoadTypeMask = 0;
             $("input[name=_wmewalLocksRoadType]:checked").each(function (ix, e) {
                 settings.RoadTypeMask = settings.RoadTypeMask | parseInt(e.value);
@@ -717,7 +717,7 @@ var WMEWAL_Locks;
                 }
                 return 0;
             });
-            var outputTo = $("#_wmewalLocksOutputTo").val();
+            var outputTo = $("#_wmewalScanOutputTo").val();
             var isCSV = (outputTo === "csv" || outputTo === "both");
             var isTab = (outputTo === "tab" || outputTo === "both");
             var includeAltNames = (nameRegex != null || cityRegex != null);
