@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.7
+// @version             1.2.8
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -17,6 +17,12 @@
 
 var WMEWAL_Locks;
 (function (WMEWAL_Locks) {
+    const scrName = GM_info.script.name;
+    const Version = GM_info.script.version;
+    const updateText = 'Fix Waze mucking around with roundabout attributes';
+    const greasyForkPage = 'https://greasyfork.org/scripts/40643';
+    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+
     var IncludeInOutput;
     (function (IncludeInOutput) {
         IncludeInOutput[IncludeInOutput["Low"] = 1] = "Low";
@@ -42,15 +48,10 @@ var WMEWAL_Locks;
     var nameRegex = null;
     var cityRegex = null;
     var initCount = 0;
+
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
-        // html += "<tr><td class='wal-heading' ><b>Output To:</b></td></tr>";
-        // html += "<tr><td style='padding-left:20px'>" +
-        //     "<select id='_wmewalLocksOutputTo'>" +
-        //     "<option value='csv'>CSV File</option>" +
-        //     "<option value='tab'>Browser Tab</option>" +
-        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
         html += "<tr><td class='wal-heading' style='border-top: 1px solid;><b>Saved Settings</b></td></tr>";
         html += "<tr><td style='padding-left: 20px; padding-bottom: 8px'>" +
             "<select id='_wmewalLocksSavedSettings'/><br/>" +
@@ -674,7 +675,7 @@ var WMEWAL_Locks;
                         addSegment(segment, null);
                     }
                     else if (!settings.ExcludeRoundabouts) {
-                        var r = segment.getRoundabout();
+                        var r = segment.getRoundabout().attributes;
                         for (var rIx = 0; rIx < r.segIDs.length; rIx++) {
                             addSegment(W.model.segments.getObjectById(r.segIDs[rIx]), r.id);
                         }
@@ -997,6 +998,7 @@ var WMEWAL_Locks;
         }
         console.log("Initialized");
         console.groupEnd();
+        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         WMEWAL.RegisterPlugIn(WMEWAL_Locks);
     }
     function updateSavedSettings() {

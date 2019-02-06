@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.12
+// @version             1.3.13
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -17,6 +17,12 @@
 
 var WMEWAL_Places;
 (function (WMEWAL_Places) {
+    const scrName = GM_info.script.name;
+    const Version = GM_info.script.version;
+    const updateText = '<ul><li>Fix for venue hours in new WME</li><li>Fix searching and displaying categories</li></ul>';
+    const greasyForkPage = 'https://greasyfork.org/scripts/40645';
+    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+
     var Operation;
     (function (Operation) {
         Operation[Operation["Equal"] = 1] = "Equal";
@@ -39,17 +45,11 @@ var WMEWAL_Places;
     var lastModifiedBy;
     var lastModifiedByName;
     var initCount = 0;
-    var Version = "1.2.3";
+
     function GetTab() {
         var rpp = "RESIDENCE_HOME";
         var html = "<table style='border-collapse:separate;border-spacing:0px 1px;'>";
         html += "<tbody>";
-        // html += "<tr><td class='wal-heading' ><b>Output To:</b></td></tr>";
-        // html += "<tr><td style='padding-left:20px'>" +
-        //     "<select id='_wmewalPlacesOutputTo'>" +
-        //     "<option value='csv'>CSV File</option>" +
-        //     "<option value='tab'>Browser Tab</option>" +
-        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
         html += "<tr><td class='wal-heading'><b>Saved Filters</b></td></tr>";
         html += "<tr><td style='padding-left: 20px; padding-bottom: 8px'>" +
             "<select id='_wmewalPlacesSavedSettings'/><br/>" +
@@ -438,7 +438,7 @@ var WMEWAL_Places;
         for (var ix = 0; ix < venues.length; ix++) {
             var venue = venues[ix];
             if (venue != null) {
-                var categories = Object.getOwnPropertyNames(venue.getCategorySet());
+                var categories = venue.attributes.categories;
                 var address = venue.getAddress();
                 if ((settings.LockLevel == null ||
                     (settings.LockLevelOperation === Operation.Equal && (venue.attributes.lockRank || 0) + 1 === settings.LockLevel) ||
@@ -516,7 +516,7 @@ var WMEWAL_Places;
                         lastEditor: (lastEditor && lastEditor.userName) || "",
                         url: venue.attributes.url || "",
                         phone: venue.attributes.phone || "",
-                        hasHours: venue.getOpeningHours().length > 0
+                        hasHours: venue.attributes.openingHours.length > 0
                     };
                     places.push(place);
                 }
@@ -753,15 +753,7 @@ var WMEWAL_Places;
         }
         console.log("Initialized");
         console.groupEnd();
-        if (compareVersions(settings.Version, Version) < 0) {
-            var versionHistory = "WME WAL Places Plugin\nv" + Version + "\n\nWhat's New\n--------";
-            if (compareVersions(settings.Version, "1.2.3")) {
-                versionHistory += "\nv1.2.3: Updates to supported latest WME.";
-            }
-            alert(versionHistory);
-            settings.Version = Version;
-            updateSettings();
-        }
+        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         WMEWAL.RegisterPlugIn(WMEWAL_Places);
     }
     function getPlacePL(place) {

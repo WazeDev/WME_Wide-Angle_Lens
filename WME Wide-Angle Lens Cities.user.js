@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.7
+// @version             1.1.8
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -15,6 +15,12 @@
 // ---------------------------------------------------------------------------------------
 var WMEWAL_Cities;
 (function (WMEWAL_Cities) {
+    const scrName = GM_info.script.name;
+    const Version = GM_info.script.version;
+    const updateText = 'Move scan output selector to scan tab.<br/>Now you don\'t have to change it on every tab!';
+    const greasyForkPage = 'https://greasyfork.org/scripts/40642';
+    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+
     var Operation;
     (function (Operation) {
         Operation[Operation["Equal"] = 1] = "Equal";
@@ -35,15 +41,10 @@ var WMEWAL_Cities;
     var cityRegex = null;
     var cityPolygons = null;
     var initCount = 0;
+
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
-        // html += "<tr><td class='wal-heading' ><b>Output To:</b></td></tr>";
-        // html += "<tr><td style='padding-left:20px'>" +
-        //     "<select id='_wmewalCitiesOutputTo'>" +
-        //     "<option value='csv'>CSV File</option>" +
-        //     "<option value='tab'>Browser Tab</option>" +
-        //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
         html += "<tr><td class='wal-heading' class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Settings</b></td></tr>";
         html += "<tr><td><b>Polygon Layer:</b></td></tr>";
         html += "<tr><td style='padding-left: 20px'>" +
@@ -616,7 +617,7 @@ var WMEWAL_Cities;
                         addSegment(segment, incorrectCity, cityShouldBe, null);
                     }
                     else {
-                        var r = segment.getRoundabout();
+                        var r = segment.getRoundabout().attributes;
                         for (var rIx = 0; rIx < r.segIDs.length; rIx++) {
                             addSegment(W.model.segments.getObjectById(r.segIDs[rIx]), incorrectCity, cityShouldBe, r.id);
                         }
@@ -888,6 +889,7 @@ var WMEWAL_Cities;
         }
         console.log("Initialized");
         console.groupEnd();
+        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         WMEWAL.RegisterPlugIn(WMEWAL_Cities);
     }
     function updateSavedSettings() {

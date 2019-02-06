@@ -17,6 +17,12 @@
 
 var WMEWAL_MapComments;
 (function (WMEWAL_MapComments) {
+    const scrName = GM_info.script.name;
+    const Version = GM_info.script.version;
+    const updateText = 'Move scan output selector to scan tab.<br/>Now you don\'t have to change it on every tab!';
+    const greasyForkPage = 'https://greasyfork.org/scripts/40644';
+    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+
     var Operation;
     (function (Operation) {
         Operation[Operation["Equal"] = 1] = "Equal";
@@ -38,6 +44,7 @@ var WMEWAL_MapComments;
     var lastModifiedByName;
     var mc = null;
     var initCount = 0;
+
     function GetTab() {
         var html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
@@ -606,6 +613,7 @@ var WMEWAL_MapComments;
         }
         console.log("Initialized");
         console.groupEnd();
+        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         WMEWAL.RegisterPlugIn(WMEWAL_MapComments);
     }
     Init();

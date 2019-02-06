@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.7
+// @version             1.4.8
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -18,7 +18,13 @@
 
 var WMEWAL;
 (function (WMEWAL) {
-    var Version = GM_info.script.version;
+    const scrName = GM_info.script.name;
+    const Version = GM_info.script.version;
+    const updateText = '<ul><li>Add an alert when attempting to close the page while scan is running</li>' +
+        '<li>Bug fix: Change how output to is set so it is set correctly on subsequent reloads</li></ul>';
+    const greasyForkPage = 'https://greasyfork.org/scripts/40641';
+    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+
     var ProgressBar = (function () {
         function ProgressBar(id) {
             this.div = $(id);
@@ -216,7 +222,7 @@ var WMEWAL;
                 };
             }
         }
-        if (CompareVersions(settings.Version, Version) < 0) {
+        /*if (CompareVersions(settings.Version, Version) < 0) {
             var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
             if (CompareVersions(settings.Version, "1.4.7") < 0) {
                 versionHistory += "\nv1.4.7: Choose output on scan tab for all plugins";
@@ -249,7 +255,7 @@ var WMEWAL;
             /*if (CompareVersions(settings.Version, "1.3.4.1") < 0) {
                 versionHistory += "\nv1.3.4.1: ***BACKUP YOUR AREAS NOW!!***\nThe next version of WAL"+
                                   " could potentially cause data loss.\nSee the forum thread for more info";
-            }*/
+            }
             if (CompareVersions(settings.Version, "1.3.4") < 0) {
                 versionHistory += "\nv1.3.4: Updates to WME URL";
             }
@@ -259,7 +265,8 @@ var WMEWAL;
             alert(versionHistory);
             settings.Version = Version;
             updateSettings();
-        }
+        }*/
+        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         var style = document.createElement("style");
         style.type = "text/css";
         var css = ".wal-heading { font-size: 1.2em; font-weight: bold }";
@@ -329,8 +336,8 @@ var WMEWAL;
         divImportArea.append("<b>Import area</b>");
         divImportArea.append("<div><input type='file' id='_wmewalImportFileName' accept='.wkt'/></div><div><button class='btn btn-primary' id='_wmewalImportFile' title='Import'>Import</input></div>");
         tabContent.append(addon);
-        updateSavedAreasList();
         $("#_wmewalScanOutputTo").val(settings.OutputTo || "csv");
+        updateSavedAreasList();
         $("#_wmewalScanOutputTo").on("change", updateSettings);
         $("#_wmewalAddNewArea").on("click", addNewArea);
         $("#_wmewalCancel").on("click", cancel);
@@ -864,6 +871,19 @@ var WMEWAL;
         }
         resetState();
     }
+
+    function alertBeforeClose(e) {
+        if (WMEWAL.areaToScan !== null) {
+            logDebug('Alerting user before closing page');
+            e.preventDefault();
+            e.returnValue = 'Scan running. Cancel and leave the page?';
+            return e.returnValue;
+        }
+        else {
+            return false;
+        }
+    };
+
     function resetState() {
         pb.hide();
         showPBInfo(false);
@@ -889,6 +909,9 @@ var WMEWAL;
         segments = null;
         venues = null;
         $("#_wmewalCancel").attr("disabled", "disabled");
+        // Remove listeners for unloading page
+        window.removeEventListener('beforeunload',  alertBeforeClose);
+        window.removeEventListener('unload', cancel);
     }
     function exportArea() {
         var index = -1;
@@ -1025,6 +1048,12 @@ var WMEWAL;
         }
         info("Please don't touch anything during the scan");
         $("#_wmewalCancel").removeAttr("disabled");
+
+        // Alert user if they try to leave the page before scan is finished
+        window.addEventListener('beforeunload',  alertBeforeClose);
+        //Cleanup when closing page
+        window.addEventListener('unload', cancel);
+
         // Save current state
         currentCenter = W.map.getCenter();
         currentZoom = W.map.zoom;
@@ -1150,7 +1179,7 @@ var WMEWAL;
             var t = new Date();
             var timeString = t.getHours().toString() + ":" + t.getMinutes().toString() + ":" +
                 t.getSeconds().toString() + ":" + t.getMilliseconds().toString();
-            console.log(timeString + ": " + message);
+            console.log("WMEWAL " + timeString + ": " + message);
         }
     }
     function WazeRoadTypeToRoadTypeBitmask(roadType) {
