@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.8
+// @version             1.4.9
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -20,8 +20,7 @@ var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = '<ul><li>Add an alert when attempting to close the page while scan is running</li>' +
-        '<li>Bug fix: Change how output to is set so it is set correctly on subsequent reloads</li></ul>';
+    const updateText = '<ul><li>When cancelling a scan, properly reset everything even if there are errors</li></ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -856,7 +855,11 @@ var WMEWAL;
         cancelled = true;
         for (var ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active && plugins[ix].ScanCancelled) {
-                plugins[ix].ScanCancelled();
+                try {
+                    plugins[ix].ScanCancelled();
+                } catch (e) {
+                    console.warn(`WMEWAL: Trouble cancelling plugin ${plugins[ix].Title}\n${e.message}`);
+                }
             }
         }
         resetState();
