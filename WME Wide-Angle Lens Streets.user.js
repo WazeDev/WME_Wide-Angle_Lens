@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.11
+// @version             1.5.12b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,11 +19,12 @@ var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Update Unknown Direction check' +
-        '<h3>1.5.10</h3><br/><ul><li>Add scan option for segments with no house numbers</li>' +
-        '<li>Add scan option to find only roundabouts</li>'
-        '<li>Fix Waze mucking around with roundabout attributes</li>' +
-        '<li>Identify segments with unknown direction as such in report</li></ul>';
+    const updateText = 'Road attributes<br/><br/>'
+        + '<h3>1.5.11</h3><br/>Update Unknown Direction check<br/><br/>'
+        + '<h3>1.5.10</h3><br/><ul><li>Add scan option for segments with no house numbers</li>'
+        + '<li>Add scan option to find only roundabouts</li>'
+        + '<li>Fix Waze mucking around with roundabout attributes</li>'
+        + '<li>Identify segments with unknown direction as such in report</li></ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -136,6 +137,18 @@ var WMEWAL_Streets;
         html += "<tr><td class='wal-indent'>" +
             "<select id='_wmewalStreetsLastModifiedBy'/></td></tr>";
         html += "<tr><td><b>Road Type:</b></td></tr>";
+        html += "<div><input type='checkbox' id='_wmewalStreetsBeacons' value='" + WMEWAL.RoadAttribute.beacons.toString() + "'/>" +
+            "<label for='_wmewalStreetsBeacons' class='wal-label'>" + I18n.t('objects.segment.flag_fields.beacons') + "</label></div>";
+        html += "<div><input type='checkbox' id='_wmewalStreetsHeadlights' value='" + WMEWAL.RoadAttribute.headlights.toString() + "'/>" +
+            "<label for='_wmewalStreetsHeadlights' class='wal-label'>" + I18n.t('objects.segment.flag_fields.headlights') + "</label></div>";
+        html += "<div><input type='checkbox' id='_wmewalStreetsNearbyHOV' value='" + WMEWAL.RoadAttribute.nearbyHOV.toString() + "'/>" +
+            "<label for='_wmewalStreetsNearbyHOV' class='wal-label'>" + I18n.t('objects.segment.flag_fields.nearbyHOV') + "</label></div>";
+        html += "<div><input type='checkbox' id='_wmewalStreetsTollRoad' value='" + WMEWAL.RoadAttribute.toll_road.toString() + "'/>" +
+            "<label for='_wmewalStreetsTollRoad' class='wal-label'>" + I18n.t('restrictions.editing.segment.toll_road') + "</label></div></tr></td>";
+        html += "<div><input type='checkbox' id='_wmewalStreetsTunnel' value='" + WMEWAL.RoadAttribute.tunnel.toString() + "'/>" +
+            "<label for='_wmewalStreetsTunnel' class='wal-label'>" + I18n.t('objects.segment.flag_fields.tunnel') + "</label></div>";
+        html += "<tr><td><div><input type='checkbox' id='_wmewalStreetsUnpaved' value='" + WMEWAL.RoadAttribute.unpaved.toString() + "'/>" +
+            "<label for='_wmewalStreetsUnpaved' class='wal-label'>" + I18n.t('objects.segment.flag_fields.unpaved') + "</label></div>";
         html += "<tr><td class='wal-indent'>" +
             "<button id='_wmewalStreetsRoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>" +
             "<button id='_wmewalStreetsRoadTypeClear' class='btn btn-primary' title='Clear'>Clear</button>" +
@@ -331,6 +344,12 @@ var WMEWAL_Streets;
         $("#_wmewalStreetsCityIgnoreCase").prop("checked", settings.CityRegexIgnoreCase);
         $("#_wmewalStreetsState").val(settings.State);
         $("#_wmewalStreetsStateOp").val(settings.StateOperation || Operation.Equal.toString());
+        $("#_wmewalStreetsBeacons").prop("checked", settings.RoadAttrBeacons);
+        $("#_wmewalStreetsHeadlights").prop("checked", settings.RoadAttrHeadlights);
+        $("#_wmewalStreetsNearbyHOV").prop("checked", settings.RoadAttrNearbyHOV);
+        $("#_wmewalStreetsTollRoad").prop("checked", settings.RoadAttrTollRoad);
+        $("#_wmewalStreetsTunnel").prop("checked", settings.RoadAttrTunnel);
+        $("#_wmewalStreetsUnpaved").prop("checked", settings.RoadAttrUnpaved);
         $("#_wmewalStreetsRoadTypeFreeway").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Freeway);
         $("#_wmewalStreetsRoadTypeRamp").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.Ramp);
         $("#_wmewalStreetsRoadTypeMajorHighway").prop("checked", settings.RoadTypeMask & WMEWAL.RoadType.MajorHighway);
@@ -479,7 +498,13 @@ var WMEWAL_Streets;
                 HasNoName: $("#_wmewalStreetsHasNoName").prop("checked"),
                 HasNoCity: $("#_wmewalStreetsHasNoCity").prop("checked"),
                 NoHN: $('#_wmewalStreetsNoHN').prop("checked"),
-                NonNeutralRoutingPreference: $("#_wmewalStreetsNonNeutralRoutingPreference").prop("checked")
+                NonNeutralRoutingPreference: $("#_wmewalStreetsNonNeutralRoutingPreference").prop("checked"),
+                RoadAttrBeacons: $("#_wmewalStreetsBeacons").prop("checked"),
+                RoadAttrHeadlights: $("#_wmewalStreetsHeadlights").prop("checked"),
+                RoadAttrNearbyHOV: $("#_wmewalStreetsNearbyHOV").prop("checked"),
+                RoadAttrTollRoad: $("#_wmewalStreetsTollRoad").prop("checked"),
+                RoadAttrTunnel: $("#_wmewalStreetsTunnel").prop("checked"),
+                RoadAttrUnpaved: $("#_wmewalStreetsUnpaved").prop("checked"),
             };
             $("input[name=_wmewalStreetsRoadType]:checked").each(function (ix, e) {
                 s_1.RoadTypeMask = s_1.RoadTypeMask | parseInt(e.value);
@@ -629,6 +654,12 @@ var WMEWAL_Streets;
             settings.HasNoCity = $("#_wmewalStreetsHasNoCity").prop("checked");
             settings.NoHN = $('#_wmewalStreetsNoHN').prop('checked');
             settings.NonNeutralRoutingPreference = $("#_wmewalStreetsNonNeutralRoutingPreference").prop("checked");
+            settings.RoadAttrBeacons = $("_wmewalStreetsBeacons").prop("checked");
+            settings.RoadAttrHeadlights = $("_wmewalStreetsHeadlights").prop("checked");
+            settings.RoadAttrNearbyHOV = $("_wmewalStreetsNearbyHOV").prop("checked");
+            settings.RoadAttrTollRoad = $("_wmewalStreetsTollRoad").prop("checked");
+            settings.RoadAttrTunnel = $("_wmewalStreetsTunnel").prop("checked");
+            settings.RoadAttrUnpaved = $("_wmewalStreetsUnpaved").prop("checked");
             if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet)) {
                 WMEWAL_Streets.MinimumZoomLevel = 4;
             }
@@ -1498,6 +1529,12 @@ var WMEWAL_Streets;
                 NonNeutralRoutingPreference: false,
                 IncludeASC: false,
                 NoHN: false,
+                RoadAttrBeacons: false,
+                RoadAttrHeadlights: false,
+                RoadAttrNearbyHOV: false,
+                RoadAttrTollRoad: false,
+                RoadAttrTunnel: false,
+                RoadAttrUnpaved: false,
             };
         }
         else {
@@ -1534,6 +1571,14 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty("NoHN")) {
                 settings.NoHN = false;
+            }
+            if (!settings.hasOwnProperty("RoadAttrBeacons")) {
+                settings.RoadAttrBeacons = false;
+                settings.RoadAttrHeadlights = false;
+                settings.RoadAttrNearbyHOV = false;
+                settings.RoadAttrTollRoad = false;
+                settings.RoadAttrTunnel = false;
+                settings.RoadAttrUnpaved = false;
             }
             updateSettings();
         }
