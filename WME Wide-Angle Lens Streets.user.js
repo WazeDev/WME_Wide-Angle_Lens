@@ -93,8 +93,6 @@ var WMEWAL_Streets;
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Display options</td></tr>";
         html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeAlt' name='_wmewalStreetsIncludeAlt'>" +
             "<label for='_wmewalStreetsIncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>";
-        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeASC' name='_wmewalStreetsIncludeASC'>" +
-            "<label for='_wmewalStreetsIncludeASC' style='margin-left:8px;'>Include Avg Speed Cams</label></td></tr>";
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Filters (All Of These)</td></tr>";
         html += "<tr><td><b>Lock Level:</b></td></tr>";
@@ -137,8 +135,10 @@ var WMEWAL_Streets;
         html += "<tr><td class='wal-indent'>" +
             "<select id='_wmewalStreetsLastModifiedBy'/></td></tr>";
         html += "<tr><td><b>Road Type:</b></td></tr>";
-        html += "<div><input type='checkbox' id='_wmewalStreetsBeacons' value='" + WMEWAL.RoadAttribute.beacons.toString() + "'/>" +
-            "<label for='_wmewalStreetsBeacons' class='wal-label'>" + I18n.t('objects.segment.flag_fields.beacons') + "</label></div>";
+        html += "<tr><td class='wal-indent'><input type='checkbox' id='_wmewalStreetsIncludeASC' name='_wmewalStreetsIncludeASC'>" +
+            "<label for='_wmewalStreetsIncludeASC' style='margin-left:8px;'>" + I18n.t('objects.segment.flag_fields.fwdSpeedCamera').replace(/A\s*→B\s(\w)/, (whole, m1) => m1.toUpperCase()) + "</label></td></tr>";
+        /* html += "<div><input type='checkbox' id='_wmewalStreetsBeacons' value='" + WMEWAL.RoadAttribute.beacons.toString() + "'/>" +
+            "<label for='_wmewalStreetsBeacons' class='wal-label'>" + I18n.t('objects.segment.flag_fields.beacons') + "</label></div>"; */
         html += "<div><input type='checkbox' id='_wmewalStreetsHeadlights' value='" + WMEWAL.RoadAttribute.headlights.toString() + "'/>" +
             "<label for='_wmewalStreetsHeadlights' class='wal-label'>" + I18n.t('objects.segment.flag_fields.headlights') + "</label></div>";
         html += "<div><input type='checkbox' id='_wmewalStreetsNearbyHOV' value='" + WMEWAL.RoadAttribute.nearbyHOV.toString() + "'/>" +

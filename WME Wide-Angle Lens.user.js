@@ -75,12 +75,12 @@ var WMEWAL;
     })(WMEWAL.RoadType || (WMEWAL.RoadType = {}));
     var RoadType = WMEWAL.RoadType;
     var RoadAttribute = {};
-    RoadAttribute[RoadAttribute.unpaved = 1] = 'unpaved';
-    RoadAttribute[RoadAttribute.tunnel = 2] = 'tunnel';
-    RoadAttribute[RoadAttribute.headlights = 4] = 'headlights';
-    RoadAttribute[RoadAttribute.nearbyHOV = 8] = 'nearbyHOV';
-    RoadAttribute[RoadAttribute.toll_road = 16] = 'toll_road';
-    RoadAttribute[RoadAttribute.beacons = 32] = 'beacons';
+    RoadAttribute[RoadAttribute.tunnel = 1] = 'tunnel';
+    RoadAttribute[RoadAttribute.unpaved = 16] = 'unpaved';
+    RoadAttribute[RoadAttribute.headlights = 32] = 'headlights';
+    RoadAttribute[RoadAttribute.beacons = 64] = 'beacons';
+    RoadAttribute[RoadAttribute.nearbyHOV = 128] = 'nearbyHOV';
+    RoadAttribute[RoadAttribute.toll_road = 4] = 'toll_road';
     WMEWAL.RoadAttribute = RoadAttribute;
     var topLeft = null;
     var bottomRight = null;
@@ -315,7 +315,7 @@ var WMEWAL;
             W.prefs.on("change:isImperial", recreateTab);
         }
 
-        window["WMEWAL"] = WMEWAL;
+        window.WMEWAL = WMEWAL;
     }
     function makeTab() {
         var userTabs = $("#user-info");
