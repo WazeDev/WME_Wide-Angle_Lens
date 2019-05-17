@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.9.1
+// @version             1.4.9.2b1
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -20,7 +20,7 @@ var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Updated library requires updated script<br/><br/><h3>1.4.9</h3><br/><ul><li>When cancelling a scan, properly reset everything even if there are errors</li></ul>';
+    const updateText = 'Fix issue with scan sometimes hanging<br/><br/><h3>1.4.9</h3><br/><ul><li>When cancelling a scan, properly reset everything even if there are errors</li></ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -770,7 +770,7 @@ var WMEWAL;
             processComplete();
         }
         else {
-            onModelReady(onOperationDone, false, null);
+            WazeWrap.Model.onModelReady(onOperationDone, false, null);
             logDebug("Moving map");
             W.map.setCenter(new OL.LonLat(currentX, currentY));
         }
@@ -783,7 +783,7 @@ var WMEWAL;
             moveToNextLocation();
         }
     }
-    function onModelReady(callback, now, context) {
+    /*function onModelReady(callback, now, context) {
         var deferModelReady;
         var deferMapReady;
         function modelReadyResolve() {
@@ -850,7 +850,7 @@ var WMEWAL;
                 });
             }
         }
-    }
+    }*/
     function cancel() {
         cancelled = true;
         for (var ix = 0; ix < plugins.length; ix++) {
