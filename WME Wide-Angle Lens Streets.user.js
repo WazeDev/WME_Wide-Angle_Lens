@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.10
+// @version             1.5.11
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,7 +19,8 @@ var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = '<ul><li>Add scan option for segments with no house numbers</li>' +
+    const updateText = 'Update Unknown Direction check' +
+        '<h3>1.5.10</h3><br/><ul><li>Add scan option for segments with no house numbers</li>' +
         '<li>Add scan option to find only roundabouts</li>'
         '<li>Fix Waze mucking around with roundabout attributes</li>' +
         '<li>Identify segments with unknown direction as such in report</li></ul>';
@@ -807,10 +808,7 @@ var WMEWAL_Streets;
                     }
                     if (settings.UnknownDirection) {
                         var hasNoDirection = false;
-                        if (segment.getDirection() === 0 ) {
-                            hasNoDirection = true
-                        }
-                        if (hasNoDirection) {
+                        if (determineDirection(segment) === Direction.Unknown ) {
                             issues = issues | Issue.UnknownDirection;
                             newSegment = true;
                         }
