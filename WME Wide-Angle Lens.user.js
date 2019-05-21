@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.9.2
+// @version             1.4.10
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -20,7 +20,9 @@ var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Fix issue with scan sometimes hanging<br/><br/><h3>1.4.9</h3><br/><ul><li>When cancelling a scan, properly reset everything even if there are errors</li></ul>';
+    const updateText = 'Save layer visibility across page loads<br/><br/>'
+        + '<h3>1.4.9.2</h3><br/>Fix issue with scan sometimes hanging<br/><br/>'
+        + '<h3>1.4.9</h3><br/><ul><li>When cancelling a scan, properly reset everything even if there are errors</li></ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -163,7 +165,8 @@ var WMEWAL;
                             SavedAreas: [],
                             ActivePlugins: [],
                             OutputTo: 'csv',
-                            Version: Version
+                            Version: Version,
+                            showLayer: false
                         };
                     }
                     upd = true;
@@ -175,6 +178,10 @@ var WMEWAL;
                 delete settingsString;
                 if (!settings.hasOwnProperty("Version")) {
                     settings.Version = Version;
+                    upd = true;
+                }
+                if (!settings.hasOwnProperty("showLayer")) {
+                    settings.showLayer = false;
                     upd = true;
                 }
                 for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
@@ -203,7 +210,8 @@ var WMEWAL;
                     SavedAreas: savedAreas,
                     ActivePlugins: [],
                     OutputTo: 'csv',
-                    Version: Version
+                    Version: Version,
+                    showLayer: false
                 };
                 for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
@@ -217,7 +225,8 @@ var WMEWAL;
                     SavedAreas: [],
                     ActivePlugins: [],
                     OutputTo: 'csv',
-                    Version: Version
+                    Version: Version,
+                    showLayer: false
                 };
             }
         }
@@ -470,7 +479,7 @@ var WMEWAL;
             });
             I18n.translations[I18n.currentLocale()].layers.name[layerName] = "Wide-Angle Lens Areas";
             W.map.addUniqueLayer(maLayer);
-            maLayer.setVisibility(false);
+            maLayer.setVisibility(settings.showLayer);
         }
         maLayer.removeAllFeatures({
             silent: true
@@ -495,8 +504,10 @@ var WMEWAL;
         }
         maLayer.addFeatures(features);
         if (!layerCheckboxAdded) {
-            WazeWrap.Interface.AddLayerCheckbox("display", "Wide-Angle Lens Areas", false, function (checked) {
+            WazeWrap.Interface.AddLayerCheckbox("display", "Wide-Angle Lens Areas", settings.showLayer, function (checked) {
                 maLayer.setVisibility(checked);
+                settings.showLayer = checked;
+                updateSettings();
             });
             layerCheckboxAdded = true;
         }
@@ -616,7 +627,8 @@ var WMEWAL;
                 SavedAreas: [],
                 ActivePlugins: settings.ActivePlugins,
                 OutputTo: $("#_wmewalScanOutputTo").val(),
-                Version: settings.Version
+                Version: settings.Version,
+                showLayer: settings.showLayer
             };
             for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
                 newSettings.SavedAreas.push({
