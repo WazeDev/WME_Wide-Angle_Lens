@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.11
+// @version             1.5.12
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,7 +19,8 @@ var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Update Unknown Direction check' +
+    const updateText = 'Fix for segments with no created or updated attribute' +
+        '<h3>1.5.11</h3>Update Unknown Direction check' +
         '<h3>1.5.10</h3><br/><ul><li>Add scan option for segments with no house numbers</li>' +
         '<li>Add scan option to find only roundabouts</li>'
         '<li>Fix Waze mucking around with roundabout attributes</li>' +
@@ -663,7 +664,7 @@ var WMEWAL_Streets;
         function addSegment(s, rId, issues, newSegment) {
             var sid = s.attributes.primaryStreetID;
             var lastEditorID = s.attributes.updatedBy || s.attributes.createdBy;
-            var lastEditor = W.model.users.getObjectById(lastEditorID);
+            var lastEditor = W.model.users.getObjectById(lastEditorID) || {userName: 'Not found'};
             var address = s.getAddress();
             var thisStreet = null;
             if (sid != null && !newSegment) {
