@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.10
+// @version             1.4.12
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
@@ -20,9 +20,7 @@ var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Save layer visibility across page loads<br/><br/>'
-        + '<h3>1.4.9.2</h3><br/>Fix issue with scan sometimes hanging<br/><br/>'
-        + '<h3>1.4.9</h3><br/><ul><li>When cancelling a scan, properly reset everything even if there are errors</li></ul>';
+    const updateText = 'Update for latest WME release (removal of W.map.zoomTo) and fix disabling/enabling layers';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -101,6 +99,7 @@ var WMEWAL;
     var pb = null;
     var initCount = 0;
     var layerCheckboxAdded = false;
+    var WALMap;
     function WideAngleLens() {
         console.group("WMEWAL: Initializing");
         initCount++;
@@ -305,6 +304,9 @@ var WMEWAL;
         if (W.prefs) {
             W.prefs.on("change:isImperial", recreateTab);
         }
+
+        // Create map object
+        WALMap = W.map.getOLMap();
 
         window["WMEWAL"] = WMEWAL;
     }
@@ -919,7 +921,7 @@ var WMEWAL;
         }
         if (currentZoom != null) {
             logDebug("Resetting zoom");
-            W.map.zoomTo(currentZoom);
+            WALMap.zoomTo(currentZoom);
         }
         segments = null;
         venues = null;
@@ -1075,7 +1077,7 @@ var WMEWAL;
         layerToggle = [];
         var groups = $("div.layer-switcher li.group");
         groups.each(function (ix, g) {
-            var groupToggle = $(g).children("div.toggler").find("input[type=checkbox]");
+            var groupToggle = $(g).find("span.wz-toggle-switch input[type=checkbox]");
             switch ($(groupToggle).attr("id")) {
                 case "layer-switcher-group_places":
                     if (needVenues) {
@@ -1084,7 +1086,7 @@ var WMEWAL;
                             layerToggle.push($(groupToggle).attr("id"));
                         }
                         // Loop through each child in the group
-                        $(g).find("ul.children > li > div.toggler input[type=checkbox]").each(function (ixChild, c) {
+                        $(g).find("ul > li > div.wz-checkbox input[type=checkbox]").each(function (ixChild, c) {
                             switch ($(c).attr("id")) {
                                 case "layer-switcher-item_venues":
                                 case "layer-switcher-item_residential_places":
@@ -1123,7 +1125,7 @@ var WMEWAL;
                             layerToggle.push($(groupToggle).attr("id"));
                         }
                         // Loop through each child in the group
-                        $(g).find("ul.children > li > div.toggler input[type=checkbox]").each(function (ixChild, c) {
+                        $(g).find("ul > li > div.wz-checkbox input[type=checkbox]").each(function (ixChild, c) {
                             switch ($(c).attr("id")) {
                                 case "layer-switcher-item_map_comments":
                                     if (!$(c).prop("checked")) {
@@ -1171,7 +1173,7 @@ var WMEWAL;
             }
         }
         WMEWAL.zoomLevel = minZoomLevel;
-        W.map.zoomTo(WMEWAL.zoomLevel);
+        WALMap.zoomTo(WMEWAL.zoomLevel);
         var extent = W.map.getExtent();
         height = extent.getHeight();
         width = extent.getWidth();
