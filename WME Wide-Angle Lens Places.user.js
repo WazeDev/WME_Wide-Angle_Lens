@@ -44,6 +44,8 @@ var WMEWAL_Places;
     var stateName;
     var lastModifiedBy;
     var lastModifiedByName;
+    var createdBy;
+    var createdByName;
     var initCount = 0;
 
     function GetTab() {
@@ -111,6 +113,9 @@ var WMEWAL_Places;
         html += "<tr><td><b>Last Modified By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             "<select id='_wmewalPlacesLastModifiedBy'/></td></tr>";
+        html += "<tr><td><b>Created By:</b></td></tr>";
+        html += "<tr><td class='wal-indent'>" +
+            "<select id='_wmewalPlacesCreatedBy'/></td></tr>";
         html += "<tr><td><input id='_wmewalPlacesEditable' type='checkbox'/>" +
             "<label for='_wmewalPlacesEditable' style='padding-left: 20px'>Editable by me</label></td></tr>";
         html += "<tr><td><input type='checkbox' id='_wmewalPlacesNoHouseNumber'/>" +
@@ -128,11 +133,13 @@ var WMEWAL_Places;
     WMEWAL_Places.GetTab = GetTab;
     function TabLoaded() {
         updateStates();
-        updateUsers();
+        updateUsers($("#_wmewalPlacesLastModifiedBy"));
+        updateUsers($("#_wmewalPlacesCreatedBy"));
         updateUI();
         updateSavedSettingsList();
         $("#_wmewalPlacesState").on("focus", updateStates);
-        $("#_wmewalPlacesLastModifiedBy").on("focus", updateUsers);
+        $("#_wmewalPlacesLastModifiedBy").on("focus", updateUsers($("#_wmewalPlacesLastModifiedBy")));
+        $("#_wmewalPlacesCreatedBy").on("focus", updateUsers($("#_wmewalPlacesCreatedBy")));
         $("#_wmewalPlacesLoadSetting").on("click", loadSetting);
         $("#_wmewalPlacesSaveSetting").on("click", saveSetting);
         $("#_wmewalPlacesDeleteSetting").on("click", deleteSetting);
@@ -170,11 +177,10 @@ var WMEWAL_Places;
             selectState.append(stateOption);
         }
     }
-    function updateUsers() {
-        var selectLastModifiedBy = $("#_wmewalPlacesLastModifiedBy");
+    function updateUsers(selectUsernameList) {
         // Preserve current selection
-        var currentId = parseInt(selectLastModifiedBy.val());
-        selectLastModifiedBy.empty();
+        var currentId = parseInt(selectUsernameList.val());
+        selectUsernameList.empty();
         var userObjs = [];
         userObjs.push({ id: null, name: "" });
         for (var uo in W.model.users.objects) {
@@ -199,7 +205,7 @@ var WMEWAL_Places;
             if (currentId != null && o.id == null) {
                 userOption.attr("selected", "selected");
             }
-            selectLastModifiedBy.append(userOption);
+            selectUsernameList.append(userOption);
         }
     }
     function updateSavedSettingsList() {
@@ -229,6 +235,7 @@ var WMEWAL_Places;
         $("#_wmewalPlacesPendingApproval").prop("checked", settings.PendingApproval);
         $("#_wmewalPlacesNoStreet").prop("checked", settings.NoStreet);
         $("#_wmewalPlacesLastModifiedBy").val(settings.LastModifiedBy);
+        $("#_wmewalPlacesCreatedBy").val(settings.CreatedBy);
     }
     function loadSetting() {
         var selectedSetting = parseInt($("#_wmewalPlacesSavedSettings").val());
@@ -277,10 +284,16 @@ var WMEWAL_Places;
                 allOk = false;
             }
         }
-        var selectedUser = $("#_wmewalPlacesLastModifiedBy").val();
-        if (selectedUser != null && selectedUser.length > 0) {
-            if (W.model.users.getObjectById(selectedUser) == null) {
+        var selectedModifiedUser = $("#_wmewalPlacesLastModifiedBy").val();
+        if (selectedModifiedUser != null && selectedModifiedUser.length > 0) {
+            if (W.model.users.getObjectById(selectedModifiedUser) == null) {
                 message += ((message.length > 0 ? "\n" : "") + "Invalid last modified user");
+            }
+        }
+        var selectedCreatedUser = $("#_wmewalPlacesCreatedBy").val();
+        if (selectedCreatedUser != null && selectedCreatedUser.length > 0) {
+            if (W.model.users.getObjectById(selectedCreatedUser) == null) {
+                message += ((message.length > 0 ? "\n" : "") + "Invalid created user");
             }
         }
         if (!allOk) {
@@ -307,7 +320,8 @@ var WMEWAL_Places;
                 CityRegex: null,
                 CityRegexIgnoreCase: $("#_wmewalPlacesCityIgnoreCase").prop("checked"),
                 NoStreet: $("#_wmewalPlacesNoStreet").prop("checked"),
-                LastModifiedBy: null
+                LastModifiedBy: null,
+                CreatedBy: null
             };
             var pattern = $("#_wmewalPlacesName").val();
             s.Regex = pattern.length > 0 ? pattern : null;
@@ -317,9 +331,13 @@ var WMEWAL_Places;
             if (selectedState != null && selectedState.length > 0) {
                 s.State = W.model.states.getObjectById(parseInt(selectedState)).id;
             }
-            var selectedUser = $("#_wmewalPlacesLastModifiedBy").val();
-            if (selectedUser != null && selectedUser.length > 0) {
-                s.LastModifiedBy = W.model.users.getObjectById(selectedUser).id;
+            var selectedModifiedUser = $("#_wmewalPlacesLastModifiedBy").val();
+            if (selectedModifiedUser != null && selectedModifiedUser.length > 0) {
+                s.LastModifiedBy = W.model.users.getObjectById(selectedModifiedUser).id;
+            }
+            var selectedCreatedUser = $("#_wmewalPlacesCreatedBy").val();
+            if (selectedCreatedUser != null && selectedCreatedUser.length > 0) {
+                s.CreatedBy = W.model.users.getObjectById(selectedCreatedUser).id;
             }
             var selectedLockLevel = $("#_wmewalPlacesLockLevel").val();
             if (selectedLockLevel != null && selectedLockLevel.length > 0) {
@@ -399,14 +417,23 @@ var WMEWAL_Places;
                 stateName = state.name;
             }
             settings.StateOperation = parseInt($("#_wmewalPlacesStateOp").val());
-            var selectedUser = $("#_wmewalPlacesLastModifiedBy").val();
+            var selectedModifiedUser = $("#_wmewalPlacesLastModifiedBy").val();
             lastModifiedBy = null;
             settings.LastModifiedBy = null;
             lastModifiedByName = null;
-            if (selectedUser != null && selectedUser.length > 0) {
-                lastModifiedBy = W.model.users.getObjectById(parseInt(selectedUser));
+            if (selectedModifiedUser != null && selectedModifiedUser.length > 0) {
+                lastModifiedBy = W.model.users.getObjectById(parseInt(selectedModifiedUser));
                 settings.LastModifiedBy = lastModifiedBy.id;
                 lastModifiedByName = lastModifiedBy.userName;
+            }
+            var selectedCreatedUser = $("#_wmewalPlacesCreatedBy").val();
+            createdBy = null;
+            settings.CreatedBy = null;
+            createdByName = null;
+            if (selectedCreatedUser != null && selectedCreatedUser.length > 0) {
+                createdBy = W.model.users.getObjectById(parseInt(selectedCreatedUser));
+                settings.CreatedBy = createdBy.id;
+                createdByName = createdBy.userName;
             }
             var selectedLockLevel = $("#_wmewalPlacesLockLevel").val();
             settings.LockLevel = null;
@@ -470,6 +497,13 @@ var WMEWAL_Places;
                         }
                         else if (venue.attributes.createdBy !== settings.LastModifiedBy) {
                             continue;
+                        }
+                    }
+                    if (settings.CreatedBy != null) {
+                        if (venue.attributes.updatedBy != null) {
+                            if (venue.attributes.updatedBy !== settings.CreatedBy) {
+                                continue;
+                            }
                         }
                     }
                     if (settings.Category != null) {
@@ -580,6 +614,9 @@ var WMEWAL_Places;
                 if (settings.LastModifiedBy != null) {
                     w.document.write("<br/>Last modified by " + lastModifiedByName);
                 }
+                if (settings.CreatedBy != null) {
+                    w.document.write("<br/>Created by " + createdByName);
+                }
                 if (settings.NoHouseNumber) {
                     w.document.write("<br/>No house number");
                 }
@@ -609,7 +646,7 @@ var WMEWAL_Places;
                 if (isCSV) {
                     columnArray = [`"${place.name}"`, `"${categories}"`, `"${place.city}"`, `"${place.state}"`, place.lockLevel.toString(),
                         place.placeType, (place.adLocked ? "Yes" : "No"), (place.hasOpenUpdateRequests ? "Yes" : "No"), (place.isApproved ? "No" : "Yes"),
-                        `"${place.streetName}"`, `"${place.houseNumber}"`, (place.hasExternalProvider ? "Yes" : "No"), `"${place.url}"`, `"${place.phone}"`, 
+                        `"${place.streetName}"`, `"${place.houseNumber}"`, (place.hasExternalProvider ? "Yes" : "No"), `"${place.url}"`, `"${place.phone}"`,
                         (place.hasHours ? "Yes" : "No"), `"${place.lastEditor}"`, latlon.lat.toString(), latlon.lon.toString(), `"${plPlace}"`];
                     lineArray.push(columnArray);
                 }
@@ -625,7 +662,7 @@ var WMEWAL_Places;
                     w.document.write(`<td>${place.streetName}</td>`);
                     w.document.write(`<td>${place.houseNumber}</td>`);
                     w.document.write(`<td>${place.hasExternalProvider ? "Yes" : "No"}</td>`);
-                    w.document.write(`<td>${place.url === "" ? place.url : 
+                    w.document.write(`<td>${place.url === "" ? place.url :
                         `<a href="${/^http/.test(place.url) ? '' : 'http://'}${place.url}">${place.url}</a>`
                     }</td>`);
                     w.document.write(`<td>${place.phone}</td>`)
@@ -736,6 +773,7 @@ var WMEWAL_Places;
                 CityRegexIgnoreCase: true,
                 NoStreet: false,
                 LastModifiedBy: null,
+                CreatedBy: null,
                 Version: Version
             };
         }
@@ -745,6 +783,9 @@ var WMEWAL_Places;
             }
             if (!settings.hasOwnProperty("LastModifiedBy")) {
                 settings.LastModifiedBy = null;
+            }
+            if (!settings.hasOwnProperty("CreatedBy")) {
+                settings.CreatedBy = null;
             }
             if (!settings.hasOwnProperty("Version")) {
                 settings.Version = Version;
