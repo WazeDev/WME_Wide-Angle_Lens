@@ -122,6 +122,8 @@ var WMEWAL_Places;
             "<label for='_wmewalPlacesNoHouseNumber' style='padding-left: 20px'>Missing House Number</label></td></tr>";
         html += "<tr><td><input type='checkbox' id='_wmewalPlacesNoStreet'/>" +
             "<label for='_wmewalPlacesNoStreet' style='padding-left: 20px'>Missing Street</label></td></tr>";
+        html += "<tr><td><input type='checkbox' id='_wmewalPlacesUndefStreet' />" +
+            "<label for='_wmewalPlacesUndefStreet' style='padding-left: 20px' title='Street ID not found in W.model.streets.objects, possibly as a result of a cities form Merge or Delete'>Undefined Street ID</label></td></tr>"
         html += "<tr><td><input type='checkbox' id='_wmewalPlacesAdLocked'/>" +
             "<label for='_wmewalPlacesAdLocked' style='padding-left: 20px'>Ad Locked</label></td></tr>";
         html += "<tr><td ><input type='checkbox' id='_wmewalPlacesUpdateRequests'/>" +
@@ -231,6 +233,7 @@ var WMEWAL_Places;
         $("#_wmewalPlacesEditable").prop("checked", settings.EditableByMe);
         $("#_wmewalPlacesNoHouseNumber").prop("checked", settings.NoHouseNumber);
         $("#_wmewalPlacesAdLocked").prop("checked", settings.AdLocked);
+        $("#_wmewalPlacesUndefStreet").prop("checked", settings.UndefStreet);
         $("#_wmewalPlacesUpdateRequests").prop("checked", settings.UpdateRequests);
         $("#_wmewalPlacesPendingApproval").prop("checked", settings.PendingApproval);
         $("#_wmewalPlacesNoStreet").prop("checked", settings.NoStreet);
@@ -314,6 +317,7 @@ var WMEWAL_Places;
                 LockLevelOperation: parseInt($("#_wmewalPlacesLockLevelOp").val()),
                 EditableByMe: $("#_wmewalPlacesEditable").prop("checked"),
                 AdLocked: $("#_wmewalPlacesAdLocked").prop("checked"),
+                UndefStreet: $("#_wmewalPlacesUndefStreet").prop("checked"),
                 UpdateRequests: $("#_wmewalPlacesUpdateRequests").prop("checked"),
                 PlaceType: null,
                 PendingApproval: $("#_wmewalPlacesPendingApproval").prop("checked"),
@@ -452,6 +456,7 @@ var WMEWAL_Places;
             settings.NoHouseNumber = $("#_wmewalPlacesNoHouseNumber").prop("checked");
             settings.EditableByMe = $("#_wmewalPlacesEditable").prop("checked");
             settings.AdLocked = $("#_wmewalPlacesAdLocked").prop("checked");
+            settings.UndefStreet = $("#_wmewalPlacesUndefStreet").prop("checked");
             settings.UpdateRequests = $("#_wmewalPlacesUpdateRequests").prop("checked");
             settings.PendingApproval = $("#_wmewalPlacesPendingApproval").prop("checked");
             settings.NoStreet = $("#_wmewalPlacesNoStreet").prop("checked");
@@ -475,6 +480,7 @@ var WMEWAL_Places;
                     (nameRegex == null || nameRegex.test(venue.attributes.name)) &&
                     (!settings.NoHouseNumber || address == null || address.attributes == null || address.attributes.houseNumber == null) &&
                     (!settings.AdLocked || venue.attributes.adLocked) &&
+                    (!settings.UndefStreet || typeof W.model.streets.objects[venue.attributes.streetID] === 'undefined' ) &&
                     (!settings.UpdateRequests || venue.hasOpenUpdateRequests()) &&
                     (!settings.PendingApproval || !venue.isApproved()) &&
                     (!settings.NoStreet || address == null || address.attributes == null || address.attributes.street == null || address.attributes.street.isEmpty || address.attributes.street.name == null)) {
@@ -528,6 +534,8 @@ var WMEWAL_Places;
                     }
                     var lastEditorID = venue.attributes.updatedBy || venue.attributes.createdBy;
                     var lastEditor = W.model.users.getObjectById(lastEditorID);
+                    var createdByID = venue.attributes.createdBy;
+                    var createdBy = W.model.users.getObjectById(createdByID);
                     var place = {
                         id: venue.attributes.id,
                         mainCategory: venue.getMainCategory(),
@@ -537,6 +545,8 @@ var WMEWAL_Places;
                         // navigationPoint: venue.getNavigationPoint(),
                         categories: categories,
                         adLocked: venue.attributes.adLocked,
+                        streetID: venue.attributes.streetID,
+                        UndefStreet: (typeof W.model.streets.objects[venue.attributes.streetID] === 'undefined'),
                         hasOpenUpdateRequests: venue.hasOpenUpdateRequests(),
                         placeType: ((venue.isPoint() && !venue.is2D()) ? I18n.t("edit.landmark.type.point") : I18n.t("edit.landmark.type.area")),
                         isApproved: venue.isApproved(),
@@ -546,6 +556,7 @@ var WMEWAL_Places;
                         streetName: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : "") || "",
                         hasExternalProvider: venue.attributes.externalProviderIDs != null && venue.attributes.externalProviderIDs.length > 0,
                         lastEditor: (lastEditor && lastEditor.userName) || "",
+                        createdBy: (createdBy && createdBy.userName ) ||"",
                         url: venue.attributes.url || "",
                         phone: venue.attributes.phone || "",
                         hasHours: venue.attributes.openingHours.length > 0
@@ -575,6 +586,7 @@ var WMEWAL_Places;
             var fileName = void 0;
             if (isCSV) {
                 lineArray = [];
+                // (settings.undefStreet ? "Street ID," : "")
                 columnArray = ["Name,Categories,City,State,Lock Level,Type,Ad Locked,Has Open Update Requests,Pending Approval,Street,House Number,Has External Provider Link,Website,Phone Number,Has Hours,Last Editor,Latitude,Longitude,Permalink"];
                 lineArray.push(columnArray);
                 fileName = "Places_" + WMEWAL.areaName;
@@ -642,6 +654,7 @@ var WMEWAL_Places;
                     categories += I18n.t("venues.categories." + place.categories[ixCategory]);
                 }
                 if (isCSV) {
+                    // (settings.undefStreet ? `${place.streetID},` : "")
                     columnArray = [`"${place.name}"`, `"${categories}"`, `"${place.city}"`, `"${place.state}"`, place.lockLevel.toString(),
                         place.placeType, (place.adLocked ? "Yes" : "No"), (place.hasOpenUpdateRequests ? "Yes" : "No"), (place.isApproved ? "No" : "Yes"),
                         `"${place.streetName}"`, `"${place.houseNumber}"`, (place.hasExternalProvider ? "Yes" : "No"), `"${place.url}"`, `"${place.phone}"`,
