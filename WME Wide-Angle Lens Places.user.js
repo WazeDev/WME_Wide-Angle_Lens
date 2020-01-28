@@ -232,6 +232,7 @@ var WMEWAL_Places;
         $("#_wmewalPlacesType").val(settings.PlaceType);
         $("#_wmewalPlacesEditable").prop("checked", settings.EditableByMe);
         $("#_wmewalPlacesNoHouseNumber").prop("checked", settings.NoHouseNumber);
+        $("#_wmewalPlacesUndefStreet").prop("checked", settings.UndefStreet);
         $("#_wmewalPlacesAdLocked").prop("checked", settings.AdLocked);
         $("#_wmewalPlacesUndefStreet").prop("checked", settings.UndefStreet);
         $("#_wmewalPlacesUpdateRequests").prop("checked", settings.UpdateRequests);
