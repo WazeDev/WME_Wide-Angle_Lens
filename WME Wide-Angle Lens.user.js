@@ -1,43 +1,46 @@
+/// <reference path="../typings/globals/openlayers/index.d.ts" />
+/// <reference path="../typings/I18n.d.ts" />
+/// <reference path="../typings/waze.d.ts" />
+/// <reference path="../typings/globals/jquery/index.d.ts" />
+/// <reference path="../typings/wazewrap.d.ts" />
+/// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
-// @namespace           https://greasyfork.org/en/users/19861-vtpearce
+// @namespace           https://greasyfork.org/en/users/166843-wazedev
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.12
+// @version             1.5.0
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
-// ==/UserScript==
-
-/*global W, OL, $, WazeWrap*/
-
+/* global W, OL, $, WazeWrap, OpenLayers, I18n */
 var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Update for latest WME release (removal of W.map.zoomTo) and fix disabling/enabling layers';
+    const updateText = 'Update for latest WME release (removal of W.controller.reload) and fix disabling/enabling layers';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
-
-    var ProgressBar = (function () {
-        function ProgressBar(id) {
+    class ProgressBar {
+        constructor(id) {
             this.div = $(id);
         }
-        ProgressBar.prototype.isShown = function () {
+        isShown() {
             return this.div.is(":visible");
-        };
-        ProgressBar.prototype.show = function () {
+        }
+        show() {
             this.div.show();
-        };
-        ProgressBar.prototype.hide = function () {
+        }
+        hide() {
             this.div.hide();
-        };
-        ProgressBar.prototype.update = function (value) {
+        }
+        update(value) {
             logDebug("Percent complete = " + value.toString());
             if (value > 100) {
                 value = 100;
@@ -49,9 +52,9 @@ var WMEWAL;
             this.div.children().show();
             this.div.children(".wal-progressBarBG").css("width", value.toString() + "%");
             this.div.children(".wal-progressBarFG").text(value.toString() + "%");
-        };
-        return ProgressBar;
-    }());
+        }
+    }
+    let RoadType;
     (function (RoadType) {
         RoadType[RoadType["Street"] = 1] = "Street";
         RoadType[RoadType["PrimaryStreet"] = 2] = "PrimaryStreet";
@@ -69,41 +72,45 @@ var WMEWAL;
         RoadType[RoadType["RunwayTaxiway"] = 8192] = "RunwayTaxiway";
         RoadType[RoadType["ParkingLotRoad"] = 16384] = "ParkingLotRoad";
         RoadType[RoadType["Alley"] = 32768] = "Alley";
-    })(WMEWAL.RoadType || (WMEWAL.RoadType = {}));
-    var RoadType = WMEWAL.RoadType;
-    var topLeft = null;
-    var bottomRight = null;
+    })(RoadType = WMEWAL.RoadType || (WMEWAL.RoadType = {}));
+    let OutputTo;
+    (function (OutputTo) {
+        OutputTo[OutputTo["CSV"] = 1] = "CSV";
+        OutputTo[OutputTo["Tab"] = 2] = "Tab";
+    })(OutputTo = WMEWAL.OutputTo || (WMEWAL.OutputTo = {}));
+    let topLeft = null;
+    let bottomRight = null;
     WMEWAL.areaToScan = null;
-    var height;
-    var width;
-    var segments = null;
-    var venues = null;
+    let height;
+    let width;
+    let segments = null;
+    let venues = null;
     WMEWAL.areaName = null;
-    var currentX;
-    var currentY;
-    var currentCenter = null;
-    var currentZoom = null;
-    var layerToggle = null;
-    var needSegments = false;
-    var needVenues = false;
-    var cancelled = false;
-    var totalViewports;
-    var countViewports;
-    var mapReady = false;
-    var modelReady = false;
-    var settings = null;
-    var plugins = [];
-    var settingsKey = "WMEWAL_Settings";
-    var debug = false;
-    var layerName = "WMEWAL_Areas";
-    var pb = null;
-    var initCount = 0;
-    var layerCheckboxAdded = false;
-    var WALMap;
+    let currentX;
+    let currentY;
+    let currentCenter = null;
+    let currentZoom = null;
+    let layerToggle = null;
+    let needSegments = false;
+    let needVenues = false;
+    let cancelled = false;
+    let totalViewports;
+    let countViewports;
+    let mapReady = false;
+    let modelReady = false;
+    let settings = null;
+    let plugins = [];
+    let settingsKey = "WMEWAL_Settings";
+    let debug = false;
+    let layerName = "WMEWAL_Areas";
+    let pb = null;
+    let initCount = 0;
+    let layerCheckboxAdded = false;
+    let WALMap;
     function WideAngleLens() {
         console.group("WMEWAL: Initializing");
         initCount++;
-        var objectToCheck = ["W.map",
+        let objectToCheck = ["W.map",
             "W.model.segments",
             "W.model.venues",
             "W.model.states",
@@ -113,10 +120,10 @@ var WMEWAL;
             "W.controller",
             "W.model.actionManager",
             "WazeWrap.Interface"];
-        for (var i = 0; i < objectToCheck.length; i++) {
-            var path = objectToCheck[i].split(".");
-            var object = window;
-            for (var j = 0; j < path.length; j++) {
+        for (let i = 0; i < objectToCheck.length; i++) {
+            let path = objectToCheck[i].split(".");
+            let object = window;
+            for (let j = 0; j < path.length; j++) {
                 object = object[path[j]];
                 if (typeof object === "undefined" || object == null) {
                     console.warn(path[j] + " NOT OK");
@@ -135,46 +142,47 @@ var WMEWAL;
         }
         if (typeof (Storage) !== "undefined") {
             if (localStorage[settingsKey]) {
-                var upd = false;
-                var settingsString = localStorage[settingsKey];
+                let upd = false;
+                let settingsString = localStorage[settingsKey];
                 if (settingsString.substring(0, 1) === "~") {
                     // Compressed value - decompress
                     //console.log("Decompress UTF16 settings");
                     settingsString = WMEWAL.LZString.decompressFromUTF16(settingsString.substring(1));
                 }
                 try {
-                        settings = JSON.parse(settingsString);
-                } catch (e) {}
-                if (typeof settings === "undefined" || settings === null || settings === "") {
-                    settings = "";
+                    settings = JSON.parse(settingsString);
+                }
+                catch (e) { }
+                if (typeof settings === "undefined" || settings === null) {
+                    settings = null;
                     console.debug("WMEWAL: Using old decompress method");
-                    localStorage[settingsKey +"Backup"] = localStorage[settingsKey];
+                    localStorage[settingsKey + "Backup"] = localStorage[settingsKey];
                     settingsString = localStorage[settingsKey];
-
                     if (settingsString.substring(0, 1) === "~") {
                         // Compressed value - decompress
                         settingsString = WMEWAL.LZString.decompress(settingsString.substring(1));
                     }
                     try {
                         settings = JSON.parse(settingsString);
-                    } catch (e) {}
-                    if (typeof settings === "undefined" || settings === null || settings === "") {
+                    }
+                    catch (e) { }
+                    if (typeof settings === "undefined" || settings === null) {
                         console.warn("WMEWAL: Unable to decompress! Using empty settings");
+                        WMEWAL.outputTo = OutputTo.CSV;
                         settings = {
                             SavedAreas: [],
                             ActivePlugins: [],
-                            OutputTo: 'csv',
+                            OutputTo: "csv",
                             Version: Version,
                             showLayer: false
                         };
                     }
                     upd = true;
                 }
-
                 settings.SavedAreas.sort(function (a, b) {
                     return a.name.localeCompare(b.name);
                 });
-                delete settingsString;
+                delete this.settingsString;
                 if (!settings.hasOwnProperty("Version")) {
                     settings.Version = Version;
                     upd = true;
@@ -183,11 +191,11 @@ var WMEWAL;
                     settings.showLayer = false;
                     upd = true;
                 }
-                for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
+                for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
-                        settings.SavedAreas[ix].geometry = OL.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
+                        settings.SavedAreas[ix].geometry = OpenLayers.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
                         while ((settings.SavedAreas[ix].geometry.CLASS_NAME === "OL.Geometry.Collection" ||
-                                settings.SavedAreas[ix].geometry.CLASS_NAME === "OpenLayers.Geometry.Collection") &&
+                            settings.SavedAreas[ix].geometry.CLASS_NAME === "OpenLayers.Geometry.Collection") &&
                             settings.SavedAreas[ix].geometry.components.length === 1) {
                             settings.SavedAreas[ix].geometry = settings.SavedAreas[ix].geometry.components[0];
                             upd = true;
@@ -201,29 +209,31 @@ var WMEWAL;
             }
             else if (localStorage["WMEMSL_areaList"]) {
                 // Import settings from old MSL script
-                var savedAreas = JSON.parse(localStorage["WMEMSL_areaList"]);
+                let savedAreas = JSON.parse(localStorage["WMEMSL_areaList"]);
                 savedAreas.sort(function (a, b) {
                     return a.name.localeCompare(b.name);
                 });
+                WMEWAL.outputTo = OutputTo.CSV;
                 settings = {
                     SavedAreas: savedAreas,
                     ActivePlugins: [],
-                    OutputTo: 'csv',
+                    OutputTo: "csv",
                     Version: Version,
                     showLayer: false
                 };
-                for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
+                for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
-                        settings.SavedAreas[ix].geometry = OL.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
+                        settings.SavedAreas[ix].geometry = OpenLayers.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
                         delete settings.SavedAreas[ix].geometryText;
                     }
                 }
             }
             else {
+                WMEWAL.outputTo = OutputTo.CSV;
                 settings = {
                     SavedAreas: [],
                     ActivePlugins: [],
-                    OutputTo: 'csv',
+                    OutputTo: "csv",
                     Version: Version,
                     showLayer: false
                 };
@@ -274,9 +284,9 @@ var WMEWAL;
             updateSettings();
         }*/
         WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
-        var style = document.createElement("style");
+        let style = document.createElement("style");
         style.type = "text/css";
-        var css = ".wal-heading { font-size: 1.2em; font-weight: bold }";
+        let css = ".wal-heading { font-size: 1.2em; font-weight: bold }";
         css += ".wal-indent { padding-left: 20px }";
         css += ".wal-label { margin-left: 8px }";
         css += "#wal-progressBarInfo { display: none; width: 90%; float: left; position: absolute; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; margin-bottom: -100%; background-color: #c9e1e9; z-index: 999; margin: 5px; margin-right: 20px; }";
@@ -288,7 +298,6 @@ var WMEWAL;
         console.log("Initialized");
         console.groupEnd();
         makeTab();
-
         //recreate tab here
         // Editing mode changed to/from event mode
         if (W.app.modeController) {
@@ -299,54 +308,52 @@ var WMEWAL;
                 }
             });
         }
-
         // Unit switched (imperial/metric)
         if (W.prefs) {
             W.prefs.on("change:isImperial", recreateTab);
         }
-
         // Create map object
         WALMap = W.map.getOLMap();
-
         window["WMEWAL"] = WMEWAL;
     }
     function makeTab() {
-        var userTabs = $("#user-info");
-        var navTabs = $("ul.nav-tabs", userTabs).filter(":first");
-        var tabContent = $(".tab-content", userTabs).filter(":first");
+        let userTabs = $("#user-info");
+        let navTabs = $("ul.nav-tabs", userTabs).filter(":first");
+        let tabContent = $(".tab-content", userTabs).filter(":first");
         navTabs.append("<li><a href='#sidepanel-wme-wal' data-toggle='tab'>WAL</a></li>");
-        var addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens <span style='font-size:11px;'>v"+ Version +"</span></h3></div>");
-        var pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(addon);
-        var pb$ = $("<div/>").attr("id", "wal-progressBar").css({ width: "100%", display: "none" }).appendTo(pbi);
+        let addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens <span style='font-size:11px;'>v" + Version + "</span></h3></div>");
+        let pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(addon);
+        let pb$ = $("<div/>").attr("id", "wal-progressBar").css({ width: "100%", display: "none" }).appendTo(pbi);
         pb$.append($("<div/>").addClass("wal-progressBarBG"));
         pb$.append($("<span/>").addClass("wal-progressBarFG").text("100%"));
         pbi.append("<div id='wal-info'/>");
-        var addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(addon);
+        let addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(addon);
         addonTabs.append("<li class='active'><a data-toggle='tab' href='#sidepanel-wmewal-scan'>Scan</a></li>");
         addonTabs.append("<li><a data-toggle='tab' href='#sidepanel-wmewal-areas'>Areas</a></li>");
-        var addonTabContent = $("<div class='tab-content'/>").appendTo(addon);
-        var tabScan = $("<div class='tab-pane active' id='sidepanel-wmewal-scan'/>").appendTo(addonTabContent);
+        let addonTabContent = $("<div class='tab-content'/>").appendTo(addon);
+        let tabScan = $("<div class='tab-pane active' id='sidepanel-wmewal-scan'/>").appendTo(addonTabContent);
         tabScan.append("<div><b>Output to: </b><select class='form-control' id='_wmewalScanOutputTo'><option value='csv'>CSV File</option><option value='tab'>Browser Tab</option>" +
-        "<option value='both'>Both CSV File and Browser Tab</option></select></div><hr/>");
+            "<option value='both'>Both CSV File and Browser Tab</option></select></div><hr/>");
         tabScan.append("<div><b>Active Plug-Ins</b><div id='_wmewalPlugins'></div>");
         tabScan.append("<div><b>Scan</b><div id='_wmewalOptionsSavedAreas' name='_wmewalSavedAreas'/></div>");
         tabScan.append("<hr/>");
-        var divButtons = $("<div/>").appendTo(tabScan);
+        let divButtons = $("<div/>").appendTo(tabScan);
         divButtons.append("<button class='btn btn-primary' id='_wmewalScan' title='Scan' style='margin-right: 8px'>Scan</button>");
         divButtons.append("<button class='btn btn-primary' id='_wmewalCancel' title='Cancel' disabled='disabled'>Cancel</button>");
-        var tabAreas = $("<div class='tab-pane' id='sidepanel-wmewal-areas'/>").appendTo(addonTabContent);
+        let tabAreas = $("<div class='tab-pane' id='sidepanel-wmewal-areas'/>").appendTo(addonTabContent);
         tabAreas.append("<div id='_wmewalAreasSavedAreas' name='_wmewalSavedAreas'/>");
-        var divAreaButtons = $("<div/>").appendTo(tabAreas);
+        let divAreaButtons = $("<div/>").appendTo(tabAreas);
         divAreaButtons.append("<button class='btn btn-primary' id='_wmewalDeleteArea' title='Delete' style='margin-right: 4px'>Delete</button>");
         divAreaButtons.append("<button class='btn btn-primary' id='_wmewalExport' title='Export' style='margin-right: 4px'>Export</button>");
         divAreaButtons.append("<button class='btn btn-primary' id='_wmewalRenameArea' title='Rename'>Rename</button>");
         tabAreas.append("<div style='margin-top: 12px'><b>Add custom area</b>");
         tabAreas.append("<div>From an unsaved area place<div>Name area: <input type='text' id='_wmewalNewAreaName'></div><div>Then <button id='_wmewalAddNewArea' class='btn btn-primary' title='Add'>Add</button></div></div></div>");
-        var divImportArea = $("<div style='margin-top: 12px'/>").appendTo(tabAreas);
+        let divImportArea = $("<div style='margin-top: 12px'/>").appendTo(tabAreas);
         divImportArea.append("<b>Import area</b>");
         divImportArea.append("<div><input type='file' id='_wmewalImportFileName' accept='.wkt'/></div><div><button class='btn btn-primary' id='_wmewalImportFile' title='Import'>Import</input></div>");
         tabContent.append(addon);
         $("#_wmewalScanOutputTo").val(settings.OutputTo || "csv");
+        WMEWAL.outputTo = parseOutputTo(settings.OutputTo || "csv");
         updateSavedAreasList();
         $("#_wmewalScanOutputTo").on("change", updateSettings);
         $("#_wmewalAddNewArea").on("click", addNewArea);
@@ -358,16 +365,16 @@ var WMEWAL;
         $("#_wmewalImportFile").on("click", importFile);
         $("#_wmewalPlugins").on("click", function (e) {
             $("input[name=_wmewalPlugin]").each(function (ix, item) {
-                var i = $(item);
-                var id = i.attr("data-id");
-                for (var index = 0; index < plugins.length; index++) {
+                let i = $(item);
+                let id = i.attr("data-id");
+                for (let index = 0; index < plugins.length; index++) {
                     if (plugins[index].Id === parseInt(id)) {
                         plugins[index].Active = i.prop("checked");
                     }
                 }
             });
             settings.ActivePlugins = [];
-            for (var ix = 0; ix < plugins.length; ix++) {
+            for (let ix = 0; ix < plugins.length; ix++) {
                 if (plugins[ix].Active) {
                     settings.ActivePlugins.push(plugins[ix].Title);
                 }
@@ -378,8 +385,8 @@ var WMEWAL;
     function recreateTab() {
         logDebug("Tab stuff");
         makeTab();
-        plugins.forEach(function(plugin) {
-            logDebug("Running for plugin: "+plugin.Title);
+        plugins.forEach(function (plugin) {
+            logDebug("Running for plugin: " + plugin.Title);
             updatePluginList();
             addPluginTab(plugin);
         });
@@ -397,11 +404,11 @@ var WMEWAL;
         }
     }
     function addPluginTab(plugin) {
-        var sidepanel = $("#sidepanel-wme-wal");
-        var tabs = $("#wmewal-tabs", sidepanel);
+        let sidepanel = $("#sidepanel-wme-wal");
+        let tabs = $("#wmewal-tabs", sidepanel);
         tabs.append("<li><a data-toggle='tab' href='#" + plugin.Id + "'>" + plugin.Title + "</a></li>");
-        var tabContent = $("div.tab-content", sidepanel);
-        var tab = $("<div class='tab-pane' id='" + plugin.Id + "'/>");
+        let tabContent = $("div.tab-content", sidepanel);
+        let tab = $("<div class='tab-pane' id='" + plugin.Id + "'/>");
         tab.append(plugin.GetTab());
         tabContent.append(tab);
         if (plugin.TabLoaded) {
@@ -409,14 +416,14 @@ var WMEWAL;
         }
     }
     function updatePluginList() {
-        var list = $("#_wmewalPlugins");
+        let list = $("#_wmewalPlugins");
         list.empty();
-        for (var ix = 0; ix < plugins.length; ix++) {
-            var id = "_wmewalPlugin_" + plugins[ix].Id.toString();
+        for (let ix = 0; ix < plugins.length; ix++) {
+            let id = "_wmewalPlugin_" + plugins[ix].Id.toString();
             if (ix > 0) {
                 list.append("<br/>");
             }
-            var c = $("<input type='checkbox' name='_wmewalPlugin'/>")
+            let c = $("<input type='checkbox' name='_wmewalPlugin'/>")
                 .attr({ id: id, title: plugins[ix].Title, "data-id": plugins[ix].Id }).appendTo(list);
             if (plugins[ix].Active) {
                 c.attr("checked", "checked");
@@ -425,12 +432,12 @@ var WMEWAL;
         }
     }
     function RegisterPlugIn(plugin) {
-        var p = plugin;
-        var found = false;
-        var r;
+        let p = plugin;
+        let found = false;
+        let r;
         do {
             r = Math.ceil(Math.random() * 1000);
-            for (var ix = 0; ix < plugins.length; ix++) {
+            for (let ix = 0; ix < plugins.length; ix++) {
                 if (plugins[ix].Id === r) {
                     found = true;
                     break;
@@ -473,10 +480,10 @@ var WMEWAL;
     }
     WMEWAL.IsMapCommentInArea = IsMapCommentInArea;
     function updateLayer() {
-        var features = [];
-        var maLayer = W.map.getLayerByUniqueName(layerName);
+        let features = [];
+        let maLayer = W.map.getLayerByUniqueName(layerName);
         if (maLayer === null || typeof maLayer === "undefined") {
-            maLayer = new OL.Layer.Vector("Wide-Angle Lens Areas", {
+            maLayer = new OpenLayers.Layer.Vector("Wide-Angle Lens Areas", {
                 uniqueName: layerName
             });
             I18n.translations[I18n.currentLocale()].layers.name[layerName] = "Wide-Angle Lens Areas";
@@ -486,8 +493,8 @@ var WMEWAL;
         maLayer.removeAllFeatures({
             silent: true
         });
-        for (var ixA = 0; ixA < settings.SavedAreas.length; ixA++) {
-            var style = {
+        for (let ixA = 0; ixA < settings.SavedAreas.length; ixA++) {
+            let style = {
                 strokeColor: "#FF6600",
                 strokeOpacity: 0.8,
                 strokeWidth: 3,
@@ -500,8 +507,8 @@ var WMEWAL;
                 fontOpacity: 0.85,
                 fontWeight: "bold"
             };
-            features.push(new OL.Feature.Vector(settings.SavedAreas[ixA].geometry.clone(), {
-                areaName: settings.SavedAreas[ixA].name
+            features.push(new OpenLayers.Feature.Vector(settings.SavedAreas[ixA].geometry.clone(), {
+                areaName: settings.SavedAreas[ixA].name,
             }, style));
         }
         maLayer.addFeatures(features);
@@ -516,23 +523,23 @@ var WMEWAL;
     }
     // function addLatLonArray(latLonArray, arrayName): void
     // {
-    //     let points: Array<OL.Geometry> = [];
+    //     let points: Array<OpenLayers.Geometry> = [];
     //     for (let i = 0; i < latLonArray.length; i++)
     //     {
-    //         points.push(new OL.Geometry.Point(latLonArray[i].lon, latLonArray[i].lat).transform(new OL.Projection("EPSG:4326"), W.map.getProjectionObject()));
+    //         points.push(new OpenLayers.Geometry.Point(latLonArray[i].lon, latLonArray[i].lat).transform(new OpenLayers.Projection("EPSG:4326"), W.map.getProjectionObject()));
     //     }
-    //     let ring = new OL.Geometry.LinearRing(points);
-    //     let polygon = new OL.Geometry.Polygon([ring]);
+    //     let ring = new OpenLayers.Geometry.LinearRing(points);
+    //     let polygon = new OpenLayers.Geometry.Polygon([ring]);
     //     savedAreas.push({name: arrayName, geometry: polygon});
     // }
     function addNewArea() {
-        var theVenue = null;
-        var count = 0;
-        for (var v in W.model.venues.objects) {
+        let theVenue = null;
+        let count = 0;
+        for (let v in W.model.venues.objects) {
             if (W.model.venues.objects.hasOwnProperty(v) === false) {
                 continue;
             }
-            var venue = W.model.venues.objects[v];
+            let venue = W.model.venues.objects[v];
             if (venue.isPoint() === true) {
                 continue;
             }
@@ -553,12 +560,12 @@ var WMEWAL;
             alert("Can't parse the geometry");
             return;
         }
-        var nameBox = $("#_wmewalNewAreaName")[0];
+        let nameBox = $("#_wmewalNewAreaName")[0];
         if (nameBox.value.trim().length === 0) {
             alert("Please provide a name for the new area.");
             return;
         }
-        var savedArea = {
+        let savedArea = {
             name: nameBox.value.trim(),
             geometry: theVenue.geometry.clone()
         };
@@ -585,24 +592,24 @@ var WMEWAL;
     function updateSavedAreasList() {
         function getCenterFunc(index) {
             return function () {
-                var center = settings.SavedAreas[index].geometry.getCentroid();
-                var lonlat = new OL.LonLat(center.x, center.y);
+                let center = settings.SavedAreas[index].geometry.getCentroid();
+                let lonlat = new OpenLayers.LonLat(center.x, center.y);
                 W.map.setCenter(lonlat);
             };
         }
         settings.SavedAreas.sort(function (a, b) {
             return a.name.localeCompare(b.name);
         });
-        var list = $("div[name=_wmewalSavedAreas]");
+        let list = $("div[name=_wmewalSavedAreas]");
         list.empty();
         list.each(function (eIx, e) {
-            for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
-                var id = "_wmewalScanArea_" + eIx.toString() + "_" + ix.toString();
-                var input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
+            for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
+                let id = "_wmewalScanArea_" + eIx.toString() + "_" + ix.toString();
+                let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
                 e.appendChild(input[0]);
-                var label = $("<label/>").attr("for", id).css("margin-left", "8px").text(settings.SavedAreas[ix].name);
+                let label = $("<label/>").attr("for", id).css("margin-left", "8px").text(settings.SavedAreas[ix].name);
                 e.appendChild(label[0]);
-                var center = $("<i/>").addClass("fa").addClass("fa-crosshairs").css("margin-left", "4px").on("click", getCenterFunc(ix));
+                let center = $("<i/>").addClass("fa").addClass("fa-crosshairs").css("margin-left", "4px").on("click", getCenterFunc(ix));
                 e.appendChild(center[0]);
                 // var div = document.createElement('div');
                 // var link = document.createElement('a');
@@ -616,7 +623,7 @@ var WMEWAL;
                 // div.appendChild(link);
                 // e.appendChild(document.createTextNode("\u00A0"));
                 // e.appendChild(delLink);
-                var br = $("<br/>");
+                let br = $("<br/>");
                 e.appendChild(br[0]);
             }
         });
@@ -625,14 +632,15 @@ var WMEWAL;
     }
     function updateSettings() {
         if (typeof Storage !== "undefined") {
-            var newSettings = {
+            WMEWAL.outputTo = parseOutputTo($("#_wmewalScanOutputTo").val());
+            let newSettings = {
                 SavedAreas: [],
                 ActivePlugins: settings.ActivePlugins,
                 OutputTo: $("#_wmewalScanOutputTo").val(),
                 Version: settings.Version,
                 showLayer: settings.showLayer
             };
-            for (var ix = 0; ix < settings.SavedAreas.length; ix++) {
+            for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                 newSettings.SavedAreas.push({
                     name: settings.SavedAreas[ix].name,
                     geometryText: settings.SavedAreas[ix].geometry.toString()
@@ -642,23 +650,23 @@ var WMEWAL;
         }
     }
     function importFile() {
-        var input = $("#_wmewalImportFileName")[0];
+        let input = $("#_wmewalImportFileName")[0];
         if (input.files.length === 0) {
             alert("Select a file to import.");
             return;
         }
-        var fileName = input.files[0].name;
-        var fileExt = fileName.split(".").pop();
-        var name = fileName.replace("." + fileExt, "");
-        var reader = new FileReader();
+        let fileName = input.files[0].name;
+        let fileExt = fileName.split(".").pop();
+        let name = fileName.replace("." + fileExt, "");
+        let reader = new FileReader();
         reader.onload = function (e) {
-            var parser = new OL.Format.WKT();
-            var features = parser.read(e.target.result);
-            var feature;
+            let parser = new OpenLayers.Format.WKT();
+            let features = parser.read(e.target.result);
+            let feature;
             while (features instanceof Array && features.length === 1) {
                 features = features[0];
             }
-            if (features instanceof OL.Feature.Vector) {
+            if (features instanceof OpenLayers.Feature.Vector) {
                 feature = features;
             }
             else {
@@ -666,10 +674,10 @@ var WMEWAL;
                 return;
             }
             // Assume geometry is in EPSG:4326 and reproject to Spherical Mercator
-            var fromProj = new OL.Projection("EPSG:4326");
-            var c = feature.geometry.clone();
+            let fromProj = new OpenLayers.Projection("EPSG:4326");
+            let c = feature.geometry.clone();
             c.transform(fromProj, W.map.getProjectionObject());
-            var savedArea = {
+            let savedArea = {
                 name: name,
                 geometry: c
             };
@@ -683,68 +691,77 @@ var WMEWAL;
             return;
         }
         WMEWAL.areaToScan.calculateBounds();
-        var bounds = WMEWAL.areaToScan.getBounds();
-        topLeft = new OL.Geometry.Point(bounds.left, bounds.top);
-        bottomRight = new OL.Geometry.Point(bounds.right, bounds.bottom);
+        let bounds = WMEWAL.areaToScan.getBounds();
+        topLeft = new OpenLayers.Geometry.Point(bounds.left, bounds.top);
+        bottomRight = new OpenLayers.Geometry.Point(bounds.right, bounds.bottom);
     }
     function scanExtent() {
+        let dfd = $.Deferred();
         if (cancelled) {
-            return;
+            dfd.resolve();
         }
-        logDebug("Scan Extent");
-        var extentSegments = [];
-        var extentVenues = [];
-        // Check to see if the current extent is completely within the area being searched
-        // let allIn = true;
-        // let vertices = W.map.getExtent().toGeometry().getVertices();
-        // for (let ix = 0; ix < vertices.length && allIn; ix++) {
-        //     allIn = allIn && geoCollection.intersects(vertices[ix]);
-        // }
-        // logDebug("Extent is " + (!allIn ? "NOT " : "") + "entirely within area");
-        if (needSegments && segments != null) {
-            logDebug("Collecting segments");
-            for (var seg in W.model.segments.objects) {
-                if (segments.indexOf(seg) === -1) {
-                    var segment = W.model.segments.getObjectById(parseInt(seg));
-                    if (segment != null) {
-                        segments.push(seg);
-                        extentSegments.push(segment);
+        else {
+            logDebug("Scan Extent");
+            let extentSegments = [];
+            let extentVenues = [];
+            // Check to see if the current extent is completely within the area being searched
+            // let allIn = true;
+            // let vertices = W.map.getExtent().toGeometry().getVertices();
+            // for (let ix = 0; ix < vertices.length && allIn; ix++) {
+            //     allIn = allIn && geoCollection.intersects(vertices[ix]);
+            // }
+            // logDebug("Extent is " + (!allIn ? "NOT " : "") + "entirely within area");
+            if (needSegments && segments != null) {
+                logDebug("Collecting segments");
+                for (let seg in W.model.segments.objects) {
+                    if (segments.indexOf(seg) === -1) {
+                        let segment = W.model.segments.getObjectById(parseInt(seg));
+                        if (segment != null) {
+                            segments.push(seg);
+                            extentSegments.push(segment);
+                        }
+                    }
+                }
+                logDebug("Done collecting segments");
+            }
+            if (needVenues && venues != null) {
+                logDebug("Collecting venues");
+                for (let ven in W.model.venues.objects) {
+                    if (venues.indexOf(ven) === -1) {
+                        let venue = W.model.venues.getObjectById(ven);
+                        if (venue != null) {
+                            venues.push(ven);
+                            extentVenues.push(venue);
+                        }
+                    }
+                }
+                logDebug("Done collecting venues");
+            }
+            let promises = [];
+            for (let ix = 0; ix < plugins.length; ix++) {
+                if (plugins[ix].Active) {
+                    logDebug("Calling plugin " + plugins[ix].Title);
+                    if (!cancelled) {
+                        promises.push(plugins[ix].ScanExtent(extentSegments, extentVenues));
                     }
                 }
             }
-            logDebug("Done collecting segments");
-        }
-        if (needVenues && venues != null) {
-            logDebug("Collecting venues");
-            for (var ven in W.model.venues.objects) {
-                if (venues.indexOf(ven) === -1) {
-                    var venue = W.model.venues.getObjectById(ven);
-                    if (venue != null) {
-                        venues.push(ven);
-                        extentVenues.push(venue);
-                    }
-                }
-            }
-            logDebug("Done collecting venues");
-        }
-        var promises = [];
-        for (var ix = 0; ix < plugins.length; ix++) {
-            if (plugins[ix].Active) {
-                logDebug("Calling plugin " + plugins[ix].Title);
-                if (!cancelled) {
-                    promises.push(plugins[ix].ScanExtent(extentSegments, extentVenues));
-                }
+            if (promises.length > 0) {
+                $.when(promises).done(function () {
+                    logDebug("Finished scanning extent");
+                    dfd.resolve();
+                })
+                    .fail(function () {
+                    dfd.reject();
+                });
             }
         }
-        if (promises.length > 0) {
-            $.when(promises);
-        }
-        logDebug("Finished scanning extent");
+        return dfd.promise();
     }
     function moveToNextLocation() {
         logDebug("Move To Next Location");
-        var done = false;
-        var inGeometry = false;
+        let done = false;
+        let inGeometry = false;
         do {
             if (WMEWAL.areaToScan == null) {
                 done = true;
@@ -765,18 +782,18 @@ var WMEWAL;
                 if (!done) {
                     // Check to see if the new window would be within the boundaries of the original area
                     // Create a geometry object for the window boundaries
-                    var points = [];
-                    points.push(new OL.Geometry.Point(currentX - (width / 2), currentY + (height / 2)));
-                    points.push(new OL.Geometry.Point(currentX + (width / 2), currentY + (height / 2)));
-                    points.push(new OL.Geometry.Point(currentX - (width / 2), currentY - (height / 2)));
-                    points.push(new OL.Geometry.Point(currentX + (width / 2), currentY - (height / 2)));
-                    var lr = new OL.Geometry.LinearRing(points);
-                    var poly = new OL.Geometry.Polygon([lr]);
+                    let points = [];
+                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY + (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY + (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY - (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY - (height / 2)));
+                    let lr = new OpenLayers.Geometry.LinearRing(points);
+                    let poly = new OpenLayers.Geometry.Polygon([lr]);
                     inGeometry = WMEWAL.areaToScan && WMEWAL.areaToScan.intersects(poly);
                 }
             }
             if (!inGeometry) {
-                var progress = Math.floor(countViewports / totalViewports * 100);
+                let progress = Math.floor(countViewports / totalViewports * 100);
                 pb.update(progress);
             }
         } while (!inGeometry && !done);
@@ -786,92 +803,103 @@ var WMEWAL;
         else {
             WazeWrap.Model.onModelReady(onOperationDone, false, null);
             logDebug("Moving map");
-            W.map.setCenter(new OL.LonLat(currentX, currentY));
+            W.map.setCenter(new OpenLayers.LonLat(currentX, currentY));
         }
     }
     function onOperationDone(e) {
         if (!cancelled) {
-            scanExtent();
-            var progress = Math.floor(countViewports / totalViewports * 100);
-            pb.update(progress);
-            moveToNextLocation();
+            scanExtent()
+                .done(function () {
+                let progress = Math.floor(countViewports / totalViewports * 100);
+                pb.update(progress);
+                moveToNextLocation();
+            })
+                .fail(function () {
+                alert("There was a problem with one of the plugins and the scan is being canceled");
+                cancel();
+            });
         }
     }
-    /*function onModelReady(callback, now, context) {
-        var deferModelReady;
-        var deferMapReady;
-        function modelReadyResolve() {
-            logDebug("mergeend, unregistering");
-            W.model.events.unregister("mergeend", null, modelReadyResolve);
-            deferModelReady.resolve();
-        }
-        function mapReadyResolve(e) {
-            if (e.operation.id === "pending.road_data") {
-                logDebug("operationDone, unregistering");
-                W.vent.off("operationDone", mapReadyResolve);
-                deferMapReady.resolve();
+    /*function onModelReady(callback, now: boolean, context): void {
+            let deferModelReady: JQueryDeferred<{}>;
+            let deferMapReady: JQueryDeferred<{}>;
+    
+            function modelReadyResolve() {
+                logDebug("mergeend, unregistering");
+                W.model.events.unregister("mergeend", null, modelReadyResolve);
+                deferModelReady.resolve();
             }
-        }
-        logDebug("On Model Ready");
-        if (typeof callback === "function") {
-            context = context || callback;
-            if (now && mapReady && modelReady) {
-                callback.call(context);
+    
+            function mapReadyResolve(e) {
+                if (e.operation.id === "pending.road_data") {
+                    logDebug("operationDone, unregistering");
+                    W.vent.off("operationDone", mapReadyResolve);
+                    deferMapReady.resolve();
+                }
             }
-            else {
-                deferModelReady = $.Deferred();
-                logDebug("Registering for mergeend");
-                W.model.events.register("mergeend", null, modelReadyResolve);
-                // function (dfd) {
-                //     let resolve = function () {
-                //         logDebug("mergeend, unregistering");
-                //         W.model.events.unregister("mergeend", null, resolve);
-                //         dfd.resolve();
-                //     };
-                //     logDebug("Registering for mergeend");
-                //     W.model.events.register("mergeend", null, resolve);
-                // });
-                deferMapReady = $.Deferred();
-                logDebug("Registering for operationDone");
-                W.vent.on("operationDone", mapReadyResolve);
-                // function (dfd) {
-                //     let resolve = function (e) {
-                //         if (e.operation.id === "pending.road_data") {
-                //             logDebug("operationDone, unregistering");
-                //             W.vent.off("operationDone", resolve);
-                //             dfd.resolve();
-                //         }
-                //     };
-                //     logDebug("Registing for operationDone");
-                //     W.vent.on("operationDone", resolve);
-                // });
-                var timerSet_1 = true;
-                var timer_1 = setTimeout(function () {
-                    timerSet_1 = false;
-                    // Wait a max of 10 seconds to move the map.  If it hasn't happened by then, it won't happen
-                    logDebug("Timeout");
-                    mapReadyResolve({ operation: { id: "pending.road_data" } });
-                    modelReadyResolve();
-                }, 10000);
-                $.when(deferMapReady, deferModelReady).
-                    then(function () {
-                    if (timerSet_1) {
-                        clearTimeout(timer_1);
-                        timerSet_1 = false;
-                    }
-                    logDebug("Map and Model are ready");
+    
+            logDebug("On Model Ready");
+            if (typeof callback === "function") {
+                context = context || callback;
+                if (now && mapReady && modelReady) {
                     callback.call(context);
-                });
+                } else {
+                    deferModelReady = $.Deferred();
+                    logDebug("Registering for mergeend");
+                    W.model.events.register("mergeend", null, modelReadyResolve);
+                    // function (dfd) {
+                    //     let resolve = function () {
+                    //         logDebug("mergeend, unregistering");
+                    //         W.model.events.unregister("mergeend", null, resolve);
+                    //         dfd.resolve();
+                    //     };
+                    //     logDebug("Registering for mergeend");
+                    //     W.model.events.register("mergeend", null, resolve);
+                    // });
+                    deferMapReady = $.Deferred();
+                    logDebug("Registering for operationDone");
+                    W.vent.on("operationDone", mapReadyResolve);
+                    // function (dfd) {
+                    //     let resolve = function (e) {
+                    //         if (e.operation.id === "pending.road_data") {
+                    //             logDebug("operationDone, unregistering");
+                    //             W.vent.off("operationDone", resolve);
+                    //             dfd.resolve();
+                    //         }
+                    //     };
+                    //     logDebug("Registing for operationDone");
+                    //     W.vent.on("operationDone", resolve);
+                    // });
+    
+                    let timerSet = true;
+                    let timer = setTimeout(function () {
+                        timerSet = false;
+                        // Wait a max of 10 seconds to move the map.  If it hasn't happened by then, it won't happen
+                        logDebug("Timeout");
+                        mapReadyResolve({ operation: { id: "pending.road_data" } });
+                        modelReadyResolve();
+                    }, 10000);
+    
+                    $.when(deferMapReady, deferModelReady).
+                        then(function () {
+                            if (timerSet) {
+                                clearTimeout(timer);
+                                timerSet = false;
+                            }
+                            logDebug("Map and Model are ready");
+                            callback.call(context);
+                        });
+                }
             }
-        }
-    }*/
+        }*/
     function cancel() {
         cancelled = true;
-        for (var ix = 0; ix < plugins.length; ix++) {
+        for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active && plugins[ix].ScanCancelled) {
                 try {
                     plugins[ix].ScanCancelled();
-                } catch (e) {
+                }
+                catch (e) {
                     console.warn(`WMEWAL: Trouble cancelling plugin ${plugins[ix].Title}\n${e.message}`);
                 }
             }
@@ -881,14 +909,13 @@ var WMEWAL;
     function processComplete() {
         pb.update(100);
         logDebug("Process Complete");
-        for (var ix = 0; ix < plugins.length; ix++) {
+        for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active && plugins[ix].ScanComplete) {
                 plugins[ix].ScanComplete();
             }
         }
         resetState();
     }
-
     function alertBeforeClose(e) {
         if (WMEWAL.areaToScan !== null) {
             logDebug('Alerting user before closing page');
@@ -899,8 +926,7 @@ var WMEWAL;
         else {
             return false;
         }
-    };
-
+    }
     function resetState() {
         pb.hide();
         showPBInfo(false);
@@ -910,7 +936,7 @@ var WMEWAL;
         // Return to previous state
         if (layerToggle != null) {
             while (layerToggle.length > 0) {
-                var ln = layerToggle.pop();
+                let ln = layerToggle.pop();
                 $("#" + ln).trigger("click");
             }
             layerToggle = null;
@@ -927,13 +953,13 @@ var WMEWAL;
         venues = null;
         $("#_wmewalCancel").attr("disabled", "disabled");
         // Remove listeners for unloading page
-        window.removeEventListener('beforeunload',  alertBeforeClose);
+        window.removeEventListener('beforeunload', alertBeforeClose);
         window.removeEventListener('unload', cancel);
     }
     function exportArea() {
-        var index = -1;
-        var nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
-        for (var ix = 0; ix < nodes.length; ix++) {
+        let index = -1;
+        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
+        for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
                 break;
@@ -946,23 +972,23 @@ var WMEWAL;
         else if (index >= settings.SavedAreas.length) {
             return;
         }
-        var c = new OL.Geometry.Collection([settings.SavedAreas[index].geometry.clone()]);
+        let c = new OpenLayers.Geometry.Collection([settings.SavedAreas[index].geometry.clone()]);
         // Transform the collection to EPSG:4326
-        var toProj = new OL.Projection("EPSG:4326");
+        let toProj = new OpenLayers.Projection("EPSG:4326");
         c.transform(W.map.getProjectionObject(), toProj);
-        var geoText = c.toString();
-        var encodedUri = "data:text/plain;charset=utf-8," + encodeURIComponent(geoText);
-        var link = document.createElement("a");
+        let geoText = c.toString();
+        let encodedUri = "data:text/plain;charset=utf-8," + encodeURIComponent(geoText);
+        let link = document.createElement("a");
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", settings.SavedAreas[index].name + ".wkt");
-        var node = document.body.appendChild(link);
+        let node = document.body.appendChild(link);
         link.click();
         document.body.removeChild(node);
     }
     function deleteArea() {
-        var index = -1;
-        var nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
-        for (var ix = 0; ix < nodes.length; ix++) {
+        let index = -1;
+        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
+        for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
                 break;
@@ -978,9 +1004,9 @@ var WMEWAL;
         removeSavedArea(index);
     }
     function renameArea() {
-        var index = -1;
-        var nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
-        for (var ix = 0; ix < nodes.length; ix++) {
+        let index = -1;
+        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
+        for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
                 break;
@@ -993,7 +1019,7 @@ var WMEWAL;
         else if (index >= settings.SavedAreas.length) {
             return;
         }
-        var newName = prompt("Enter a new name");
+        let newName = prompt("Enter a new name");
         if (newName == null) {
             return;
         }
@@ -1001,9 +1027,9 @@ var WMEWAL;
         updateSavedAreasList();
     }
     function scanArea() {
-        var index = -1;
-        var nodes = $("input[name=_wmewalScanArea]", "#_wmewalOptionsSavedAreas");
-        for (var ix = 0; ix < nodes.length; ix++) {
+        let index = -1;
+        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalOptionsSavedAreas");
+        for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
                 break;
@@ -1025,11 +1051,11 @@ var WMEWAL;
             alert("No bounds");
             return;
         }
-        var anyActivePlugins = false;
+        let anyActivePlugins = false;
         needSegments = false;
         needVenues = false;
-        var needMapComments = false;
-        for (var ix = 0; ix < plugins.length; ix++) {
+        let needMapComments = false;
+        for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
                 anyActivePlugins = true;
                 needSegments = needSegments || plugins[ix].SupportsSegments;
@@ -1046,12 +1072,12 @@ var WMEWAL;
         WMEWAL.areaName = name;
         segments = [];
         venues = [];
-        var allOk = true;
+        let allOk = true;
         pb = new ProgressBar("#wal-progressBar");
         pb.update(0);
         pb.show();
         showPBInfo(true);
-        for (var ix = 0; ix < plugins.length; ix++) {
+        for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
                 info("Initializing plugin " + plugins[ix].Title);
                 allOk = allOk && plugins[ix].ScanStarted();
@@ -1065,19 +1091,17 @@ var WMEWAL;
         }
         info("Please don't touch anything during the scan");
         $("#_wmewalCancel").removeAttr("disabled");
-
         // Alert user if they try to leave the page before scan is finished
-        window.addEventListener('beforeunload',  alertBeforeClose);
+        window.addEventListener('beforeunload', alertBeforeClose);
         //Cleanup when closing page
         window.addEventListener('unload', cancel);
-
         // Save current state
         currentCenter = W.map.getCenter();
         currentZoom = W.map.zoom;
         layerToggle = [];
-        var groups = $("div.layer-switcher li.group");
+        let groups = $("div.layer-switcher li.group");
         groups.each(function (ix, g) {
-            var groupToggle = $(g).find("span.wz-toggle-switch input[type=checkbox]");
+            let groupToggle = $(g).find("wz-toggle-switch");
             switch ($(groupToggle).attr("id")) {
                 case "layer-switcher-group_places":
                     if (needVenues) {
@@ -1086,7 +1110,7 @@ var WMEWAL;
                             layerToggle.push($(groupToggle).attr("id"));
                         }
                         // Loop through each child in the group
-                        $(g).find("ul > li > div.wz-checkbox input[type=checkbox]").each(function (ixChild, c) {
+                        $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
                             switch ($(c).attr("id")) {
                                 case "layer-switcher-item_venues":
                                 case "layer-switcher-item_residential_places":
@@ -1125,7 +1149,7 @@ var WMEWAL;
                             layerToggle.push($(groupToggle).attr("id"));
                         }
                         // Loop through each child in the group
-                        $(g).find("ul > li > div.wz-checkbox input[type=checkbox]").each(function (ixChild, c) {
+                        $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
                             switch ($(c).attr("id")) {
                                 case "layer-switcher-item_map_comments":
                                     if (!$(c).prop("checked")) {
@@ -1159,13 +1183,18 @@ var WMEWAL;
         });
         // Reload road layers
         if (!W.model.actionManager.canUndo()) {
-            for (var ix = 0; ix < W.map.roadLayers.length; ix++) {
+            for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
                 W.map.roadLayers[ix].redraw(true);
             }
-            W.controller.reload();
+            if (typeof W.controller.reloadData === "function") {
+                W.controller.reloadData();
+            }
+            else {
+                W.controller.reload();
+            }
         }
-        var minZoomLevel = 1;
-        for (var ix = 0; ix < plugins.length; ix++) {
+        let minZoomLevel = 1;
+        for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
                 if (plugins[ix].MinimumZoomLevel > minZoomLevel) {
                     minZoomLevel = plugins[ix].MinimumZoomLevel;
@@ -1174,12 +1203,12 @@ var WMEWAL;
         }
         WMEWAL.zoomLevel = minZoomLevel;
         WALMap.zoomTo(WMEWAL.zoomLevel);
-        var extent = W.map.getExtent();
+        let extent = W.map.getExtent();
         height = extent.getHeight();
         width = extent.getWidth();
         // Figure out how many horizontal and vertical viewports there are
-        var horizontalSpan = Math.floor((bottomRight.x - topLeft.x) / width) + 2;
-        var verticalSpan = Math.floor((topLeft.y - bottomRight.y) / height) + 2;
+        let horizontalSpan = Math.floor((bottomRight.x - topLeft.x) / width) + 2;
+        let verticalSpan = Math.floor((topLeft.y - bottomRight.y) / height) + 2;
         totalViewports = horizontalSpan * verticalSpan + 1;
         countViewports = 0;
         logDebug("Horizontal span = " + horizontalSpan.toString());
@@ -1193,11 +1222,28 @@ var WMEWAL;
     }
     function logDebug(message) {
         if (debug) {
-            var t = new Date();
-            var timeString = t.getHours().toString() + ":" + t.getMinutes().toString() + ":" +
+            let t = new Date();
+            let timeString = t.getHours().toString() + ":" + t.getMinutes().toString() + ":" +
                 t.getSeconds().toString() + ":" + t.getMilliseconds().toString();
             console.log("WMEWAL " + timeString + ": " + message);
         }
+    }
+    function parseOutputTo(outputTo) {
+        let ot;
+        switch (outputTo.toLowerCase()) {
+            case "csv":
+                ot = OutputTo.CSV;
+                break;
+            case "tab":
+                ot = OutputTo.Tab;
+                break;
+            case "both":
+                ot = OutputTo.CSV | OutputTo.Tab;
+                break;
+            default:
+                break;
+        }
+        return ot;
     }
     function WazeRoadTypeToRoadTypeBitmask(roadType) {
         switch (roadType) {
@@ -1286,17 +1332,17 @@ var WMEWAL;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
     function CompareVersions(v1, v2) {
-        var v1Parts = v1.split(".");
-        var v2Parts = v2.split(".");
+        let v1Parts = v1.split(".");
+        let v2Parts = v2.split(".");
         for (; v1Parts.length < v2Parts.length;) {
             v1Parts.push(".0");
         }
         for (; v2Parts.length < v1Parts.length;) {
             v2Parts.push(".0");
         }
-        for (var ix = 0; ix < v1Parts.length; ix++) {
-            var v1Element = parseInt(v1Parts[ix]);
-            var v2Element = parseInt(v2Parts[ix]);
+        for (let ix = 0; ix < v1Parts.length; ix++) {
+            let v1Element = parseInt(v1Parts[ix]);
+            let v2Element = parseInt(v2Parts[ix]);
             if (v1Element < v2Element) {
                 return -1;
             }
