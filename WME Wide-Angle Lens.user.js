@@ -24,7 +24,7 @@ var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Update for latest WME release (removal of W.controller.reload) and fix disabling/enabling layers';
+    const updateText = 'Correctly andle running multiple plugins simultaneously.';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const debug = false;
