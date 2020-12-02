@@ -11,14 +11,14 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.1
+// @version             1.5.2
 // @grant               none
 // @copyright           2017 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
+// ==/UserScript==
 /* global W, OL, $, WazeWrap, OpenLayers, I18n */
 var WMEWAL;
 (function (WMEWAL) {
@@ -27,6 +27,7 @@ var WMEWAL;
     const updateText = 'Update for latest WME release (removal of W.controller.reload) and fix disabling/enabling layers';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+    const debug = false;
     class ProgressBar {
         constructor(id) {
             this.div = $(id);
@@ -101,7 +102,6 @@ var WMEWAL;
     let settings = null;
     let plugins = [];
     let settingsKey = "WMEWAL_Settings";
-    let debug = false;
     let layerName = "WMEWAL_Areas";
     let pb = null;
     let initCount = 0;
@@ -696,6 +696,7 @@ var WMEWAL;
         bottomRight = new OpenLayers.Geometry.Point(bounds.right, bounds.bottom);
     }
     function scanExtent() {
+        logDebug("scanExtent started.");
         let dfd = $.Deferred();
         if (cancelled) {
             dfd.resolve();
@@ -747,11 +748,12 @@ var WMEWAL;
                 }
             }
             if (promises.length > 0) {
-                $.when(promises).done(function () {
-                    logDebug("Finished scanning extent");
+                $.when(...promises).done(function () {
+                    logDebug("Finished scanning extent. Resolving deferred.");
                     dfd.resolve();
                 })
                     .fail(function () {
+                    logDebug("A plugin failed. Rejecting deferred.");
                     dfd.reject();
                 });
             }
@@ -759,7 +761,7 @@ var WMEWAL;
         return dfd.promise();
     }
     function moveToNextLocation() {
-        logDebug("Move To Next Location");
+        logDebug("moveToNextLocation started.");
         let done = false;
         let inGeometry = false;
         do {
@@ -798,23 +800,34 @@ var WMEWAL;
             }
         } while (!inGeometry && !done);
         if (done) {
+            logDebug("Process complete");
             processComplete();
         }
         else {
             WazeWrap.Model.onModelReady(onOperationDone, false, null);
             logDebug("Moving map");
-            W.map.setCenter(new OpenLayers.LonLat(currentX, currentY));
+            try {
+                W.map.setCenter(new OpenLayers.LonLat(currentX, currentY));
+            }
+            catch (e) {
+                console.error(e);
+                alert("There was a problem trying to pan the mnap and the scan is being canceled");
+                cancel();
+            }
         }
     }
     function onOperationDone(e) {
+        logDebug("onOperationDone started");
         if (!cancelled) {
             scanExtent()
                 .done(function () {
+                logDebug("scanExtent deferred done.");
                 let progress = Math.floor(countViewports / totalViewports * 100);
                 pb.update(progress);
                 moveToNextLocation();
             })
                 .fail(function () {
+                logDebug("scanExtent deferred failed.");
                 alert("There was a problem with one of the plugins and the scan is being canceled");
                 cancel();
             });
@@ -893,6 +906,7 @@ var WMEWAL;
             }
         }*/
     function cancel() {
+        logDebug("cancel started.");
         cancelled = true;
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active && plugins[ix].ScanCancelled) {
@@ -907,8 +921,8 @@ var WMEWAL;
         resetState();
     }
     function processComplete() {
+        logDebug("processComplete started.");
         pb.update(100);
-        logDebug("Process Complete");
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active && plugins[ix].ScanComplete) {
                 plugins[ix].ScanComplete();
@@ -928,10 +942,10 @@ var WMEWAL;
         }
     }
     function resetState() {
+        logDebug("resetState started.");
         pb.hide();
         showPBInfo(false);
         info("");
-        logDebug("Reset state");
         WMEWAL.areaToScan = null;
         // Return to previous state
         if (layerToggle != null) {
@@ -1224,7 +1238,7 @@ var WMEWAL;
         if (debug) {
             let t = new Date();
             let timeString = t.getHours().toString() + ":" + t.getMinutes().toString() + ":" +
-                t.getSeconds().toString() + ":" + t.getMilliseconds().toString();
+                t.getSeconds().toString() + "." + t.getMilliseconds().toString();
             console.log("WMEWAL " + timeString + ": " + message);
         }
     }
