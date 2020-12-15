@@ -1,0 +1,39 @@
+Production
+WAL
+// @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
+Cities
+// @updateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
+Locks
+// @updateURL           https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
+Map Comments
+// @updateURL           https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
+Places
+// @updateURL           https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
+Streets
+// @updateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
+
+Beta
+WAL
+// @updateURL           https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.user.js
+Cities
+// @updateURL           https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.user.js
+Locks
+// @updateURL           https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.user.js
+Map Comments
+// @updateURL           https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
+Places
+// @updateURL           https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.user.js
+Streets
+// @updateURL           https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
+// @downloadURL         https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.user.js

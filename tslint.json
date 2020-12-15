@@ -1,0 +1,22 @@
+{
+    "extends": "tslint:latest",
+    "rules": {
+        "max-line-length": [
+            false
+        ],
+        "no-bitwise": false,
+        "no-console": [
+            false
+        ],
+        "no-namespace": "false",
+        "no-reference": false,
+        "no-string-literal": false,
+        "object-literal-shorthand": false,
+        "object-literal-sort-keys": false,
+        "only-arrow-functions": false,
+        "radix": false,
+        "trailing-comma": [
+            false
+        ]
+    }
+}
