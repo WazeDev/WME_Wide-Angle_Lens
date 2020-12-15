@@ -5,22 +5,20 @@
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 /// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens Map Comments Beta
+// @name                WME Wide-Angle Lens Map Comments
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find map comments that match filter criteria
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             0.2.1
+// @version             1.0.0
 // @grant               none
-// @copyright           2017 vtpearce
+// @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @updateURL           https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
-// @downloadURL         https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
-// ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
+// ==/UserScript==
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers, I18n */
 var WMEWAL_MapComments;
 (function (WMEWAL_MapComments) {

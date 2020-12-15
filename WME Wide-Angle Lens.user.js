@@ -5,7 +5,7 @@
 /// <reference path="../typings/wazewrap.d.ts" />
 /// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens Beta
+// @name                WME Wide-Angle Lens
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
@@ -13,14 +13,12 @@
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
 // @version             1.5.4
 // @grant               none
-// @copyright           2017 vtpearce
+// @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @updateURL           https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.meta.js
-// @downloadURL         https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.user.js
-// ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
+// ==/UserScript==
 /* global W, OL, $, WazeWrap, OpenLayers, I18n */
 var WMEWAL;
 (function (WMEWAL) {

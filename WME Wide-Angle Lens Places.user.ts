@@ -5,7 +5,7 @@
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 /// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens Places Beta
+// @name                WME Wide-Angle Lens Places
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find place that match filter criteria
 // @author              vtpearce and crazycaveman

@@ -5,7 +5,7 @@
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 /// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens Streets Beta
+// @name                WME Wide-Angle Lens Streets
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -13,16 +13,13 @@
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
 // @version             1.6.2
 // @grant               none
-// @copyright           2017 vtpearce
-// @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @updateURL           https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
-// @downloadURL         https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.user.js
+// @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
-// ==/UserScript==
+// @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
+// ==/UserScript==
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers, I18n */
-// TODO: Location of Created By label
 var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const scrName = GM_info.script.name;

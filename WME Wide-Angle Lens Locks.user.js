@@ -4,7 +4,7 @@
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 /// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens Locks Beta
+// @name                WME Wide-Angle Lens Locks
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find segments that don't match lock levels
 // @author              vtpearce and crazycaveman
@@ -12,14 +12,12 @@
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
 // @version             1.3.1
 // @grant               none
-// @copyright           2017 vtpearce
+// @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @updateURL           https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
-// @downloadURL         https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.user.js
-// ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
+// ==/UserScript==
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers */
 var WMEWAL_Locks;
 (function (WMEWAL_Locks) {
