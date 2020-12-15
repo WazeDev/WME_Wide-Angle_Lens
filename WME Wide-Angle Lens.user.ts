@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.4
+// @version             1.5.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
