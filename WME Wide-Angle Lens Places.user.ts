@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.1
+// @version             1.4.2
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,14 +26,10 @@ namespace WMEWAL_Places {
 
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = '<ul><li>Report places with no external providers</li>' +
-        '<li>Report places with no entry/exit points</li>' +
-        '<li>Report gas stations with no brand set</li>' +
-        '<li>Filter by parking lot type</li>' +
-        '<li>Filter by created/modified timestamp</li>' +
-        '<li>Filter by created by user</li>' +
-        '<li>PLA type in output</li>' +
-        '<li>Option to include alt names in output</li></ul>';
+    const updateText = '<ul>' +
+        '<li>Fixed issue with Lock Level not restoring from saved settings.</li>' +
+        '<li>Filter by website regular expression</li>'
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -51,16 +47,16 @@ namespace WMEWAL_Places {
     }
 
     enum Issue {
-        MissingHouseNumber = 1,
-        MissingStreet = 2,
-        AdLocked = 4,
-        HasUpdateRequests = 8,
-        PendingApproval = 16,
-        UndefStreet = 32,
-        NoExternalProviders = 64,
-        NoHours = 128,
-        NoEntryExitPoints = 256,
-        MissingBrand = 512
+        MissingHouseNumber = 1 << 0,
+        MissingStreet = 1 << 1,
+        AdLocked = 1 << 2,
+        HasUpdateRequests = 1 << 3,
+        PendingApproval = 1 << 4,
+        UndefStreet = 1 << 5,
+        NoExternalProviders = 1 << 6,
+        NoHours = 1 << 7,
+        NoEntryExitPoints = 1 << 8,
+        MissingBrand = 1 << 9
     }
 
     interface IPlace {
@@ -130,6 +126,8 @@ namespace WMEWAL_Places {
         Updated: boolean;
         UpdatedOperation: Operation;
         UpdatedDate: number;
+        WebsiteRegex: string;
+        WebsiteRegexIgnoreCase: boolean;
     }
 
     interface ISettings extends ISaveableSettings {
@@ -154,6 +152,7 @@ namespace WMEWAL_Places {
     let places: Array<IPlace>;
     let nameRegex: RegExp = null;
     let cityRegex: RegExp = null;
+    let websiteRegex: RegExp = null;
     let state: WazeNS.Model.Object.State;
     let stateName: string;
     let lastModifiedBy: WazeNS.Model.Object.User;
@@ -221,6 +220,10 @@ namespace WMEWAL_Places {
         html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
             `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox'/>` +
             `<label for='${ctlPrefix}CityIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
+        html += "<tr><td><b>Website RegEx:</b></td></tr>";
+        html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}Website' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}WebsiteIgnoreCase' type='checkbox'/>` +
+            `<label for='${ctlPrefix}WebsiteIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>State:</b></td></tr>";
         html += "<tr><td style='padding-left:20px'>" +
             `<select id='${ctlPrefix}StateOp'>` +
@@ -405,7 +408,7 @@ namespace WMEWAL_Places {
         // $(`#${ctlPrefix}OutputTo`).val(settings.OutputTo);
         $(`#${ctlPrefix}Category`).val(settings.Category);
         $(`#${ctlPrefix}LockLevel`).val(settings.LockLevel);
-        $(`#${ctlPrefix}LockLevelOp`).prop("checked", settings.LockLevelOperation || Operation.Equal);
+        $(`#${ctlPrefix}LockLevelOp`).val(settings.LockLevelOperation || Operation.Equal);
         $(`#${ctlPrefix}Name`).val(settings.Regex || "");
         $(`#${ctlPrefix}IgnoreCase`).prop("checked", settings.RegexIgnoreCase);
         $(`#${ctlPrefix}City`).val(settings.CityRegex || "");
@@ -453,6 +456,8 @@ namespace WMEWAL_Places {
             $(`#${ctlPrefix}UpdatedDate`).val("");
             $(`#${ctlPrefix}UpdatedTime`).val("");
         }
+        $(`#${ctlPrefix}Website`).val(settings.WebsiteRegex || "");
+        $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked", settings.WebsiteRegexIgnoreCase);
     }
 
     function loadSetting(): void {
@@ -487,7 +492,7 @@ namespace WMEWAL_Places {
         let r: RegExp;
         if (nullif(s.Regex, "") !== null) {
             try {
-                r = (s.RegexIgnoreCase ? new RegExp(s.Regex, "i") : new RegExp(s.Regex, "i"));
+                r = (s.RegexIgnoreCase ? new RegExp(s.Regex, "i") : new RegExp(s.Regex));
             } catch (error) {
                 addMessage("Name RegEx is invalid");
             }
@@ -495,9 +500,17 @@ namespace WMEWAL_Places {
 
         if (nullif(s.CityRegex, "") !== null) {
             try {
-                r = (s.CityRegexIgnoreCase ? new RegExp(s.CityRegex, "i") : new RegExp(s.CityRegex, "i"));
+                r = (s.CityRegexIgnoreCase ? new RegExp(s.CityRegex, "i") : new RegExp(s.CityRegex));
             } catch (error) {
                 addMessage("City RegEx is invalid");
+            }
+        }
+
+        if (nullif(s.WebsiteRegex, "") !== null) {
+            try {
+                r = (s.WebsiteRegexIgnoreCase ? new RegExp(s.WebsiteRegex, "i") : new RegExp(s.WebsiteRegex));
+            } catch (error) {
+                addMessage("Website RegEx is invalid");
             }
         }
 
@@ -609,12 +622,16 @@ namespace WMEWAL_Places {
             CreatedDate: null,
             Updated: $(`#${ctlPrefix}Updated`).prop("checked"),
             UpdatedOperation: parseInt($(`#${ctlPrefix}UpdatedOp`).val()),
-            UpdatedDate: null
+            UpdatedDate: null,
+            WebsiteRegex: null,
+            WebsiteRegexIgnoreCase: $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked")
         };
 
         s.Regex = nullif($(`#${ctlPrefix}Name`).val(), "");
 
         s.CityRegex = nullif($(`#${ctlPrefix}City`).val(), "");
+
+        s.WebsiteRegex = nullif($(`#${ctlPrefix}Website`).val(), "");
 
         let selectedState: string = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null) {
@@ -708,6 +725,12 @@ namespace WMEWAL_Places {
                 cityRegex = null;
             }
 
+            if (nullif(settings.WebsiteRegex, "") !== null) {
+                websiteRegex = (settings.WebsiteRegexIgnoreCase ? new RegExp(settings.WebsiteRegex, "i") : new RegExp(settings.WebsiteRegex));
+            } else {
+                websiteRegex = null;
+            }
+
             if (settings.State !== null) {
                 state = W.model.states.getObjectById(settings.State);
                 stateName = state.name;
@@ -793,7 +816,9 @@ namespace WMEWAL_Places {
                     ((settings.CreatedBy === null) ||
                         (venue.attributes.createdBy === settings.CreatedBy)) &&
                     ((settings.LastModifiedBy === null) ||
-                        ((venue.attributes.updatedBy || venue.attributes.createdBy) === settings.LastModifiedBy))) {
+                        ((venue.attributes.updatedBy || venue.attributes.createdBy) === settings.LastModifiedBy)) &&
+                    (websiteRegex === null ||
+                        websiteRegex.test(venue.attributes.url))) {
 
                     let issues = 0;
 
@@ -1292,7 +1317,9 @@ namespace WMEWAL_Places {
                 CreatedDate: null,
                 Updated: false,
                 UpdatedOperation: Operation.GreaterThanOrEqual,
-                UpdatedDate: null
+                UpdatedDate: null,
+                WebsiteRegex: null,
+                WebsiteRegexIgnoreCase: true
             };
         } else {
             if (updateProperties()) {
@@ -1383,6 +1410,16 @@ namespace WMEWAL_Places {
 
             if (!settings.hasOwnProperty("UpdatedOperation")) {
                 settings.UpdatedOperation = Operation.GreaterThanOrEqual;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("WebsiteRegex")) {
+                settings.WebsiteRegex = null;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("WebsiteRegexIgnoreCase")) {
+                settings.WebsiteRegexIgnoreCase = true;
                 upd = true;
             }
 
