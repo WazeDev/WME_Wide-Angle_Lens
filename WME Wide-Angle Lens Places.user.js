@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.2
+// @version             1.4.3
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,9 +25,8 @@ var WMEWAL_Places;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with Lock Level not restoring from saved settings.</li>' +
-        '<li>Filter by website regular expression</li>';
-    '</ul>';
+        '<li>Added ability to filter on street regular expression</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalPlaces";
@@ -67,6 +66,7 @@ var WMEWAL_Places;
     let nameRegex = null;
     let cityRegex = null;
     let websiteRegex = null;
+    let streetRegex = null;
     let state;
     let stateName;
     let lastModifiedBy;
@@ -125,6 +125,11 @@ var WMEWAL_Places;
             `<input type='text' id='${ctlPrefix}Name' class='wal-textbox'/><br/>` +
             `<input id='${ctlPrefix}IgnoreCase' type='checkbox'/>` +
             `<label for='${ctlPrefix}IgnoreCase' style='padding-left: 20px'>Ignore case</label></td>`;
+        html += "<tr><td><b>Street RegEx</b></td></tr>";
+        html += "<tr><td style='padding-left: 20px'>" +
+            `<input type='text' id='${ctlPrefix}Street' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}StreetIgnoreCase' type='checkbox'/>` +
+            `<label for='${ctlPrefix}StreetIgnoreCase' style='padding-left: 20px'>Ignore case</label></td>`;
         html += "<tr><td><b>City RegEx:</b></td></tr>";
         html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
             `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox'/>` +
@@ -350,6 +355,8 @@ var WMEWAL_Places;
         }
         $(`#${ctlPrefix}Website`).val(settings.WebsiteRegex || "");
         $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked", settings.WebsiteRegexIgnoreCase);
+        $(`#${ctlPrefix}Street`).val(settings.StreetRegex || "");
+        $(`#${ctlPrefix}StreetIgnoreCase`).prop("checked", settings.StreetRegexIgnoreCase);
     }
     function loadSetting() {
         let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
@@ -395,6 +402,14 @@ var WMEWAL_Places;
             }
             catch (error) {
                 addMessage("Website RegEx is invalid");
+            }
+        }
+        if (nullif(s.StreetRegex, "") !== null) {
+            try {
+                r = (s.StreetRegexIgnoreCase ? new RegExp(s.StreetRegex, "i") : new RegExp(s.StreetRegex));
+            }
+            catch (error) {
+                addMessage("Street RegEx is invalid");
             }
         }
         let selectedState = $(`#${ctlPrefix}State`).val();
@@ -495,11 +510,14 @@ var WMEWAL_Places;
             UpdatedOperation: parseInt($(`#${ctlPrefix}UpdatedOp`).val()),
             UpdatedDate: null,
             WebsiteRegex: null,
-            WebsiteRegexIgnoreCase: $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked")
+            WebsiteRegexIgnoreCase: $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked"),
+            StreetRegex: null,
+            StreetRegexIgnoreCase: $(`#${ctlPrefix}StreetIgnoreCase`).prop("checked")
         };
         s.Regex = nullif($(`#${ctlPrefix}Name`).val(), "");
         s.CityRegex = nullif($(`#${ctlPrefix}City`).val(), "");
         s.WebsiteRegex = nullif($(`#${ctlPrefix}Website`).val(), "");
+        s.StreetRegex = nullif($(`#${ctlPrefix}Street`).val(), "");
         let selectedState = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null) {
             let state = W.model.states.getObjectById(parseInt(selectedState));
@@ -584,6 +602,12 @@ var WMEWAL_Places;
             }
             else {
                 websiteRegex = null;
+            }
+            if (nullif(settings.StreetRegex, "") !== null) {
+                streetRegex = (settings.StreetRegexIgnoreCase ? new RegExp(settings.StreetRegex, "i") : new RegExp(settings.StreetRegex));
+            }
+            else {
+                streetRegex = null;
             }
             if (settings.State !== null) {
                 state = W.model.states.getObjectById(settings.State);
@@ -672,7 +696,7 @@ var WMEWAL_Places;
                         websiteRegex.test(venue.attributes.url))) {
                     let issues = 0;
                     if (state != null) {
-                        if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
+                        if (address && !address.isEmpty() && address.attributes.state) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
                                 settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
                                 continue;
@@ -701,14 +725,22 @@ var WMEWAL_Places;
                             continue;
                         }
                     }
+                    let regExMatched = false;
                     if (cityRegex != null) {
-                        let nameMatched = false;
-                        if (address != null && !address.attributes.isEmpty) {
-                            if (address.attributes.city != null && address.attributes.city.hasName()) {
-                                nameMatched = cityRegex.test(address.attributes.city.attributes.name);
-                            }
+                        regExMatched = false;
+                        if (address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) {
+                            regExMatched = cityRegex.test(address.attributes.city.attributes.name);
                         }
-                        if (!nameMatched) {
+                        if (!regExMatched) {
+                            continue;
+                        }
+                    }
+                    if (streetRegex != null) {
+                        regExMatched = false;
+                        if (address && !address.isEmpty() && !address.isEmptyStreet()) {
+                            regExMatched = streetRegex.test(address.attributes.street.name);
+                        }
+                        if (!regExMatched) {
                             continue;
                         }
                     }
@@ -774,10 +806,10 @@ var WMEWAL_Places;
                             streetID: venue.attributes.streetID,
                             placeType: ((venue.isPoint() && !venue.is2D()) ? I18n.t("edit.venue.type.point") : I18n.t("edit.venue.type.area")),
                             isApproved: venue.isApproved(),
-                            city: ((address && !address.attributes.isEmpty && address.attributes.city.hasName()) ? address.attributes.city.attributes.name : "No City"),
-                            state: ((address && !address.attributes.isEmpty) ? address.attributes.state.name : "No State"),
+                            city: ((address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) ? address.attributes.city.attributes.name : "No City"),
+                            state: ((address && !address.isEmpty() && address.attributes.state) ? address.attributes.state.name : "No State"),
                             houseNumber: venue.attributes.houseNumber ?? "",
-                            streetName: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : "") || "",
+                            streetName: ((address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.name : "") || "",
                             lastEditor: (lastEditor && lastEditor.userName) || "",
                             createdBy: (createdBy && createdBy.userName) || "",
                             url: venue.attributes.url ?? "",
@@ -836,6 +868,12 @@ var WMEWAL_Places;
                 if (settings.Regex != null) {
                     w.document.write("<br/>Name matches " + settings.Regex);
                     if (settings.RegexIgnoreCase) {
+                        w.document.write(" (ignoring case)");
+                    }
+                }
+                if (streetRegex != null) {
+                    w.document.write("<br/>Street Name matches: " + settings.StreetRegex);
+                    if (settings.StreetRegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
                     }
                 }
@@ -1135,7 +1173,9 @@ var WMEWAL_Places;
                 UpdatedOperation: Operation.GreaterThanOrEqual,
                 UpdatedDate: null,
                 WebsiteRegex: null,
-                WebsiteRegexIgnoreCase: true
+                WebsiteRegexIgnoreCase: true,
+                StreetRegex: null,
+                StreetRegexIgnoreCase: true
             };
         }
         else {
@@ -1217,6 +1257,14 @@ var WMEWAL_Places;
             }
             if (!settings.hasOwnProperty("WebsiteRegexIgnoreCase")) {
                 settings.WebsiteRegexIgnoreCase = true;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("StreetRegex")) {
+                settings.StreetRegex = null;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("StreetRegexIgnoreCase")) {
+                settings.StreetRegexIgnoreCase = true;
                 upd = true;
             }
             if (settings.hasOwnProperty("OutputTo")) {
