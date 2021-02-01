@@ -1,9 +1,3 @@
-/// <reference path="../typings/globals/openlayers/index.d.ts" />
-/// <reference path="../typings/I18n.d.ts" />
-/// <reference path="../typings/waze.d.ts" />
-/// <reference path="../typings/globals/jquery/index.d.ts" />
-/// <reference path="WME Wide-Angle Lens.user.ts" />
-/// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Streets
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -11,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.3
+// @version             1.6.4
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -24,17 +18,13 @@ var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = '<ul><li>Option to include alt names in output</li>' +
-        '<li>Find ramps with speed limits</li>' +
-        '<li>Additional street attribute filters</li>' +
-        '<li>Filter by created/modified timestamp</li>' +
-        '<li>Filter by created by user</li>' +
-        '<li>Filter by LG established or not</li>' +
-        '<li>Report streets with no city</li></ul';
+    const updateText = '<ul>' +
+        '<li>Find segments with +1 and/or -1 routing preference</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
-    const minimumWALVersionRequired = "1.5.3";
+    const minimumWALVersionRequired = "1.5.6";
     let Direction;
     (function (Direction) {
         Direction[Direction["OneWay"] = 1] = "OneWay";
@@ -67,6 +57,8 @@ var WMEWAL_Streets;
         Issue[Issue["UnknownDirection"] = 4096] = "UnknownDirection";
         Issue[Issue["NoHN"] = 8192] = "NoHN";
         Issue[Issue["RampWithSL"] = 16384] = "RampWithSL";
+        Issue[Issue["Plus1RoutingPreference"] = 32768] = "Plus1RoutingPreference";
+        Issue[Issue["Minus1RoutingPreference"] = 65536] = "Minus1RoutingPreference";
     })(Issue || (Issue = {}));
     let pluginName = "WMEWAL-Streets";
     WMEWAL_Streets.Title = "Streets";
@@ -272,8 +264,12 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}HasNoCity' class='wal-label'>Has no city (primary or alt)</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}NoHN' type='checkbox'/>` +
             `<label for='${ctlPrefix}NoHN' class='wal-label'>Has no house numbers</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}NonNeutralRoutingPreference' type='checkbox'/>` +
-            `<label for='${ctlPrefix}NonNeutralRoutingPreference' class='wal-label'>Non-neutral routing preference</label></td></tr>`;
+        //        html += `<tr><td><input id='${ctlPrefix}NonNeutralRoutingPreference' type='checkbox'/>` +
+        //            `<label for='${ctlPrefix}NonNeutralRoutingPreference' class='wal-label'>Non-neutral routing preference</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}Minus1RoutingPreference' type='checkbox'/>` +
+            `<label for='${ctlPrefix}Minus1RoutingPreference' class='wal-label'>-1 routing preference</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}Plus1RoutingPreference' type='checkbox'/>` +
+            `<label for='${ctlPrefix}Plus1RoutingPreference' class='wal-label'>+1 routing preference</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}RampWithSL' type='checkbox'/>` +
             `<label for='${ctlPrefix}RampWithSL' class='wal-label'>Ramp with speed limit</label></td></tr>`;
         html += "</tbody></table>";
@@ -425,7 +421,9 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}HasNoName`).prop("checked", settings.HasNoName);
         $(`#${ctlPrefix}HasNoCity`).prop("checked", settings.HasNoCity);
         $(`#${ctlPrefix}NoHN`).prop("checked", settings.NoHN);
-        $(`#${ctlPrefix}NonNeutralRoutingPreference`).prop("checked", settings.NonNeutralRoutingPreference);
+        // $(`#${ctlPrefix}NonNeutralRoutingPreference`).prop("checked", settings.NonNeutralRoutingPreference);
+        $(`#${ctlPrefix}Minus1RoutingPreference`).prop("checked", settings.Minus1RoutingPreference);
+        $(`#${ctlPrefix}Plus1RoutingPreference`).prop("checked", settings.Plus1RoutingPreference);
         $(`#${ctlPrefix}RampWithSL`).prop("checked", settings.RampWithSL);
         $(`#${ctlPrefix}Unpaved`).prop("checked", settings.Unpaved);
         $(`#${ctlPrefix}Tunnel`).prop("checked", settings.Tunnel);
@@ -600,7 +598,8 @@ var WMEWAL_Streets;
             HasNoName: $(`#${ctlPrefix}HasNoName`).prop("checked"),
             HasNoCity: $(`#${ctlPrefix}HasNoCity`).prop("checked"),
             NoHN: $(`#${ctlPrefix}NoHN`).prop("checked"),
-            NonNeutralRoutingPreference: $(`#${ctlPrefix}NonNeutralRoutingPreference`).prop("checked"),
+            // NonNeutralRoutingPreference: $(`#${ctlPrefix}NonNeutralRoutingPreference`).prop("checked"),
+            NonNeutralRoutingPreference: null,
             RampWithSL: $(`#${ctlPrefix}RampWithSL`).prop("checked"),
             Unpaved: $(`#${ctlPrefix}Unpaved`).prop("checked"),
             Tunnel: $(`#${ctlPrefix}Tunnel`).prop("checked"),
@@ -616,7 +615,9 @@ var WMEWAL_Streets;
             CreatedDate: null,
             Updated: $(`#${ctlPrefix}Updated`).prop("checked"),
             UpdatedOperation: parseInt($(`#${ctlPrefix}UpdatedOp`).val()),
-            UpdatedDate: null
+            UpdatedDate: null,
+            Minus1RoutingPreference: $(`#${ctlPrefix}Minus1RoutingPreference`).prop("checked"),
+            Plus1RoutingPreference: $(`#${ctlPrefix}Plus1RoutingPreference`).prop("checked")
         };
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
@@ -756,9 +757,11 @@ var WMEWAL_Streets;
                 || settings.Elevation
                 || settings.HasNoName
                 || settings.HasNoCity
-                || settings.NonNeutralRoutingPreference
+                //                || settings.NonNeutralRoutingPreference
                 || settings.NoHN
-                || settings.RampWithSL;
+                || settings.RampWithSL
+                || settings.Minus1RoutingPreference
+                || settings.Plus1RoutingPreference;
             updateSettings();
         }
         return allOk;
@@ -1043,15 +1046,23 @@ var WMEWAL_Streets;
                             issues = issues | Issue.NoCity;
                         }
                     }
-                    if (settings.NonNeutralRoutingPreference) {
-                        if (segment.attributes.routingRoadType != null && segment.attributes.routingRoadType != segment.attributes.roadType) {
-                            issues = issues | Issue.RoutingPreference;
+                    if ((settings.Minus1RoutingPreference || settings.Plus1RoutingPreference) && segment.attributes.routingRoadType !== null) {
+                        let originalRoutingPreference = WMEWAL.WazeRoadTypeToRoutingPreference(segment.attributes.roadType);
+                        let routingRoadTypePreference = WMEWAL.WazeRoadTypeToRoutingPreference(segment.attributes.routingRoadType);
+                        if (settings.Minus1RoutingPreference && originalRoutingPreference > routingRoadTypePreference) {
+                            issues = issues | Issue.Minus1RoutingPreference;
                         }
+                        if (settings.Plus1RoutingPreference && originalRoutingPreference < routingRoadTypePreference) {
+                            issues = issues | Issue.Plus1RoutingPreference;
+                        }
+                        // if (segment.attributes.routingRoadType != null && segment.attributes.routingRoadType != segment.attributes.roadType) {
+                        //     issues = issues | Issue.RoutingPreference;
+                        // }
                     }
                     if (settings.NoHN && !segment.attributes.hasHNs) {
                         issues = issues | Issue.NoHN;
                     }
-                    if (settings.RampWithSL && WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) == WMEWAL.RoadType.Ramp && //
+                    if (settings.RampWithSL && WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) == WMEWAL.RoadType.Ramp &&
                         ((segment.attributes.fwdDirection && segment.attributes.fwdMaxSpeed != null) ||
                             (segment.attributes.revDirection && segment.attributes.revMaxSpeed != null))) {
                         issues = issues | Issue.RampWithSL;
@@ -1402,9 +1413,15 @@ var WMEWAL_Streets;
                 if (settings.NoHN) {
                     w.document.write("<br/>Has no house numbers");
                 }
-                if (settings.NonNeutralRoutingPreference) {
-                    w.document.write("<br/>Non-neutral routing preference");
+                if (settings.Minus1RoutingPreference) {
+                    w.document.write("<br/>-1 routing preference");
                 }
+                if (settings.Plus1RoutingPreference) {
+                    w.document.write("<br/>+1 routing preference");
+                }
+                // if (settings.NonNeutralRoutingPreference) {
+                //     w.document.write("<br/>Non-neutral routing preference");
+                // }
                 if (settings.RampWithSL) {
                     w.document.write("<br/>Ramp with speed limit");
                 }
@@ -1637,8 +1654,14 @@ var WMEWAL_Streets;
         if (issues & Issue.NoHN) {
             issuesList.push("No house numbers");
         }
-        if (issues & Issue.RoutingPreference) {
-            issuesList.push("Non-neutral routing preference");
+        // if (issues & Issue.RoutingPreference) {
+        //     issuesList.push("Non-neutral routing preference");
+        // }
+        if (issues & Issue.Minus1RoutingPreference) {
+            issuesList.push("-1 routing preference");
+        }
+        if (issues & Issue.Plus1RoutingPreference) {
+            issuesList.push("+1 routing preference");
         }
         if (issues & Issue.UnknownDirection) {
             issuesList.push("Unknown direction");
@@ -1777,7 +1800,9 @@ var WMEWAL_Streets;
                 CreatedDate: null,
                 Updated: false,
                 UpdatedOperation: Operation.GreaterThanOrEqual,
-                UpdatedDate: null
+                UpdatedDate: null,
+                Minus1RoutingPreference: false,
+                Plus1RoutingPreference: false
             };
         }
         else {
@@ -1813,10 +1838,18 @@ var WMEWAL_Streets;
                 settings.HasNoCity = false;
                 upd = true;
             }
-            if (!settings.hasOwnProperty("NonNeutralRoutingPreference")) {
-                settings.NonNeutralRoutingPreference = false;
+            if (!settings.hasOwnProperty("Minus1RoutingPreference")) {
+                settings.Minus1RoutingPreference = settings.NonNeutralRoutingPreference;
                 upd = true;
             }
+            if (!settings.hasOwnProperty("Plus1RoutingPreference")) {
+                settings.Plus1RoutingPreference = settings.NonNeutralRoutingPreference;
+                upd = true;
+            }
+            // if (!settings.hasOwnProperty("NonNeutralRoutingPreference")) {
+            //     settings.NonNeutralRoutingPreference = false;
+            //     upd = true;
+            // }
             if (!settings.hasOwnProperty("UnknownDirection")) {
                 settings.UnknownDirection = false;
                 upd = true;

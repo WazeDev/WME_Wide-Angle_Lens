@@ -1,9 +1,3 @@
-/// <reference path="../typings/globals/openlayers/index.d.ts" />
-/// <reference path="../typings/I18n.d.ts" />
-/// <reference path="../typings/waze.d.ts" />
-/// <reference path="../typings/globals/jquery/index.d.ts" />
-/// <reference path="../typings/wazewrap.d.ts" />
-/// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -11,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.5
+// @version             1.5.6
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -24,7 +18,9 @@ var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Behind-the-scenes efficiency improvements.';
+    const updateText = '<ul>' +
+        '<li>Changes to support new options in Streets plugin</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const debug = true;
@@ -1380,6 +1376,23 @@ var WMEWAL;
         }
     }
     WMEWAL.RoadTypeBitmaskToWazeRoadType = RoadTypeBitmaskToWazeRoadType;
+    function WazeRoadTypeToRoutingPreference(roadType) {
+        switch (roadType) {
+            case 1:
+                return 1;
+            case 2:
+                return 2;
+            case 7:
+                return 3;
+            case 6:
+                return 4;
+            case 3:
+                return 5;
+            default:
+                return 0;
+        }
+    }
+    WMEWAL.WazeRoadTypeToRoutingPreference = WazeRoadTypeToRoutingPreference;
     function TranslateRoadType(wazeRoadType) {
         return I18n.t("segment.road_types." + wazeRoadType.toString());
     }

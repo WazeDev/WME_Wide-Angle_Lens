@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.5
+// @version             1.5.6
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,7 +26,9 @@ namespace WMEWAL {
 
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Behind-the-scenes efficiency improvements.';
+    const updateText = '<ul>' +
+        '<li>Changes to support new options in Streets plugin</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -1367,7 +1369,7 @@ namespace WMEWAL {
                     } catch (e) {
                         log("warning","moveMap: Exception thrown trying to move map.  Will retry up to 5 times (with a 1-second delay).");
                         log("error",e);
-                        await new Promise(resolve => {
+                        await new Promise<void>(resolve => {
                             setTimeout(function () {
                                 resolve();
                             }, 1000);
@@ -1580,6 +1582,23 @@ namespace WMEWAL {
                 return 20;
             case RoadType.Alley:
                 return 22;
+            default:
+                return 0;
+        }
+    }
+
+    export function WazeRoadTypeToRoutingPreference(roadType: number): number {
+        switch (roadType) {
+            case 1:
+                return 1;
+            case 2:
+                return 2;
+            case 7:
+                return 3;
+            case 6:
+                return 4;
+            case 3:
+                return 5;
             default:
                 return 0;
         }
