@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.5
+// @version             1.6.6
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,8 +27,7 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Find newly paved segments</li>' +
-        '<li>Filter on segment length</li>'
+        '<li>Include one-way as an issue</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -70,7 +69,8 @@ namespace WMEWAL_Streets {
         RampWithSL = 1 << 14,
         Plus1RoutingPreference = 1 << 15,
         Minus1RoutingPreference = 1 << 16,
-        NewlyPaved = 1 << 17
+        NewlyPaved = 1 << 17,
+        OneWay = 1 << 18
     }
 
     enum Unit {
@@ -175,6 +175,7 @@ namespace WMEWAL_Streets {
         SegmentLengthFilterOperation: Operation;
         SegmentLengthFilterValue: number;
         SegmentLengthFilterUnit: Unit;
+        OneWay: boolean;
     }
 
     interface ISettings extends ISaveableSettings {
@@ -381,6 +382,8 @@ namespace WMEWAL_Streets {
             `<label for='${ctlPrefix}HasTurnRestrictions' class='wal-label'>Has time-based turn restrictions</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}UnknownDirection' type='checkbox'/>` +
             `<label for='${ctlPrefix}UnknownDirection' class='wal-label'>Unknown Direction</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}OneWay' type='checkbox'/>` +
+            `<label for='${ctlPrefix}OneWay' class='wal-label'>One way</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}HasRestrictedJunctionArrow' type='checkbox'/>` +
             `<label for='${ctlPrefix}HasRestrictedJunctionArrow' class='wal-label'>Has restricted junction arrow</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}HasUTurn' type='checkbox'/>` +
@@ -635,6 +638,7 @@ namespace WMEWAL_Streets {
         $(`#${ctlPrefix}SegmentLengthFilterOperation`).val(settings.SegmentLengthFilterOperation || Operation.LessThan.toString());
         $(`#${ctlPrefix}SegmentLengthFilterValue`).val(settings.SegmentLengthFilterValue ?? "");
         $(`#${ctlPrefix}SegmentLengthFilterUnit`).val(settings.SegmentLengthFilterUnit || Unit.Metric.toString());
+        $(`#${ctlPrefix}OneWay`).prop("checked", settings.OneWay);
     }
 
     function loadSetting(): void {
@@ -829,6 +833,7 @@ namespace WMEWAL_Streets {
             SegmentLengthFilterOperation: parseInt($(`#${ctlPrefix}SegmentLengthFilterOperation`).val()),
             SegmentLengthFilterValue: null,
             SegmentLengthFilterUnit: parseInt($(`#${ctlPrefix}SegmentLengthFilterUnit`).val()),
+            OneWay: $(`#${ctlPrefix}OneWay`).prop('checked')
         };
 
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
@@ -997,7 +1002,8 @@ namespace WMEWAL_Streets {
                 || settings.RampWithSL
                 || settings.Minus1RoutingPreference
                 || settings.Plus1RoutingPreference
-                || settings.NewlyPaved;
+                || settings.NewlyPaved
+                || settings.OneWay;
 
             updateSettings();
         }
@@ -1231,11 +1237,13 @@ namespace WMEWAL_Streets {
                         }
                     }
 
-                    if (settings.UnknownDirection) {
-                        if (determineDirection(segment) === Direction.Unknown ) {
-                            issues = issues | Issue.UnknownDirection;
-                            newSegment = true;
-                        }
+                    if (settings.UnknownDirection && determineDirection(segment) === Direction.Unknown ) {
+                        issues = issues | Issue.UnknownDirection;
+                        newSegment = true;
+                    }
+
+                    if (settings.OneWay && determineDirection(segment) == Direction.OneWay) {
+                        issues |= Issue.OneWay;
                     }
 
                     if (settings.HasUTurn
@@ -1661,6 +1669,9 @@ namespace WMEWAL_Streets {
                 if (settings.UnknownDirection) {
                     w.document.write("<br/>Unknown direction");
                 }
+                if (settings.OneWay) {
+                    w.document.write("<br/>One way");
+                }
                 if (settings.HasUTurn) {
                     w.document.write("<br/>Has u-turn");
                 }
@@ -1985,6 +1996,9 @@ namespace WMEWAL_Streets {
         if (issues & Issue.NewlyPaved) {
             issuesList.push("Newly paved");
         }
+        if (issues & Issue.OneWay) {
+            issuesList.push("One way");
+        }
 
         if (issuesList.length === 0) {
             return "None";
@@ -2143,7 +2157,8 @@ namespace WMEWAL_Streets {
             SegmentLengthFilter: false,
             SegmentLengthFilterOperation: Operation.LessThan,
             SegmentLengthFilterValue: null,
-            SegmentLengthFilterUnit: isImperial ? Unit.Imperial : Unit.Metric
+            SegmentLengthFilterUnit: isImperial ? Unit.Imperial : Unit.Metric,
+            OneWay: false
         };
     }
 
@@ -2322,6 +2337,11 @@ namespace WMEWAL_Streets {
 
             if (!settings.hasOwnProperty("SegmentLengthFilterUnit")) {
                 settings.SegmentLengthFilterUnit = isImperial ? Unit.Imperial : Unit.Metric;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("OneWay")) {
+                settings.OneWay = false;
                 upd = true;
             }
 
