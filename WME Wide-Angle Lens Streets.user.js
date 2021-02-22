@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.4
+// @version             1.6.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,8 +19,9 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Find segments with +1 and/or -1 routing preference</li>' +
-        '</ul>';
+        '<li>Find newly paved segments</li>' +
+        '<li>Filter on segment length</li>';
+    '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
@@ -59,7 +60,13 @@ var WMEWAL_Streets;
         Issue[Issue["RampWithSL"] = 16384] = "RampWithSL";
         Issue[Issue["Plus1RoutingPreference"] = 32768] = "Plus1RoutingPreference";
         Issue[Issue["Minus1RoutingPreference"] = 65536] = "Minus1RoutingPreference";
+        Issue[Issue["NewlyPaved"] = 131072] = "NewlyPaved";
     })(Issue || (Issue = {}));
+    let Unit;
+    (function (Unit) {
+        Unit[Unit["Metric"] = 1] = "Metric";
+        Unit[Unit["Imperial"] = 2] = "Imperial";
+    })(Unit || (Unit = {}));
     let pluginName = "WMEWAL-Streets";
     WMEWAL_Streets.Title = "Streets";
     WMEWAL_Streets.MinimumZoomLevel = 2;
@@ -82,6 +89,10 @@ var WMEWAL_Streets;
     let createdBy;
     let createdByName;
     let savedSegments;
+    let segmentLengthMultiplier;
+    let segmentLengthFilterMultipier;
+    const mToFt = 3.28084;
+    let isImperial;
     function GetTab() {
         let html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
@@ -224,6 +235,18 @@ var WMEWAL_Streets;
             "<option value='0'>Has</option>" +
             "<option value='1'>Missing</option>" +
             "</select> Lane guidance</label></td></tr>";
+        html += `<tr><td><input id='${ctlPrefix}SegmentLengthFilter' type='checkbox'/>` +
+            `<label for='${ctlPrefix}SegmentLengthFilter' class='wal-label'>Segment length</label>&nbsp;` +
+            `<select id='${ctlPrefix}SegmentLengthFilterOperation'>` +
+            `<option value='${Operation.LessThan}'>&lt;</option>` +
+            `<option value='${Operation.LessThanOrEqual}'>&lt;=</option>` +
+            `<option value='${Operation.GreaterThan}'>&gt;</option>` +
+            `<option value='${Operation.GreaterThanOrEqual}'>&gt;=</option></select>` +
+            `<input type='text' id='${ctlPrefix}SegmentLengthFilterValue' class='wal-textbox' style='width: 40px'/> ` +
+            `<select id='${ctlPrefix}SegmentLengthFilterUnit'>` +
+            `<option value='${Unit.Metric}'>m</option>` +
+            `<option value='${Unit.Imperial}'>ft</option></select>` +
+            "</td></tr>";
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
         html += `<tr><td><input id='${ctlPrefix}NoSpeedLimit' type='checkbox'/>` +
             `<label for='${ctlPrefix}NoSpeedLimit' class='wal-label'>No speed limit</label></td></tr>`;
@@ -256,7 +279,10 @@ var WMEWAL_Streets;
             `<option value='${Operation.LessThanOrEqual}'>&lt;=</option>` +
             `<option value='${Operation.GreaterThan}'>&gt;</option>` +
             `<option value='${Operation.GreaterThanOrEqual}'>&gt;=</option></select>` +
-            `<input type='text' id='${ctlPrefix}SegmentLengthValue' class='wal-textbox' style='width: 40px'/> m` +
+            `<input type='text' id='${ctlPrefix}SegmentLengthValue' class='wal-textbox' style='width: 40px'/> ` +
+            `<select id='${ctlPrefix}SegmentLengthUnit'>` +
+            `<option value='${Unit.Metric}'>m</option>` +
+            `<option value='${Unit.Imperial}'>ft</option></select>` +
             "</td></tr>";
         html += `<tr><td><input id='${ctlPrefix}HasNoName' type='checkbox'/>` +
             `<label for='${ctlPrefix}HasNoName' class='wal-label'>Has no name</label></td></tr>`;
@@ -272,6 +298,8 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}Plus1RoutingPreference' class='wal-label'>+1 routing preference</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}RampWithSL' type='checkbox'/>` +
             `<label for='${ctlPrefix}RampWithSL' class='wal-label'>Ramp with speed limit</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}NewlyPaved' type='checkbox'/>` +
+            `<label for='${ctlPrefix}NewlyPaved' class='wal-label'>Newly paved</label></td></tr>`;
         html += "</tbody></table>";
         return html;
     }
@@ -417,6 +445,7 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}SegmentLength`).prop("checked", settings.SegmentLength);
         $(`#${ctlPrefix}SegmentLengthOperation`).val(settings.SegmentLengthOperation || Operation.LessThan.toString());
         $(`#${ctlPrefix}SegmentLengthValue`).val(settings.SegmentLengthValue ?? "");
+        $(`#${ctlPrefix}SegmentLengthUnit`).val(settings.SegmentLengthUnit || Unit.Metric.toString());
         $(`#${ctlPrefix}LastModifiedBy`).val(settings.LastModifiedBy);
         $(`#${ctlPrefix}HasNoName`).prop("checked", settings.HasNoName);
         $(`#${ctlPrefix}HasNoCity`).prop("checked", settings.HasNoCity);
@@ -460,18 +489,25 @@ var WMEWAL_Streets;
             $(`#${ctlPrefix}UpdatedDate`).val("");
             $(`#${ctlPrefix}UpdatedTime`).val("");
         }
+        $(`#${ctlPrefix}NewlyPaved`).prop("checked", settings.NewlyPaved);
+        $(`#${ctlPrefix}SegmentLengthFilter`).prop("checked", settings.SegmentLengthFilter);
+        $(`#${ctlPrefix}SegmentLengthFilterOperation`).val(settings.SegmentLengthFilterOperation || Operation.LessThan.toString());
+        $(`#${ctlPrefix}SegmentLengthFilterValue`).val(settings.SegmentLengthFilterValue ?? "");
+        $(`#${ctlPrefix}SegmentLengthFilterUnit`).val(settings.SegmentLengthFilterUnit || Unit.Metric.toString());
     }
     function loadSetting() {
         let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
+        initSettings();
         let savedSetting = savedSettings[selectedSetting].Setting;
         for (let name in savedSetting) {
             if (settings.hasOwnProperty(name)) {
                 settings[name] = savedSetting[name];
             }
         }
+        updateProperties();
         updateUI();
     }
     function validateSettings() {
@@ -516,7 +552,14 @@ var WMEWAL_Streets;
             let val = $(`#${ctlPrefix}SegmentLengthValue`).val();
             let numVal = parseInt(val);
             if (isNaN(numVal) || val.trim() !== numVal.toString()) {
-                addMessage("Invalid segment length");
+                addMessage("Invalid segment length (issue)");
+            }
+        }
+        if (s.SegmentLengthFilter) {
+            let val = $(`#${ctlPrefix}SegmentLengthFilterValue`).val();
+            let numVal = parseInt(val);
+            if (isNaN(numVal) || val.trim() !== numVal.toString()) {
+                addMessage("Invalid segment length (filter)");
             }
         }
         if (s.RampWithSL && !(s.RoadTypeMask & WMEWAL.RoadType.Ramp)) {
@@ -594,6 +637,7 @@ var WMEWAL_Streets;
             SegmentLength: $(`#${ctlPrefix}SegmentLength`).prop("checked"),
             SegmentLengthOperation: parseInt($(`#${ctlPrefix}SegmentLengthOperation`).val()),
             SegmentLengthValue: null,
+            SegmentLengthUnit: parseInt($(`#${ctlPrefix}SegmentLengthUnit`).val()),
             LastModifiedBy: null,
             HasNoName: $(`#${ctlPrefix}HasNoName`).prop("checked"),
             HasNoCity: $(`#${ctlPrefix}HasNoCity`).prop("checked"),
@@ -617,7 +661,12 @@ var WMEWAL_Streets;
             UpdatedOperation: parseInt($(`#${ctlPrefix}UpdatedOp`).val()),
             UpdatedDate: null,
             Minus1RoutingPreference: $(`#${ctlPrefix}Minus1RoutingPreference`).prop("checked"),
-            Plus1RoutingPreference: $(`#${ctlPrefix}Plus1RoutingPreference`).prop("checked")
+            Plus1RoutingPreference: $(`#${ctlPrefix}Plus1RoutingPreference`).prop("checked"),
+            NewlyPaved: $(`#${ctlPrefix}NewlyPaved`).prop("checked"),
+            SegmentLengthFilter: $(`#${ctlPrefix}SegmentLengthFilter`).prop("checked"),
+            SegmentLengthFilterOperation: parseInt($(`#${ctlPrefix}SegmentLengthFilterOperation`).val()),
+            SegmentLengthFilterValue: null,
+            SegmentLengthFilterUnit: parseInt($(`#${ctlPrefix}SegmentLengthFilterUnit`).val()),
         };
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
@@ -662,6 +711,10 @@ var WMEWAL_Streets;
         let segmentLengthValue = $(`#${ctlPrefix}SegmentLengthValue`).val();
         if (segmentLengthValue != null && segmentLengthValue.length > 0 && !isNaN(parseInt(segmentLengthValue))) {
             s.SegmentLengthValue = parseInt(segmentLengthValue);
+        }
+        segmentLengthValue = $(`#${ctlPrefix}SegmentLengthFilterValue`).val();
+        if (segmentLengthValue != null && segmentLengthValue.length > 0 && !isNaN(parseInt(segmentLengthValue))) {
+            s.SegmentLengthFilterValue = parseInt(segmentLengthValue);
         }
         let createdDate = $(`#${ctlPrefix}CreatedDate`).val();
         if (nullif(createdDate, "") !== null) {
@@ -746,6 +799,8 @@ var WMEWAL_Streets;
             else {
                 WMEWAL_Streets.MinimumZoomLevel = 2;
             }
+            segmentLengthFilterMultipier = settings.SegmentLengthFilter ? (settings.SegmentLengthFilterUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
+            segmentLengthMultiplier = settings.SegmentLength ? (settings.SegmentLengthUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
             detectIssues = settings.NoSpeedLimit
                 || settings.HasTimeBasedRestrictions
                 || settings.HasTimeBasedTurnRestrictions
@@ -761,7 +816,8 @@ var WMEWAL_Streets;
                 || settings.NoHN
                 || settings.RampWithSL
                 || settings.Minus1RoutingPreference
-                || settings.Plus1RoutingPreference;
+                || settings.Plus1RoutingPreference
+                || settings.NewlyPaved;
             updateSettings();
         }
         return allOk;
@@ -829,7 +885,7 @@ var WMEWAL_Streets;
                         roadType: s.attributes.roadType,
                         direction: determineDirection(s),
                         issues: issues,
-                        length: s.attributes.length,
+                        length: s.attributes.length * (isImperial ? mToFt : 1.0),
                         lastEditor: lastEditor.userName,
                         asc: (s.getFlagAttribute('fwdSpeedCamera') || s.getFlagAttribute('revSpeedCamera') ? 'Yes' : 'No'),
                         createdEditor: (createdEditor && createdEditor.userName) || ""
@@ -894,7 +950,12 @@ var WMEWAL_Streets;
                         (settings.UpdatedOperation === Operation.LessThan && segment.attributes.updatedOn < settings.UpdatedDate) ||
                         (settings.UpdatedOperation === Operation.LessThanOrEqual && segment.attributes.updatedOn <= settings.UpdatedDate) ||
                         (settings.UpdatedOperation === Operation.GreaterThan && segment.attributes.updatedOn > settings.UpdatedDate) ||
-                        (settings.UpdatedOperation === Operation.GreaterThanOrEqual && segment.attributes.updatedOn >= settings.UpdatedDate))) {
+                        (settings.UpdatedOperation === Operation.GreaterThanOrEqual && segment.attributes.updatedOn >= settings.UpdatedDate)) &&
+                    (!settings.SegmentLengthFilter ||
+                        (settings.SegmentLengthFilterOperation === Operation.LessThan && (segment.attributes.length * segmentLengthFilterMultipier) < settings.SegmentLengthFilterValue) ||
+                        (settings.SegmentLengthFilterOperation === Operation.LessThanOrEqual && (segment.attributes.length * segmentLengthFilterMultipier) <= settings.SegmentLengthFilterValue) ||
+                        (settings.SegmentLengthFilterOperation === Operation.GreaterThan && (segment.attributes.length * segmentLengthFilterMultipier) > settings.SegmentLengthFilterValue) ||
+                        (settings.SegmentLengthFilterOperation === Operation.GreaterThanOrEqual && (segment.attributes.length * segmentLengthFilterMultipier) >= settings.SegmentLengthFilterValue))) {
                     let issues = 0;
                     let newSegment = false;
                     let address = segment.getAddress();
@@ -1007,10 +1068,10 @@ var WMEWAL_Streets;
                         }
                     }
                     if (settings.SegmentLength) {
-                        if ((settings.SegmentLengthOperation === Operation.LessThan && segment.attributes.length < settings.SegmentLengthValue) ||
-                            (settings.SegmentLengthOperation === Operation.LessThanOrEqual && segment.attributes.length <= settings.SegmentLengthValue) ||
-                            (settings.SegmentLengthOperation === Operation.GreaterThan && segment.attributes.length > settings.SegmentLengthValue) ||
-                            (settings.SegmentLengthOperation === Operation.GreaterThanOrEqual && segment.attributes.length >= settings.SegmentLengthValue)) {
+                        if ((settings.SegmentLengthOperation === Operation.LessThan && (segment.attributes.length * segmentLengthMultiplier) < settings.SegmentLengthValue) ||
+                            (settings.SegmentLengthOperation === Operation.LessThanOrEqual && (segment.attributes.length * segmentLengthMultiplier) <= settings.SegmentLengthValue) ||
+                            (settings.SegmentLengthOperation === Operation.GreaterThan && (segment.attributes.length * segmentLengthMultiplier) > settings.SegmentLengthValue) ||
+                            (settings.SegmentLengthOperation === Operation.GreaterThanOrEqual && (segment.attributes.length * segmentLengthMultiplier) >= settings.SegmentLengthValue)) {
                             issues = issues | Issue.SegmentLength;
                             newSegment = true;
                         }
@@ -1066,6 +1127,9 @@ var WMEWAL_Streets;
                         ((segment.attributes.fwdDirection && segment.attributes.fwdMaxSpeed != null) ||
                             (segment.attributes.revDirection && segment.attributes.revMaxSpeed != null))) {
                         issues = issues | Issue.RampWithSL;
+                    }
+                    if (settings.NewlyPaved && !segment.attributes.validated) {
+                        issues |= Issue.NewlyPaved;
                     }
                     if (detectIssues && issues === 0) {
                         // If at least one issue was chosen and this segment doesn't have any issues, then skip it
@@ -1167,7 +1231,7 @@ var WMEWAL_Streets;
             let includeAltNames = (nameRegex != null || settings.IncludeAltNames || cityRegex != null);
             var includeASC = settings.IncludeASC;
             let includeDirection = (settings.Direction != null);
-            let includeLength = settings.SegmentLength;
+            let includeLength = settings.SegmentLength || settings.SegmentLengthFilter;
             let lineArray;
             let columnArray;
             let w;
@@ -1186,7 +1250,7 @@ var WMEWAL_Streets;
                     columnArray.push("Direction");
                 }
                 if (includeLength) {
-                    columnArray.push("Length (m)");
+                    columnArray.push(`Length (${isImperial ? 'ft' : 'm'})`);
                 }
                 if (detectIssues) {
                     columnArray.push("Issues");
@@ -1340,6 +1404,26 @@ var WMEWAL_Streets;
                     }
                     w.document.write(` ${new Date(settings.UpdatedDate).toString()}`);
                 }
+                if (settings.SegmentLengthFilter) {
+                    w.document.write("<br/>Segment length ");
+                    switch (settings.SegmentLengthFilterOperation) {
+                        case Operation.LessThan:
+                            w.document.write("&lt;");
+                            break;
+                        case Operation.LessThanOrEqual:
+                            w.document.write("&lt;=");
+                            break;
+                        case Operation.GreaterThan:
+                            w.document.write("&gt;");
+                            break;
+                        case Operation.GreaterThanOrEqual:
+                            w.document.write("&gt;=");
+                            break;
+                        default:
+                            break;
+                    }
+                    w.document.write(` ${settings.SegmentLengthFilterValue} ${settings.SegmentLengthFilterUnit == Unit.Metric ? 'm' : 'ft'}`);
+                }
                 if (detectIssues) {
                     w.document.write("<h4>Issues</h4>");
                 }
@@ -1402,7 +1486,7 @@ var WMEWAL_Streets;
                         default:
                             break;
                     }
-                    w.document.write(" " + settings.SegmentLengthValue.toString() + " m");
+                    w.document.write(` ${settings.SegmentLengthValue} ${settings.SegmentLengthUnit == Unit.Metric ? 'm' : 'ft'}`);
                 }
                 if (settings.HasNoName) {
                     w.document.write("<br/>Has no name");
@@ -1425,6 +1509,9 @@ var WMEWAL_Streets;
                 if (settings.RampWithSL) {
                     w.document.write("<br/>Ramp with speed limit");
                 }
+                if (settings.NewlyPaved) {
+                    w.document.write("<br/>Newly paved");
+                }
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><tr><th>Name</th>");
                 if (includeAltNames) {
                     w.document.write("<th>Alt Names</th>");
@@ -1438,7 +1525,7 @@ var WMEWAL_Streets;
                     w.document.write("<th>Direction</th>");
                 }
                 if (includeLength) {
-                    w.document.write("<th>Length (m)</th>");
+                    w.document.write(`<th>Length (${isImperial ? 'ft' : 'm'})</th>`);
                 }
                 if (detectIssues) {
                     w.document.write("<th>Issues</th>");
@@ -1669,6 +1756,9 @@ var WMEWAL_Streets;
         if (issues & Issue.RampWithSL) {
             issuesList.push("Ramp with speed limit");
         }
+        if (issues & Issue.NewlyPaved) {
+            issuesList.push("Newly paved");
+        }
         if (issuesList.length === 0) {
             return "None";
         }
@@ -1749,61 +1839,9 @@ var WMEWAL_Streets;
                 }
             }
         }
+        isImperial = W.app.modeController.appLayout.dataModel.isImperial;
         if (settings == null) {
-            settings = {
-                RoadTypeMask: WMEWAL.RoadType.Freeway,
-                State: null,
-                StateOperation: Operation.Equal,
-                LockLevel: null,
-                LockLevelOperation: Operation.Equal,
-                Regex: null,
-                RegexIgnoreCase: true,
-                Roundabouts: false,
-                RoundaboutsOperation: 0,
-                ExcludeJunctionBoxes: true,
-                EditableByMe: true,
-                NoSpeedLimit: false,
-                IncludeAltNames: false,
-                Direction: null,
-                CityRegex: null,
-                CityRegexIgnoreCase: true,
-                HasTimeBasedRestrictions: false,
-                HasTimeBasedTurnRestrictions: false,
-                HasRestrictedJunctionArrow: false,
-                UnknownDirection: false,
-                HasUTurn: false,
-                HasSoftTurns: false,
-                HasUnnecessaryJunctionNode: false,
-                Elevation: false,
-                ElevationOperation: Operation.LessThan,
-                SegmentLength: false,
-                SegmentLengthOperation: Operation.LessThan,
-                SegmentLengthValue: null,
-                LastModifiedBy: null,
-                HasNoName: false,
-                HasNoCity: false,
-                NonNeutralRoutingPreference: false,
-                IncludeASC: false,
-                NoHN: false,
-                RampWithSL: false,
-                Unpaved: false,
-                Tunnel: false,
-                HeadlightsRequired: false,
-                NearHOV: false,
-                Toll: false,
-                Beacons: false,
-                CreatedBy: null,
-                LaneGuidance: false,
-                LaneGuidanceOperation: 0,
-                Created: false,
-                CreatedOperation: Operation.GreaterThanOrEqual,
-                CreatedDate: null,
-                Updated: false,
-                UpdatedOperation: Operation.GreaterThanOrEqual,
-                UpdatedDate: null,
-                Minus1RoutingPreference: false,
-                Plus1RoutingPreference: false
-            };
+            initSettings();
         }
         else {
             if (updateProperties()) {
@@ -1814,6 +1852,68 @@ var WMEWAL_Streets;
         console.groupEnd();
         WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         WMEWAL.RegisterPlugIn(WMEWAL_Streets);
+    }
+    function initSettings() {
+        settings = {
+            RoadTypeMask: WMEWAL.RoadType.Freeway,
+            State: null,
+            StateOperation: Operation.Equal,
+            LockLevel: null,
+            LockLevelOperation: Operation.Equal,
+            Regex: null,
+            RegexIgnoreCase: true,
+            Roundabouts: false,
+            RoundaboutsOperation: 0,
+            ExcludeJunctionBoxes: true,
+            EditableByMe: true,
+            NoSpeedLimit: false,
+            IncludeAltNames: false,
+            Direction: null,
+            CityRegex: null,
+            CityRegexIgnoreCase: true,
+            HasTimeBasedRestrictions: false,
+            HasTimeBasedTurnRestrictions: false,
+            HasRestrictedJunctionArrow: false,
+            UnknownDirection: false,
+            HasUTurn: false,
+            HasSoftTurns: false,
+            HasUnnecessaryJunctionNode: false,
+            Elevation: false,
+            ElevationOperation: Operation.LessThan,
+            SegmentLength: false,
+            SegmentLengthOperation: Operation.LessThan,
+            SegmentLengthValue: null,
+            SegmentLengthUnit: null,
+            LastModifiedBy: null,
+            HasNoName: false,
+            HasNoCity: false,
+            NonNeutralRoutingPreference: false,
+            IncludeASC: false,
+            NoHN: false,
+            RampWithSL: false,
+            Unpaved: false,
+            Tunnel: false,
+            HeadlightsRequired: false,
+            NearHOV: false,
+            Toll: false,
+            Beacons: false,
+            CreatedBy: null,
+            LaneGuidance: false,
+            LaneGuidanceOperation: 0,
+            Created: false,
+            CreatedOperation: Operation.GreaterThanOrEqual,
+            CreatedDate: null,
+            Updated: false,
+            UpdatedOperation: Operation.GreaterThanOrEqual,
+            UpdatedDate: null,
+            Minus1RoutingPreference: false,
+            Plus1RoutingPreference: false,
+            NewlyPaved: false,
+            SegmentLengthFilter: false,
+            SegmentLengthFilterOperation: Operation.LessThan,
+            SegmentLengthFilterValue: null,
+            SegmentLengthFilterUnit: isImperial ? Unit.Imperial : Unit.Metric
+        };
     }
     function updateProperties() {
         let upd = false;
@@ -1928,6 +2028,35 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty("UpdatedOperation")) {
                 settings.UpdatedOperation = Operation.GreaterThanOrEqual;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("NewlyPaved")) {
+                settings.NewlyPaved = false;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("SegmentLengthUnit") || settings.SegmentLengthUnit == null) {
+                if (settings.SegmentLength != null) {
+                    settings.SegmentLengthUnit = Unit.Metric;
+                }
+                else {
+                    settings.SegmentLengthUnit = isImperial ? Unit.Imperial : Unit.Metric;
+                }
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("SegmentLengthFilter")) {
+                settings.SegmentLengthFilter = false;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("SegmentLengthFilterOperation")) {
+                settings.SegmentLengthFilterOperation = Operation.LessThan;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("SegmentLengthFilterValue")) {
+                settings.SegmentLengthFilterValue = null;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("SegmentLengthFilterUnit")) {
+                settings.SegmentLengthFilterUnit = isImperial ? Unit.Imperial : Unit.Metric;
                 upd = true;
             }
             if (settings.hasOwnProperty("OutputTo")) {
