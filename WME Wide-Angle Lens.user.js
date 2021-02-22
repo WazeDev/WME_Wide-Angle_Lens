@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.6
+// @version             1.5.7
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Changes to support new options in Streets plugin</li>' +
+        '<li>Fixed issue with determining zoom level when multiple plugins are active</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -1063,10 +1063,10 @@ var WMEWAL;
                 W.controller.reload();
             }
         }
-        let minZoomLevel = 8;
+        let minZoomLevel = 0;
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
-                if (plugins[ix].MinimumZoomLevel < minZoomLevel) {
+                if (plugins[ix].MinimumZoomLevel > minZoomLevel) {
                     minZoomLevel = plugins[ix].MinimumZoomLevel;
                 }
             }
