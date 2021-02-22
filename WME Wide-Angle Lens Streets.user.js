@@ -1,3 +1,9 @@
+/// <reference path="../typings/globals/openlayers/index.d.ts" />
+/// <reference path="../typings/I18n.d.ts" />
+/// <reference path="../typings/waze.d.ts" />
+/// <reference path="../typings/globals/jquery/index.d.ts" />
+/// <reference path="WME Wide-Angle Lens.user.ts" />
+/// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Streets
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -211,7 +217,7 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}Roundabouts' type='checkbox'/>` +
             `<label for='${ctlPrefix}Roundabouts' class='wal-label'>`;
-        html += `<select id='${ctlPrefix}RoundaboutsOp'>` +
+        html += `<select id='${ctlPrefix}RoundaboutsOp' style='margin-right: 0px'>` +
             "<option value='0'>Exclude</option>" +
             "<option value='1'>Only</option>" +
             "</select> Roundabouts</label></td></tr>";
@@ -231,19 +237,19 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}Beacons' class='wal-label'>` + I18n.t("edit.segment.fields.beacons") + "</label></td></tr>";
         html += `<tr><td><input id='${ctlPrefix}LaneGuidance' type='checkbox'/>` +
             `<label for='${ctlPrefix}LaneGuidance' class='wal-label'>`;
-        html += `<select id='${ctlPrefix}LaneGuidanceOp'>` +
+        html += `<select id='${ctlPrefix}LaneGuidanceOp' style='margin-right: 0px'>` +
             "<option value='0'>Has</option>" +
             "<option value='1'>Missing</option>" +
             "</select> Lane guidance</label></td></tr>";
         html += `<tr><td><input id='${ctlPrefix}SegmentLengthFilter' type='checkbox'/>` +
             `<label for='${ctlPrefix}SegmentLengthFilter' class='wal-label'>Segment length</label>&nbsp;` +
-            `<select id='${ctlPrefix}SegmentLengthFilterOperation'>` +
+            `<select id='${ctlPrefix}SegmentLengthFilterOperation' style='margin-right: 0px'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
             `<option value='${Operation.LessThanOrEqual}'>&lt;=</option>` +
             `<option value='${Operation.GreaterThan}'>&gt;</option>` +
             `<option value='${Operation.GreaterThanOrEqual}'>&gt;=</option></select>` +
             `<input type='text' id='${ctlPrefix}SegmentLengthFilterValue' class='wal-textbox' style='width: 40px'/> ` +
-            `<select id='${ctlPrefix}SegmentLengthFilterUnit'>` +
+            `<select id='${ctlPrefix}SegmentLengthFilterUnit' style='margin-right: 0px'>` +
             `<option value='${Unit.Metric}'>m</option>` +
             `<option value='${Unit.Imperial}'>ft</option></select>` +
             "</td></tr>";
@@ -274,13 +280,13 @@ var WMEWAL_Streets;
             "</td></tr>";
         html += `<tr><td><input id='${ctlPrefix}SegmentLength' type='checkbox'/>` +
             `<label for='${ctlPrefix}SegmentLength' class='wal-label'>Segment length</label>&nbsp;` +
-            `<select id='${ctlPrefix}SegmentLengthOperation'>` +
+            `<select id='${ctlPrefix}SegmentLengthOperation' style='margin-right: 0px'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
             `<option value='${Operation.LessThanOrEqual}'>&lt;=</option>` +
             `<option value='${Operation.GreaterThan}'>&gt;</option>` +
             `<option value='${Operation.GreaterThanOrEqual}'>&gt;=</option></select>` +
             `<input type='text' id='${ctlPrefix}SegmentLengthValue' class='wal-textbox' style='width: 40px'/> ` +
-            `<select id='${ctlPrefix}SegmentLengthUnit'>` +
+            `<select id='${ctlPrefix}SegmentLengthUnit' style='margin-right: 0px'>` +
             `<option value='${Unit.Metric}'>m</option>` +
             `<option value='${Unit.Imperial}'>ft</option></select>` +
             "</td></tr>";
