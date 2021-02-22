@@ -1,3 +1,9 @@
+/// <reference path="../typings/globals/openlayers/index.d.ts" />
+/// <reference path="../typings/I18n.d.ts" />
+/// <reference path="../typings/waze.d.ts" />
+/// <reference path="../typings/globals/jquery/index.d.ts" />
+/// <reference path="WME Wide-Angle Lens.user.ts" />
+/// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Streets
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -5,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.6
+// @version             1.6.7
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
