@@ -1,9 +1,3 @@
-/// <reference path="../typings/globals/openlayers/index.d.ts" />
-/// <reference path="../typings/I18n.d.ts" />
-/// <reference path="../typings/waze.d.ts" />
-/// <reference path="../typings/globals/jquery/index.d.ts" />
-/// <reference path="WME Wide-Angle Lens.user.ts" />
-/// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Streets
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -11,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.7
+// @version             1.6.8
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +19,7 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Include one-way as an issue</li>' +
+        '<li>Fixed issue with accessing some underlying WME properties.</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -1857,7 +1851,7 @@ var WMEWAL_Streets;
                 }
             }
         }
-        isImperial = W.app.modeController.appLayout.dataModel.isImperial;
+        isImperial = W.app.layout.dataModel.isImperial;
         if (settings == null) {
             initSettings();
         }

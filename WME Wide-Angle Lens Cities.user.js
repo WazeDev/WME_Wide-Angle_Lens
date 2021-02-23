@@ -1,8 +1,3 @@
-/// <reference path="../typings/globals/openlayers/index.d.ts" />
-/// <reference path="../typings/waze.d.ts" />
-/// <reference path="../typings/globals/jquery/index.d.ts" />
-/// <reference path="WME Wide-Angle Lens.user.ts" />
-/// <reference path="../typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Cities
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
