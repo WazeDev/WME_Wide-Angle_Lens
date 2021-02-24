@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.8
+// @version             1.6.9
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,7 +19,7 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with accessing some underlying WME properties.</li>' +
+        '<li>Added "Has Closures" as an issue on which to report</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -61,6 +61,7 @@ var WMEWAL_Streets;
         Issue[Issue["Minus1RoutingPreference"] = 65536] = "Minus1RoutingPreference";
         Issue[Issue["NewlyPaved"] = 131072] = "NewlyPaved";
         Issue[Issue["OneWay"] = 262144] = "OneWay";
+        Issue[Issue["HasClosures"] = 524288] = "HasClosures";
     })(Issue || (Issue = {}));
     let Unit;
     (function (Unit) {
@@ -102,6 +103,7 @@ var WMEWAL_Streets;
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
+        html += `<tr><td style='border-top: 1px solid'><button class='btn btn-primary' style='margin-top: 6px;margin-bottom: 6px' id='${ctlPrefix}Reset' title='Reset'>Reset</button></td></tr>`;
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Output Options</td></tr>";
         html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt'>` +
             `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`;
@@ -302,6 +304,8 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}RampWithSL' class='wal-label'>Ramp with speed limit</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}NewlyPaved' type='checkbox'/>` +
             `<label for='${ctlPrefix}NewlyPaved' class='wal-label'>Newly paved</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}HasClosures' type='checkbox'/>` +
+            `<label for='${ctlPrefix}HasClosures' class='wal-label'>Has closures</label></td></tr>`;
         html += "</tbody></table>";
         return html;
     }
@@ -328,8 +332,13 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}LoadSetting`).on("click", loadSetting);
         $(`#${ctlPrefix}SaveSetting`).on("click", saveSetting);
         $(`#${ctlPrefix}DeleteSetting`).on("click", deleteSetting);
+        $(`#${ctlPrefix}Reset`).on("click", reset);
     }
     WMEWAL_Streets.TabLoaded = TabLoaded;
+    function reset() {
+        initSettings();
+        updateUI();
+    }
     function updateStates() {
         let selectState = $(`#${ctlPrefix}State`);
         // Preserve current selection
@@ -497,6 +506,7 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}SegmentLengthFilterValue`).val(settings.SegmentLengthFilterValue ?? "");
         $(`#${ctlPrefix}SegmentLengthFilterUnit`).val(settings.SegmentLengthFilterUnit || Unit.Metric.toString());
         $(`#${ctlPrefix}OneWay`).prop("checked", settings.OneWay);
+        $(`#${ctlPrefix}HasClosures`).prop("checked", settings.HasClosures);
     }
     function loadSetting() {
         let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
@@ -670,7 +680,8 @@ var WMEWAL_Streets;
             SegmentLengthFilterOperation: parseInt($(`#${ctlPrefix}SegmentLengthFilterOperation`).val()),
             SegmentLengthFilterValue: null,
             SegmentLengthFilterUnit: parseInt($(`#${ctlPrefix}SegmentLengthFilterUnit`).val()),
-            OneWay: $(`#${ctlPrefix}OneWay`).prop('checked')
+            OneWay: $(`#${ctlPrefix}OneWay`).prop('checked'),
+            HasClosures: $(`#${ctlPrefix}HasClosures`).prop('checked')
         };
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
@@ -822,7 +833,8 @@ var WMEWAL_Streets;
                 || settings.Minus1RoutingPreference
                 || settings.Plus1RoutingPreference
                 || settings.NewlyPaved
-                || settings.OneWay;
+                || settings.OneWay
+                || settings.HasClosures;
             updateSettings();
         }
         return allOk;
@@ -1136,6 +1148,9 @@ var WMEWAL_Streets;
                     }
                     if (settings.NewlyPaved && !segment.attributes.validated) {
                         issues |= Issue.NewlyPaved;
+                    }
+                    if (settings.HasClosures && segment.attributes.hasClosures) {
+                        issues |= Issue.HasClosures;
                     }
                     if (detectIssues && issues === 0) {
                         // If at least one issue was chosen and this segment doesn't have any issues, then skip it
@@ -1521,6 +1536,9 @@ var WMEWAL_Streets;
                 if (settings.NewlyPaved) {
                     w.document.write("<br/>Newly paved");
                 }
+                if (settings.HasClosures) {
+                    w.document.write("<br/>Has closures");
+                }
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><tr><th>Name</th>");
                 if (includeAltNames) {
                     w.document.write("<th>Alt Names</th>");
@@ -1771,6 +1789,9 @@ var WMEWAL_Streets;
         if (issues & Issue.OneWay) {
             issuesList.push("One way");
         }
+        if (issues & Issue.HasClosures) {
+            issuesList.push("Has closures");
+        }
         if (issuesList.length === 0) {
             return "None";
         }
@@ -1867,7 +1888,7 @@ var WMEWAL_Streets;
     }
     function initSettings() {
         settings = {
-            RoadTypeMask: WMEWAL.RoadType.Freeway,
+            RoadTypeMask: WMEWAL.RoadType.Street,
             State: null,
             StateOperation: Operation.Equal,
             LockLevel: null,
@@ -1895,7 +1916,7 @@ var WMEWAL_Streets;
             SegmentLength: false,
             SegmentLengthOperation: Operation.LessThan,
             SegmentLengthValue: null,
-            SegmentLengthUnit: null,
+            SegmentLengthUnit: isImperial ? Unit.Imperial : Unit.Metric,
             LastModifiedBy: null,
             HasNoName: false,
             HasNoCity: false,
@@ -1925,7 +1946,8 @@ var WMEWAL_Streets;
             SegmentLengthFilterOperation: Operation.LessThan,
             SegmentLengthFilterValue: null,
             SegmentLengthFilterUnit: isImperial ? Unit.Imperial : Unit.Metric,
-            OneWay: false
+            OneWay: false,
+            HasClosures: false
         };
     }
     function updateProperties() {
@@ -2074,6 +2096,10 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty("OneWay")) {
                 settings.OneWay = false;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("HasClosures")) {
+                settings.HasClosures = false;
                 upd = true;
             }
             if (settings.hasOwnProperty("OutputTo")) {
