@@ -19,7 +19,7 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added "Has TIO" as an issue on which to report</li>' +
+        '<li>Detect loops</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -62,26 +62,13 @@ var WMEWAL_Streets;
         Issue[Issue["NewlyPaved"] = 131072] = "NewlyPaved";
         Issue[Issue["OneWay"] = 262144] = "OneWay";
         Issue[Issue["HasClosures"] = 524288] = "HasClosures";
-        Issue[Issue["HasTIO"] = 1048576] = "HasTIO";
+        Issue[Issue["Loop"] = 1048576] = "Loop";
     })(Issue || (Issue = {}));
     let Unit;
     (function (Unit) {
         Unit[Unit["Metric"] = 1] = "Metric";
         Unit[Unit["Imperial"] = 2] = "Imperial";
     })(Unit || (Unit = {}));
-    let TIO;
-    (function (TIO) {
-        TIO["Continue"] = "CONTINUE";
-        TIO["ExitLeft"] = "EXIT_LEFT";
-        TIO["ExitRight"] = "EXIT_RIGHT";
-        TIO["KeepLeft"] = "KEEP_LEFT";
-        TIO["KeepRight"] = "KEEP_RIGHT";
-        TIO["None"] = "NONE";
-        TIO["TurnLeft"] = "TURN_LEFT";
-        TIO["TurnRight"] = "TURN_RIGHT";
-        TIO["UTurn"] = "UTURN";
-        TIO["Any"] = "ANY";
-    })(TIO || (TIO = {}));
     let pluginName = "WMEWAL-Streets";
     WMEWAL_Streets.Title = "Streets";
     WMEWAL_Streets.MinimumZoomLevel = 2;
@@ -123,6 +110,7 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`;
         html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeASC'>` +
             `<label for='${ctlPrefix}IncludeASC' style='margin-left:8px;'>Include Avg Speed Cams</label></td></tr>`;
+        // Filters
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Filters (All of these)</td></tr>";
         html += "<tr><td><b>Lock Level:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
@@ -263,6 +251,7 @@ var WMEWAL_Streets;
             `<option value='${Unit.Metric}'>m</option>` +
             `<option value='${Unit.Imperial}'>ft</option></select>` +
             "</td></tr>";
+        // Issues
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
         html += `<tr><td><input id='${ctlPrefix}NoSpeedLimit' type='checkbox'/>` +
             `<label for='${ctlPrefix}NoSpeedLimit' class='wal-label'>No speed limit</label></td></tr>`;
@@ -320,21 +309,8 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}NewlyPaved' class='wal-label'>Newly paved</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}HasClosures' type='checkbox'/>` +
             `<label for='${ctlPrefix}HasClosures' class='wal-label'>Has closures</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasTIO' type='checkbox'/>` +
-            `<label for='${ctlPrefix}HasTIO' class='wal-label'>Has TIO:</label>&nbsp;` +
-            `<select id='${ctlPrefix}TIO'>` +
-            `<option value='${TIO.Any}'>Any</option>` +
-            `<option value='${TIO.None}'>${I18n.t("turn_tooltip.instruction_override.opcodes.NONE")}</option>` +
-            `<option value='${TIO.TurnLeft}'>${I18n.t("turn_tooltip.instruction_override.opcodes.TURN_LEFT")}</option>` +
-            `<option value='${TIO.TurnRight}'>${I18n.t("turn_tooltip.instruction_override.opcodes.TURN_RIGHT")}</option>` +
-            `<option value='${TIO.KeepLeft}'>${I18n.t("turn_tooltip.instruction_override.opcodes.KEEP_LEFT")}</option>` +
-            `<option value='${TIO.KeepRight}'>${I18n.t("turn_tooltip.instruction_override.opcodes.KEEP_RIGHT")}</option>` +
-            `<option value='${TIO.Continue}'>${I18n.t("turn_tooltip.instruction_override.opcodes.CONTINUE")}</option>` +
-            `<option value='${TIO.ExitLeft}'>${I18n.t("turn_tooltip.instruction_override.opcodes.EXIT_LEFT")}</option>` +
-            `<option value='${TIO.ExitRight}'>${I18n.t("turn_tooltip.instruction_override.opcodes.EXIT_RIGHT")}</option>` +
-            `<option value='${TIO.UTurn}'>${I18n.t("turn_tooltip.instruction_override.opcodes.UTURN")}</option>` +
-            "</select>" +
-            "</td></tr>";
+        html += `<tr><td><input id='${ctlPrefix}Loop' type='checkbox'/>` +
+            `<label for='${ctlPrefix}Loop' class='wal-label'>Loop</label></td></tr>`;
         html += "</tbody></table>";
         return html;
     }
@@ -536,8 +512,7 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}SegmentLengthFilterUnit`).val(settings.SegmentLengthFilterUnit || Unit.Metric.toString());
         $(`#${ctlPrefix}OneWay`).prop("checked", settings.OneWay);
         $(`#${ctlPrefix}HasClosures`).prop("checked", settings.HasClosures);
-        $(`#${ctlPrefix}HasTIO`).prop("checked", settings.HasTIO);
-        $(`#${ctlPrefix}TIO`).val(settings.TIO);
+        $(`#${ctlPrefix}Loop`).prop("checked", settings.Loop);
     }
     function loadSetting() {
         let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
@@ -713,8 +688,7 @@ var WMEWAL_Streets;
             SegmentLengthFilterUnit: parseInt($(`#${ctlPrefix}SegmentLengthFilterUnit`).val()),
             OneWay: $(`#${ctlPrefix}OneWay`).prop('checked'),
             HasClosures: $(`#${ctlPrefix}HasClosures`).prop('checked'),
-            HasTIO: $(`#${ctlPrefix}HasTIO`).prop("checked"),
-            TIO: $(`#${ctlPrefix}TIO`).val()
+            Loop: $(`#${ctlPrefix}Loop`).prop('checked')
         };
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
@@ -868,7 +842,7 @@ var WMEWAL_Streets;
                 || settings.NewlyPaved
                 || settings.OneWay
                 || settings.HasClosures
-                || settings.HasTIO;
+                || settings.Loop;
             updateSettings();
         }
         return allOk;
@@ -1186,37 +1160,18 @@ var WMEWAL_Streets;
                     if (settings.HasClosures && segment.attributes.hasClosures) {
                         issues |= Issue.HasClosures;
                     }
-                    if (settings.HasTIO) {
-                        var hasTIO = false;
-                        var directions = [];
-                        if (determineDirection(segment) == Direction.OneWay) {
-                            // One-way
-                            directions = ["from"];
-                        }
-                        else if (determineDirection(segment) == Direction.TwoWay) {
-                            // Two way
-                            directions = ["from", "to"];
-                        }
-                        if (directions.length > 0) {
-                            for (var ixDir = 0; ixDir < directions.length; ixDir++) {
-                                var node = segment.getNodeByDirection(directions[ixDir]);
-                                var connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
-                                for (var ixSeg = 0; ixSeg < connectedSegments.length; ixSeg++) {
-                                    var connectedSegment = connectedSegments[ixSeg];
-                                    var turn = W.model.getTurnGraph().getTurnThroughNode(node, segment, connectedSegment).getTurnData();
-                                    if (turn.hasInstructionOpcode() && (settings.TIO == TIO.Any || turn.getInstructionOpcode() == settings.TIO)) {
-                                        hasTIO = true;
-                                        break;
-                                    }
-                                }
-                                if (hasTIO) {
-                                    break;
+                    if (settings.Loop && !segment.isInRoundabout()) {
+                        let fromSegments = segment.getConnectedSegmentsByDirection("from");
+                        let toSegments = segment.getConnectedSegmentsByDirection("to");
+                        let hasLoop = false;
+                        for (let ixFrom = 0; ixFrom < fromSegments.length && !hasLoop; ixFrom++) {
+                            for (let ixTo = 0; ixTo < toSegments.length && !hasLoop; ixTo++) {
+                                if (fromSegments[ixFrom].attributes.id == toSegments[ixTo].attributes.id ||
+                                    fromSegments[ixFrom].attributes.id == segment.attributes.id) {
+                                    issues |= Issue.Loop;
+                                    hasLoop = true;
                                 }
                             }
-                        }
-                        if (hasTIO) {
-                            issues |= Issue.HasTIO;
-                            newSegment = true;
                         }
                     }
                     if (detectIssues && issues === 0) {
@@ -1384,7 +1339,7 @@ var WMEWAL_Streets;
                 w.document.write("<html><head><title>Streets</title></head><body>");
                 w.document.write("<h3>Area: " + WMEWAL.areaName + "</h3>");
                 w.document.write("<h4>Filters</h4>");
-                w.document.write("<div>Road Type:");
+                w.document.write("<br/>Road Type: ");
                 let comma = "";
                 for (let rt in WMEWAL.RoadType) {
                     if (WMEWAL.RoadType.hasOwnProperty(rt)) {
@@ -1395,68 +1350,65 @@ var WMEWAL_Streets;
                         }
                     }
                 }
-                w.document.write("</div>");
                 if (settings.LockLevel != null) {
-                    w.document.write("<div>Lock level " + (settings.LockLevelOperation === Operation.NotEqual ? "does not equal " : "equals ") + settings.LockLevel.toString() + "</div>");
+                    w.document.write("<br/>Lock level " + (settings.LockLevelOperation === Operation.NotEqual ? "does not equal " : "equals ") + settings.LockLevel.toString());
                 }
                 if (settings.Direction != null) {
-                    w.document.write("<div>Direction " + translateDirection(settings.Direction) + "</div>");
+                    w.document.write("<br/>Direction " + translateDirection(settings.Direction));
                 }
                 if (cityRegex != null) {
-                    w.document.write("<div>City Name matches " + cityRegex.source);
+                    w.document.write("<br/>City Name matches " + cityRegex.source);
                     if (settings.CityRegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
                     }
-                    w.document.write("</div>");
                 }
                 if (settings.State != null) {
-                    w.document.write("<div>State " + (settings.StateOperation === Operation.NotEqual ? "does not equal " : "equals ") + stateName + "</div>");
+                    w.document.write("<br/>State " + (settings.StateOperation === Operation.NotEqual ? "does not equal " : "equals ") + stateName);
                 }
                 if (nameRegex != null) {
-                    w.document.write("<div>Name matches " + nameRegex.source);
+                    w.document.write("<br/>Name matches " + nameRegex.source);
                     if (settings.RegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
                     }
-                    w.document.write("</div>");
                 }
                 if (settings.Roundabouts) {
-                    w.document.write(`<div>Roundabouts ${settings.RoundaboutsOperation === 0 ? 'excluded' : 'only'}</div>`);
+                    w.document.write(`<br/>Roundabouts ${settings.RoundaboutsOperation === 0 ? 'excluded' : 'only'}`);
                 }
                 if (settings.ExcludeJunctionBoxes) {
-                    w.document.write("<div>Junction boxes excluded</div>");
+                    w.document.write("<br/>Junction boxes excluded");
                 }
                 if (settings.EditableByMe) {
-                    w.document.write("<div>Editable by me</div>");
+                    w.document.write("<br/>Editable by me");
                 }
                 if (settings.CreatedBy != null) {
-                    w.document.write("<div>Created by " + createdByName + "</div>");
+                    w.document.write("<br/>Created by " + createdByName);
                 }
                 if (settings.LastModifiedBy != null) {
-                    w.document.write("<div>Last updated by " + lastModifiedByName + "</div>");
+                    w.document.write("<br/>Last updated by " + lastModifiedByName);
                 }
                 if (settings.Unpaved) {
-                    w.document.write("<div>" + I18n.t("edit.segment.fields.unpaved") + "</div>");
+                    w.document.write("<br/>" + I18n.t("edit.segment.fields.unpaved"));
                 }
                 if (settings.Tunnel) {
-                    w.document.write("<div>" + I18n.t("edit.segment.fields.tunnel") + "</div>");
+                    w.document.write("<br/>" + I18n.t("edit.segment.fields.tunnel"));
                 }
                 if (settings.HeadlightsRequired) {
-                    w.document.write("<div>" + I18n.t("edit.segment.fields.headlights") + "</div>");
+                    w.document.write("<br/>" + I18n.t("edit.segment.fields.headlights"));
                 }
                 if (settings.NearHOV) {
-                    w.document.write("<div>" + I18n.t("edit.segment.fields.nearbyHOV") + "</div>");
+                    w.document.write("<br/>" + I18n.t("edit.segment.fields.nearbyHOV"));
                 }
                 if (settings.Toll) {
-                    w.document.write("<div>" + I18n.t("edit.segment.fields.toll_road") + "</div>");
+                    w.document.write("<br/>" + I18n.t("edit.segment.fields.toll_road"));
                 }
                 if (settings.Beacons) {
-                    w.document.write("<div>" + I18n.t("edit.segment.fields.beacons") + "</div>");
+                    w.document.write("<br/>" + I18n.t("edit.segment.fields.beacons"));
                 }
                 if (settings.LaneGuidance) {
-                    w.document.write(`<div>${(settings.LaneGuidanceOperation === 0 ? "Has" : "Missing")} lane guidance</div>`);
+                    w.document.write(`<br/>${(settings.LaneGuidanceOperation === 0 ? "Has" : "Missing")} lane guidance`);
                 }
                 if (settings.Created) {
-                    w.document.write("<div>Created ");
+                    w.document.write("<br/>Created ");
                     switch (settings.CreatedOperation) {
                         case Operation.GreaterThan:
                             w.document.write("after");
@@ -1473,10 +1425,10 @@ var WMEWAL_Streets;
                         default:
                             break;
                     }
-                    w.document.write(` ${new Date(settings.CreatedDate).toString()}</div>`);
+                    w.document.write(` ${new Date(settings.CreatedDate).toString()}`);
                 }
                 if (settings.Updated) {
-                    w.document.write("<div>Updated ");
+                    w.document.write("<br/>Updated ");
                     switch (settings.UpdatedOperation) {
                         case Operation.GreaterThan:
                             w.document.write("after");
@@ -1493,10 +1445,10 @@ var WMEWAL_Streets;
                         default:
                             break;
                     }
-                    w.document.write(` ${new Date(settings.UpdatedDate).toString()}</div>`);
+                    w.document.write(` ${new Date(settings.UpdatedDate).toString()}`);
                 }
                 if (settings.SegmentLengthFilter) {
-                    w.document.write("<div>Segment length ");
+                    w.document.write("<br/>Segment length ");
                     switch (settings.SegmentLengthFilterOperation) {
                         case Operation.LessThan:
                             w.document.write("&lt;");
@@ -1513,40 +1465,40 @@ var WMEWAL_Streets;
                         default:
                             break;
                     }
-                    w.document.write(` ${settings.SegmentLengthFilterValue} ${settings.SegmentLengthFilterUnit == Unit.Metric ? 'm' : 'ft'}</div>`);
+                    w.document.write(` ${settings.SegmentLengthFilterValue} ${settings.SegmentLengthFilterUnit == Unit.Metric ? 'm' : 'ft'}`);
                 }
                 if (detectIssues) {
                     w.document.write("<h4>Issues</h4>");
                 }
                 if (settings.NoSpeedLimit) {
-                    w.document.write("<div>Missing speed limit</div>");
+                    w.document.write("<br/>Missing speed limit");
                 }
                 if (settings.HasTimeBasedRestrictions) {
-                    w.document.write("<div>Has time-based restrictions</div>");
+                    w.document.write("<br/>Has time-based restrictions");
                 }
                 if (settings.HasTimeBasedTurnRestrictions) {
-                    w.document.write("<div>Has time-based turn restrictions</div>");
+                    w.document.write("<br/>Has time-based turn restrictions");
                 }
                 if (settings.HasRestrictedJunctionArrow) {
-                    w.document.write("<div>Has restricted junction arrows (red arrows)</div>");
+                    w.document.write("<br/>Has restricted junction arrows (red arrows)");
                 }
                 if (settings.UnknownDirection) {
-                    w.document.write("<div>Unknown direction</div>");
+                    w.document.write("<br/>Unknown direction");
                 }
                 if (settings.OneWay) {
-                    w.document.write("<div>One way</div>");
+                    w.document.write("<br/>One way");
                 }
                 if (settings.HasUTurn) {
-                    w.document.write("<div>Has u-turn</div>");
+                    w.document.write("<br/>Has u-turn");
                 }
                 if (settings.HasSoftTurns) {
-                    w.document.write("<div>Has soft turns</div>");
+                    w.document.write("<br/>Has soft turns");
                 }
                 if (settings.HasUnnecessaryJunctionNode) {
-                    w.document.write("<div>Has unnecessary junction node</div>");
+                    w.document.write("<br/>Has unnecessary junction node");
                 }
                 if (settings.Elevation) {
-                    w.document.write("<div>Elevation ");
+                    w.document.write("<br/>Elevation ");
                     switch (settings.ElevationOperation) {
                         case Operation.LessThan:
                             w.document.write("&lt;");
@@ -1560,10 +1512,10 @@ var WMEWAL_Streets;
                         default:
                             break;
                     }
-                    w.document.write(" 0</div>");
+                    w.document.write(" 0");
                 }
                 if (settings.SegmentLength) {
-                    w.document.write("<div>Segment length ");
+                    w.document.write("<br/>Segment length ");
                     switch (settings.SegmentLengthOperation) {
                         case Operation.LessThan:
                             w.document.write("&lt;");
@@ -1580,37 +1532,37 @@ var WMEWAL_Streets;
                         default:
                             break;
                     }
-                    w.document.write(` ${settings.SegmentLengthValue} ${settings.SegmentLengthUnit == Unit.Metric ? 'm' : 'ft'}</div>`);
+                    w.document.write(` ${settings.SegmentLengthValue} ${settings.SegmentLengthUnit == Unit.Metric ? 'm' : 'ft'}`);
                 }
                 if (settings.HasNoName) {
-                    w.document.write("<div>Has no name</div>");
+                    w.document.write("<br/>Has no name");
                 }
                 if (settings.HasNoCity) {
-                    w.document.write("<div>Has no city</div>");
+                    w.document.write("<br/>Has no city");
                 }
                 if (settings.NoHN) {
-                    w.document.write("<div>Has no house numbers</div>");
+                    w.document.write("<br/>Has no house numbers");
                 }
                 if (settings.Minus1RoutingPreference) {
-                    w.document.write("<div>-1 routing preference</div>");
+                    w.document.write("<br/>-1 routing preference");
                 }
                 if (settings.Plus1RoutingPreference) {
-                    w.document.write("<div>+1 routing preference</div>");
+                    w.document.write("<br/>+1 routing preference");
                 }
                 // if (settings.NonNeutralRoutingPreference) {
                 //     w.document.write("<br/>Non-neutral routing preference");
                 // }
                 if (settings.RampWithSL) {
-                    w.document.write("<div>Ramp with speed limit</div>");
+                    w.document.write("<br/>Ramp with speed limit");
                 }
                 if (settings.NewlyPaved) {
-                    w.document.write("<div>Newly paved</div>");
+                    w.document.write("<br/>Newly paved");
                 }
                 if (settings.HasClosures) {
-                    w.document.write("<div>Has closures</div>");
+                    w.document.write("<br/>Has closures");
                 }
-                if (settings.HasTIO) {
-                    w.document.write(`<div>Has TIO${settings.TIO == TIO.Any ? "" : ": " + I18n.t("turn_tooltip.instruction_override.opcodes." + settings.TIO)}</div>`);
+                if (settings.Loop) {
+                    w.document.write("<br/>Loop");
                 }
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><tr><th>Name</th>");
                 if (includeAltNames) {
@@ -1865,8 +1817,8 @@ var WMEWAL_Streets;
         if (issues & Issue.HasClosures) {
             issuesList.push("Has closures");
         }
-        if (issues & Issue.HasTIO) {
-            issuesList.push("Has TIO");
+        if (issues & Issue.Loop) {
+            issuesList.push("Loop");
         }
         if (issuesList.length === 0) {
             return "None";
@@ -2024,8 +1976,7 @@ var WMEWAL_Streets;
             SegmentLengthFilterUnit: isImperial ? Unit.Imperial : Unit.Metric,
             OneWay: false,
             HasClosures: false,
-            HasTIO: false,
-            TIO: TIO.Any
+            Loop: false
         };
     }
     function updateProperties() {
@@ -2180,12 +2131,8 @@ var WMEWAL_Streets;
                 settings.HasClosures = false;
                 upd = true;
             }
-            if (!settings.hasOwnProperty("HasTIO")) {
-                settings.HasTIO = false;
-                upd = true;
-            }
-            if (!settings.hasOwnProperty("TIO")) {
-                settings.TIO = TIO.Any;
+            if (!settings.hasOwnProperty("Loop")) {
+                settings.Loop = false;
                 upd = true;
             }
             if (settings.hasOwnProperty("OutputTo")) {

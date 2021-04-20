@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.9
+// @version             1.6.10
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added "Has Closures" as an issue on which to report</li>' +
+        '<li>Detect loops</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -71,7 +71,8 @@ namespace WMEWAL_Streets {
         Minus1RoutingPreference = 1 << 16,
         NewlyPaved = 1 << 17,
         OneWay = 1 << 18,
-        HasClosures = 1 << 19
+        HasClosures = 1 << 19,
+        Loop = 1 << 20
     }
 
     enum Unit {
@@ -178,6 +179,7 @@ namespace WMEWAL_Streets {
         SegmentLengthFilterUnit: Unit;
         OneWay: boolean;
         HasClosures: boolean;
+        Loop: boolean;
     }
 
     interface ISettings extends ISaveableSettings {
@@ -234,6 +236,8 @@ namespace WMEWAL_Streets {
             `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`;
         html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeASC'>` +
             `<label for='${ctlPrefix}IncludeASC' style='margin-left:8px;'>Include Avg Speed Cams</label></td></tr>`;
+
+        // Filters
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Filters (All of these)</td></tr>";
         html += "<tr><td><b>Lock Level:</b></td></tr>";
@@ -376,6 +380,8 @@ namespace WMEWAL_Streets {
             `<option value='${Unit.Imperial}'>ft</option></select>` +
             "</td></tr>";
 
+        // Issues
+
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
         html += `<tr><td><input id='${ctlPrefix}NoSpeedLimit' type='checkbox'/>` +
             `<label for='${ctlPrefix}NoSpeedLimit' class='wal-label'>No speed limit</label></td></tr>`;
@@ -433,6 +439,8 @@ namespace WMEWAL_Streets {
             `<label for='${ctlPrefix}NewlyPaved' class='wal-label'>Newly paved</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}HasClosures' type='checkbox'/>` +
             `<label for='${ctlPrefix}HasClosures' class='wal-label'>Has closures</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}Loop' type='checkbox'/>` +
+            `<label for='${ctlPrefix}Loop' class='wal-label'>Loop</label></td></tr>`;
         html += "</tbody></table>";
 
         return html;
@@ -651,6 +659,7 @@ namespace WMEWAL_Streets {
         $(`#${ctlPrefix}SegmentLengthFilterUnit`).val(settings.SegmentLengthFilterUnit || Unit.Metric.toString());
         $(`#${ctlPrefix}OneWay`).prop("checked", settings.OneWay);
         $(`#${ctlPrefix}HasClosures`).prop("checked", settings.HasClosures);
+        $(`#${ctlPrefix}Loop`).prop("checked", settings.Loop);
     }
 
     function loadSetting(): void {
@@ -846,7 +855,8 @@ namespace WMEWAL_Streets {
             SegmentLengthFilterValue: null,
             SegmentLengthFilterUnit: parseInt($(`#${ctlPrefix}SegmentLengthFilterUnit`).val()),
             OneWay: $(`#${ctlPrefix}OneWay`).prop('checked'),
-            HasClosures: $(`#${ctlPrefix}HasClosures`).prop('checked')
+            HasClosures: $(`#${ctlPrefix}HasClosures`).prop('checked'),
+            Loop: $(`#${ctlPrefix}Loop`).prop('checked')
         };
 
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
@@ -1017,7 +1027,8 @@ namespace WMEWAL_Streets {
                 || settings.Plus1RoutingPreference
                 || settings.NewlyPaved
                 || settings.OneWay
-                || settings.HasClosures;
+                || settings.HasClosures
+                || settings.Loop;
 
             updateSettings();
         }
@@ -1364,6 +1375,22 @@ namespace WMEWAL_Streets {
 
                     if (settings.HasClosures && segment.attributes.hasClosures) {
                         issues |= Issue.HasClosures;
+                    }
+
+                    if (settings.Loop && !segment.isInRoundabout()) {
+                        let fromSegments = segment.getConnectedSegmentsByDirection("from");
+                        let toSegments = segment.getConnectedSegmentsByDirection("to");
+                        let hasLoop = false;
+
+                        for (let ixFrom = 0; ixFrom < fromSegments.length && !hasLoop; ixFrom++) {
+                            for (let ixTo = 0; ixTo < toSegments.length && !hasLoop; ixTo++) {
+                                if (fromSegments[ixFrom].attributes.id == toSegments[ixTo].attributes.id ||
+                                    fromSegments[ixFrom].attributes.id == segment.attributes.id) {
+                                    issues |= Issue.Loop;
+                                    hasLoop = true;
+                                }
+                            }
+                        }
                     }
 
                     if (detectIssues && issues === 0) {
@@ -1763,6 +1790,9 @@ namespace WMEWAL_Streets {
                 if (settings.HasClosures) {
                     w.document.write("<br/>Has closures");
                 }
+                if (settings.Loop) {
+                    w.document.write("<br/>Loop")
+                }
 
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><tr><th>Name</th>");
                 if (includeAltNames) {
@@ -2023,6 +2053,9 @@ namespace WMEWAL_Streets {
         if (issues & Issue.HasClosures) {
             issuesList.push("Has closures");
         }
+        if (issues & Issue.Loop) {
+            issuesList.push("Loop");
+        }
 
         if (issuesList.length === 0) {
             return "None";
@@ -2183,7 +2216,8 @@ namespace WMEWAL_Streets {
             SegmentLengthFilterValue: null,
             SegmentLengthFilterUnit: isImperial ? Unit.Imperial : Unit.Metric,
             OneWay: false,
-            HasClosures: false
+            HasClosures: false,
+            Loop: false
         };
     }
 
@@ -2372,6 +2406,11 @@ namespace WMEWAL_Streets {
 
             if (!settings.hasOwnProperty("HasClosures")) {
                 settings.HasClosures = false;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("Loop")) {
+                settings.Loop = false;
                 upd = true;
             }
 
