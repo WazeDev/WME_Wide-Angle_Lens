@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.3
+// @version             1.4.4
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ namespace WMEWAL_Places {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added ability to filter on street regular expression</li>' +
+        '<li>Fixed issue with exporting multiple alt names to csv</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -1184,7 +1184,7 @@ namespace WMEWAL_Places {
                     //     (place.hasHours ? "Yes" : "No"), `"${place.lastEditor}"`, latlon.lat.toString(), latlon.lon.toString(), `"${plPlace}"`];
                     columnArray = [`"${place.name}"`];
                     if (settings.IncludeAlt) {
-                        columnArray.push(place.altNames.join(", "));
+                        columnArray.push(`"${place.altNames.join(',')}"`);
                     }
 
                     columnArray.push(`"${categories}"`, `"${place.city}"`, `"${place.state}"`, place.lockLevel.toString(),
