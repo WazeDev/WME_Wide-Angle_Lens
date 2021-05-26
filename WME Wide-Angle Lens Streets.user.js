@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.11
+// @version             1.7.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,7 +19,7 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Detect loops</li>' +
+        '<li>Added issue for shields</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -64,6 +64,7 @@ var WMEWAL_Streets;
         Issue[Issue["HasClosures"] = 524288] = "HasClosures";
         Issue[Issue["HasTIO"] = 1048576] = "HasTIO";
         Issue[Issue["Loop"] = 2097152] = "Loop";
+        Issue[Issue["Shield"] = 4194304] = "Shield";
     })(Issue || (Issue = {}));
     let Unit;
     (function (Unit) {
@@ -340,6 +341,12 @@ var WMEWAL_Streets;
             '</td></tr>';
         html += `<tr><td><input id='${ctlPrefix}Loop' type='checkbox'/>` +
             `<label for='${ctlPrefix}Loop' class='wal-label'>Loop</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}Shield' type='checkbox'/>` +
+            `<label for='${ctlPrefix}Shield' class='wal-label'>` +
+            `<select id='${ctlPrefix}ShieldOperation' style='margin-right: 0px'>` +
+            `<option value='0'>Missing</option>` +
+            `<option value='1'>Has</option>` +
+            `</select> Shield</label></td></tr>`;
         html += "</tbody></table>";
         return html;
     }
@@ -544,6 +551,8 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}HasTIO`).prop("checked", settings.HasTIO);
         $(`#${ctlPrefix}TIO`).val(settings.TIO);
         $(`#${ctlPrefix}Loop`).prop("checked", settings.Loop);
+        $(`#${ctlPrefix}Shield`).prop("checked", settings.Shield);
+        $(`#${ctlPrefix}ShieldOperation`).val(settings.ShieldOperation);
     }
     function loadSetting() {
         let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
@@ -721,7 +730,9 @@ var WMEWAL_Streets;
             HasClosures: $(`#${ctlPrefix}HasClosures`).prop('checked'),
             HasTIO: $(`#${ctlPrefix}HasTIO`).prop("checked"),
             TIO: $(`#${ctlPrefix}TIO`).val(),
-            Loop: $(`#${ctlPrefix}Loop`).prop('checked')
+            Loop: $(`#${ctlPrefix}Loop`).prop('checked'),
+            Shield: $(`#${ctlPrefix}Shield`).prop('checked'),
+            ShieldOperation: $(`#${ctlPrefix}ShieldOperation`).val()
         };
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
@@ -876,7 +887,8 @@ var WMEWAL_Streets;
                 || settings.OneWay
                 || settings.HasClosures
                 || settings.HasTIO
-                || settings.Loop;
+                || settings.Loop
+                || settings.Shield;
             updateSettings();
         }
         return allOk;
@@ -1015,6 +1027,11 @@ var WMEWAL_Streets;
                         (settings.SegmentLengthFilterOperation === Operation.LessThanOrEqual && (segment.attributes.length * segmentLengthFilterMultipier) <= settings.SegmentLengthFilterValue) ||
                         (settings.SegmentLengthFilterOperation === Operation.GreaterThan && (segment.attributes.length * segmentLengthFilterMultipier) > settings.SegmentLengthFilterValue) ||
                         (settings.SegmentLengthFilterOperation === Operation.GreaterThanOrEqual && (segment.attributes.length * segmentLengthFilterMultipier) >= settings.SegmentLengthFilterValue))) {
+                    let primaryStreet = null;
+                    let primaryStreetID = segment.attributes.primaryStreetID;
+                    if (primaryStreetID !== null) {
+                        primaryStreet = W.model.streets.getObjectById(primaryStreetID);
+                    }
                     let issues = 0;
                     let newSegment = false;
                     let address = segment.getAddress();
@@ -1235,6 +1252,20 @@ var WMEWAL_Streets;
                                     hasLoop = true;
                                 }
                             }
+                        }
+                    }
+                    if (settings.Shield) {
+                        if (settings.ShieldOperation == 0 &&
+                            (primaryStreet == null ||
+                                primaryStreet.signType == null ||
+                                primaryStreet.signText == null)) {
+                            issues |= Issue.Shield;
+                        }
+                        else if (settings.ShieldOperation == 1 &&
+                            primaryStreet != null &&
+                            primaryStreet.signType != null &&
+                            primaryStreet.signText != null) {
+                            issues |= Issue.Shield;
                         }
                     }
                     if (detectIssues && issues === 0) {
@@ -1633,6 +1664,14 @@ var WMEWAL_Streets;
                 if (settings.Loop) {
                     w.document.write("<div>Loop</div>");
                 }
+                if (settings.Shield) {
+                    if (settings.ShieldOperation == 0) {
+                        w.document.write('<div>Does not have shield</div>');
+                    }
+                    else {
+                        w.document.write('<div>Has shield</div>');
+                    }
+                }
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><tr><th>Name</th>");
                 if (includeAltNames) {
                     w.document.write("<th>Alt Names</th>");
@@ -1892,6 +1931,9 @@ var WMEWAL_Streets;
         if (issues & Issue.Loop) {
             issuesList.push("Loop");
         }
+        if (issues & Issue.Loop) {
+            issuesList.push("Shield");
+        }
         if (issuesList.length === 0) {
             return "None";
         }
@@ -2050,7 +2092,9 @@ var WMEWAL_Streets;
             HasClosures: false,
             HasTIO: false,
             TIO: TIO.Any,
-            Loop: false
+            Loop: false,
+            Shield: false,
+            ShieldOperation: 0
         };
     }
     function updateProperties() {
@@ -2215,6 +2259,15 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty("Loop")) {
                 settings.Loop = false;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("Shield")) {
+                settings.Shield = false;
+                settings.ShieldOperation = 0;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("ShieldOperation")) {
+                settings.ShieldOperation = 0;
                 upd = true;
             }
             if (settings.hasOwnProperty("OutputTo")) {
