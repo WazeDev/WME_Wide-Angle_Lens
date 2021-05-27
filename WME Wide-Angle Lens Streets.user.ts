@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.0
+// @version             1.7.1
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,8 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added issue for shields</li>' +
+        '<li>Added filters for shield text and direction</li>' +
+        "<li>Don't search alt names if that option isn't checked</li>" +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -74,7 +75,8 @@ namespace WMEWAL_Streets {
         HasClosures = 1 << 19,
         HasTIO = 1 << 20,
         Loop = 1 << 21,
-        Shield = 1 << 22
+        Shield = 1 << 22,
+        ShieldDirection = 1 << 23
     }
 
     enum Unit {
@@ -131,6 +133,8 @@ namespace WMEWAL_Streets {
         lastEditor: string;
         asc: string;
         createdEditor: string;
+        shieldText: string;
+        shieldDirection: string;
     }
 
     interface ISaveableSettings {
@@ -199,6 +203,12 @@ namespace WMEWAL_Streets {
         Loop: boolean;
         Shield: boolean;
         ShieldOperation: number;
+        ShieldTextRegex: string;
+        ShieldTextRegexIgnoreCase: boolean;
+        ShieldDirectionRegex: string;
+        ShieldDirectionRegexIgnoreCase: boolean;
+        ShieldDirection: boolean;
+        ShieldDirectionOperation: number;
     }
 
     interface ISettings extends ISaveableSettings {
@@ -227,6 +237,8 @@ namespace WMEWAL_Streets {
     let lastModifiedByName: string;
     let nameRegex: RegExp = null;
     let cityRegex: RegExp = null;
+    let shieldTextRegex: RegExp = null;
+    let shieldDirectionRegex: RegExp = null;
     let roundabouts: Array<number> = null;
     let detectIssues = false;
     let initCount = 0;
@@ -237,6 +249,7 @@ namespace WMEWAL_Streets {
     let segmentLengthFilterMultipier: number;
     const mToFt: number = 3.28084;
     let isImperial: boolean;
+    let includeShields: boolean;
 
     export function GetTab(): string {
         let html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
@@ -321,6 +334,14 @@ namespace WMEWAL_Streets {
             "</td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<input id='${ctlPrefix}UpdatedDate' type='date'/> <input id='${ctlPrefix}UpdatedTime' type='time'/></td></tr>`;
+        html += "<tr><td><b>Shield Text RegEx:</b></td></tr>";
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}ShieldTextRegex' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}ShieldTextIgnoreCase' type='checkbox'/>` +
+            `<label for='${ctlPrefix}ShieldTextIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
+        html += "<tr><td><b>Shield Direction RegEx:</b></td></tr>";
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}ShieldDirectionRegex' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}ShieldDirectionIgnoreCase' type='checkbox'/>` +
+            `<label for='${ctlPrefix}ShieldDirectionIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
@@ -481,6 +502,12 @@ namespace WMEWAL_Streets {
             `<option value='0'>Missing</option>` +
             `<option value='1'>Has</option>` +
             `</select> Shield</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}ShieldDirection' type='checkbox'/>` +
+            `<label for='${ctlPrefix}ShieldDirection' class='wal-label'>` +
+            `<select id='${ctlPrefix}ShieldDirectionOperation' style='margin-right: 0px'>` +
+            `<option value='0'>Missing</option>` +
+            `<option value='1'>Has</option>` +
+            `</select> Shield Direction</label></td></tr>`;
 
         html += "</tbody></table>";
 
@@ -703,8 +730,14 @@ namespace WMEWAL_Streets {
         $(`#${ctlPrefix}HasTIO`).prop("checked", settings.HasTIO);
         $(`#${ctlPrefix}TIO`).val(settings.TIO);
         $(`#${ctlPrefix}Loop`).prop("checked", settings.Loop);
+        $(`#${ctlPrefix}ShieldTextRegex`).val(settings.ShieldTextRegex ?? "");
+        $(`#${ctlPrefix}ShieldTextIgnoreCase`).prop("checked", settings.ShieldTextRegexIgnoreCase);
+        $(`#${ctlPrefix}ShieldDirectionRegex`).val(settings.ShieldDirectionRegex ?? "");
+        $(`#${ctlPrefix}ShieldDirectionIgnoreCase`).prop("checked", settings.ShieldDirectionRegexIgnoreCase);
         $(`#${ctlPrefix}Shield`).prop("checked", settings.Shield);
         $(`#${ctlPrefix}ShieldOperation`).val(settings.ShieldOperation);
+        $(`#${ctlPrefix}ShieldDirection`).prop("checked", settings.ShieldDirection);
+        $(`#${ctlPrefix}ShieldDirectionOperation`).val(settings.ShieldDirectionOperation);
     }
 
     function loadSetting(): void {
@@ -795,6 +828,22 @@ namespace WMEWAL_Streets {
 
         if (s.Updated && s.UpdatedDate === null) {
             addMessage("Select an updated date on which to filter");
+        }
+
+        if (nullif(s.ShieldTextRegex, "")) {
+            try {
+                r = (s.ShieldTextRegexIgnoreCase ? new RegExp(s.ShieldTextRegex, "i") : new RegExp(s.ShieldTextRegex));
+            } catch (error) {
+                addMessage("Shield Text RegEx is invalid");
+            }
+        }
+
+        if (nullif(s.ShieldDirectionRegex, "")) {
+            try {
+                r = (s.ShieldDirectionRegexIgnoreCase ? new RegExp(s.ShieldDirectionRegex, "i") : new RegExp(s.ShieldDirectionRegex));
+            } catch (error) {
+                addMessage("Shield Direction RegEx is invalid");
+            }
         }
 
         if (message.length > 0) {
@@ -904,8 +953,14 @@ namespace WMEWAL_Streets {
             HasTIO: $(`#${ctlPrefix}HasTIO`).prop("checked"),
             TIO: $(`#${ctlPrefix}TIO`).val(),
             Loop: $(`#${ctlPrefix}Loop`).prop('checked'),
+            ShieldTextRegex: null,
+            ShieldTextRegexIgnoreCase: $(`#${ctlPrefix}ShieldTextIgnoreCase`).prop("checked"),
+            ShieldDirectionRegex: null,
+            ShieldDirectionRegexIgnoreCase: $(`#${ctlPrefix}ShieldDirectionIgnoreCase`).prop("checked"),
             Shield: $(`#${ctlPrefix}Shield`).prop('checked'),
-            ShieldOperation: $(`#${ctlPrefix}ShieldOperation`).val()
+            ShieldOperation: $(`#${ctlPrefix}ShieldOperation`).val(),
+            ShieldDirection: $(`#${ctlPrefix}ShieldDirection`).prop('checked'),
+            ShieldDirectionOperation: $(`#${ctlPrefix}ShieldDirectionOperation`).val(),
         };
 
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
@@ -988,6 +1043,16 @@ namespace WMEWAL_Streets {
             s.UpdatedDate = (new Date(updatedDate)).getTime();
         }
 
+        pattern = $(`#${ctlPrefix}ShieldTextRegex`).val();
+        if (nullif(pattern, "") !== null) {
+            s.ShieldTextRegex = pattern;
+        }
+
+        pattern = $(`#${ctlPrefix}ShieldDirectionRegex`).val();
+        if (nullif(pattern, "") !== null) {
+            s.ShieldDirectionRegex = pattern;
+        }
+
         return s;
     }
 
@@ -1058,6 +1123,24 @@ namespace WMEWAL_Streets {
             segmentLengthFilterMultipier = settings.SegmentLengthFilter ? (settings.SegmentLengthFilterUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
             segmentLengthMultiplier = settings.SegmentLength ? (settings.SegmentLengthUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
 
+            if (settings.ShieldTextRegex !== null) {
+                shieldTextRegex = (settings.ShieldTextRegexIgnoreCase ? new RegExp(settings.ShieldTextRegex, "i") : new RegExp(settings.ShieldTextRegex));
+            } else {
+                shieldTextRegex = null;
+            }
+
+            if (settings.ShieldDirectionRegex !== null) {
+                shieldDirectionRegex = (settings.ShieldDirectionRegexIgnoreCase ? new RegExp(settings.ShieldDirectionRegex, "i") : new RegExp(settings.ShieldDirectionRegex));
+            } else {
+                shieldDirectionRegex = null;
+            }
+
+            if (shieldTextRegex != null || shieldDirectionRegex != null || settings.Shield || settings.ShieldDirection) {
+                includeShields = true;
+            } else {
+                includeShields = false;
+            }
+
             detectIssues = settings.NoSpeedLimit
                 || settings.HasTimeBasedRestrictions
                 || settings.HasTimeBasedTurnRestrictions
@@ -1079,7 +1162,8 @@ namespace WMEWAL_Streets {
                 || settings.HasClosures
                 || settings.HasTIO
                 || settings.Loop
-                || settings.Shield;
+                || settings.Shield
+                || settings.ShieldDirection;
 
             updateSettings();
         }
@@ -1114,12 +1198,14 @@ namespace WMEWAL_Streets {
                 let createdEditor = W.model.users.getObjectById(createdEditorID) || {userName: 'Not found'};
                 let address = s.getAddress();
                 let thisStreet: IStreet = null;
+                let ps = includeShields ? W.model.streets.getObjectById(sid) : null;
                 if (sid != null && !newSegment) {
                     thisStreet = extentStreets.find(function (e) {
                         let matches = (e.id === sid && (e.lockLevel === (s.attributes.lockRank | 0) + 1) && e.roundaboutId === rId &&
                             e.roadType === s.attributes.roadType && e.issues === issues && e.lastEditor === lastEditor.userName &&
-                            e.createdEditor === createdEditor.userName);
-                        if (matches && (nameRegex != null || cityRegex != null || settings.IncludeAltNames)) {
+                            e.createdEditor === createdEditor.userName &&
+                            (ps == null || (e.shieldText === (ps.signText || '') && e.shieldDirection === (ps.direction || ''))));
+                        if (matches && settings.IncludeAltNames) {
                             // Test for alt names
                             for (let ixAlt = 0; ixAlt < e.altStreets.length && matches; ixAlt++) {
                                 matches = false;
@@ -1154,10 +1240,13 @@ namespace WMEWAL_Streets {
                         length: s.attributes.length * (isImperial ? mToFt : 1.0),
                         lastEditor: lastEditor.userName,
                         asc: (s.getFlagAttribute('fwdSpeedCamera') || s.getFlagAttribute('revSpeedCamera') ? 'Yes' : 'No'),
-                        createdEditor: (createdEditor && createdEditor.userName) || ""
+                        createdEditor: (createdEditor && createdEditor.userName) || "",
+                        shieldText: ps != null ? ps.signText || '' : '',
+                        shieldDirection: ps != null ? ps.direction || '' : ''
+
                     };
 
-                    if (nameRegex != null || settings.IncludeAltNames) {
+                    if (settings.IncludeAltNames) {
                         if (s.attributes.streetIDs != null) {
                             for (let ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
                                 if (s.attributes.streetIDs[ixAlt] != null) {
@@ -1494,6 +1583,18 @@ namespace WMEWAL_Streets {
                         }
                     }
 
+                    if (settings.ShieldDirection) {
+                        if (settings.ShieldDirectionOperation == 0 &&
+                            (primaryStreet == null ||
+                             primaryStreet.direction == null)) {
+                            issues |= Issue.ShieldDirection;
+                        } else if (settings.ShieldDirectionOperation == 1 &&
+                            primaryStreet != null &&
+                            primaryStreet.direction != null) {
+                            issues |= Issue.ShieldDirection;
+                        }
+                    }
+
                     if (detectIssues && issues === 0) {
                         // If at least one issue was chosen and this segment doesn't have any issues, then skip it
                         continue;
@@ -1508,7 +1609,7 @@ namespace WMEWAL_Streets {
                             if (!nameMatched && cityRegex != null && address.attributes.city != null && address.attributes.city.hasName()) {
                                 nameMatched = cityRegex.test(address.attributes.city.attributes.name);
                             }
-                            if (!nameMatched && segment.attributes.streetIDs != null && segment.attributes.streetIDs.length > 0) {
+                            if (!nameMatched && segment.attributes.streetIDs != null && segment.attributes.streetIDs.length > 0 && settings.IncludeAltNames) {
                                 for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
                                     if (segment.attributes.streetIDs[streetIx] != null) {
                                         let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
@@ -1530,6 +1631,16 @@ namespace WMEWAL_Streets {
                         if (!nameMatched) {
                             continue;
                         }
+                    }
+
+                    if (shieldTextRegex != null &&
+                        (primaryStreet == null || primaryStreet.signText == null || !shieldTextRegex.test(primaryStreet.signText))) {
+                        continue;
+                    }
+
+                    if (shieldDirectionRegex != null &&
+                        (primaryStreet == null || primaryStreet.direction == null || !shieldDirectionRegex.test(primaryStreet.direction))) {
+                        continue;
                     }
 
                     if (!WMEWAL.IsSegmentInArea(segment)) {
@@ -1597,7 +1708,7 @@ namespace WMEWAL_Streets {
             let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
             let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
 
-            let includeAltNames = (nameRegex != null || settings.IncludeAltNames || cityRegex != null);
+            let includeAltNames = settings.IncludeAltNames;
             var includeASC = settings.IncludeASC;
             let includeDirection = (settings.Direction != null);
             let includeLength = settings.SegmentLength || settings.SegmentLengthFilter;
@@ -1621,6 +1732,9 @@ namespace WMEWAL_Streets {
                 }
                 if (includeLength) {
                     columnArray.push(`Length (${isImperial ? 'ft' : 'm'})`);
+                }
+                if (includeShields) {
+                    columnArray.push('Shield Text','Shield Direction');
                 }
                 if (detectIssues) {
                     columnArray.push("Issues");
@@ -1799,6 +1913,20 @@ namespace WMEWAL_Streets {
                     }
                     w.document.write(` ${settings.SegmentLengthFilterValue} ${settings.SegmentLengthFilterUnit == Unit.Metric ? 'm' : 'ft'}</div>`);
                 }
+                if (shieldTextRegex != null) {
+                    w.document.write("<div>Shield Text matches " + shieldTextRegex.source);
+                    if (settings.ShieldTextRegexIgnoreCase) {
+                        w.document.write(" (ignoring case)");
+                    }
+                    w.document.write('</div>');
+                }
+                if (shieldDirectionRegex != null) {
+                    w.document.write("<div>Shield Direction matches " + shieldDirectionRegex.source);
+                    if (settings.ShieldDirectionRegexIgnoreCase) {
+                        w.document.write(" (ignoring case)");
+                    }
+                    w.document.write('</div>');
+                }
 
                 if (detectIssues) {
                     w.document.write("<h4>Issues</h4>");
@@ -1907,6 +2035,13 @@ namespace WMEWAL_Streets {
                         w.document.write('<div>Has shield</div>')
                     }
                 }
+                if (settings.ShieldDirection) {
+                    if (settings.ShieldDirectionOperation == 0) {
+                        w.document.write('<div>Does not have shield direction</div>');
+                    } else {
+                        w.document.write('<div>Has shield direction</div>')
+                    }
+                }
 
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><tr><th>Name</th>");
                 if (includeAltNames) {
@@ -1922,6 +2057,9 @@ namespace WMEWAL_Streets {
                 }
                 if (includeLength) {
                     w.document.write(`<th>Length (${isImperial ? 'ft' : 'm'})</th>`);
+                }
+                if (includeShields) {
+                    w.document.write('<th>Shield Text</th><th>Shield Direction</th>')
                 }
                 if (detectIssues) {
                     w.document.write("<th>Issues</th>");
@@ -1945,48 +2083,54 @@ namespace WMEWAL_Streets {
                             if (includeASC) {
                                 columnArray.push(street.asc);
                             }
-                            columnArray.push("\"" + street.city + "\"");
-                            columnArray.push("\"" + street.state + "\"");
-                            columnArray.push("\"" + roadTypeText + "\"");
+                            columnArray.push(`"${street.city}"`);
+                            columnArray.push(`"${street.state}"`);
+                            columnArray.push(`"${roadTypeText}"`);
                             columnArray.push(street.lockLevel.toString());
                             if (includeDirection) {
-                                columnArray.push("\"" + translateDirection(street.direction) + "\"");
+                                columnArray.push(`"${translateDirection(street.direction)}"`);
                             }
                             if (includeLength) {
                                 columnArray.push(street.length.toString());
                             }
-                            if (detectIssues) {
-                                columnArray.push("\"" + getIssues(street.issues) + "\"");
+                            if (includeShields) {
+                                columnArray.push(`"${street.shieldText}","${street.shieldDirection}"`)
                             }
-                            columnArray.push("\"" + street.createdEditor + "\"")
-                            columnArray.push("\"" + street.lastEditor + "\"");
+                            if (detectIssues) {
+                                columnArray.push(`"${getIssues(street.issues)}"`);
+                            }
+                            columnArray.push(`"${street.createdEditor}"`)
+                            columnArray.push(`"${street.lastEditor}"`);
                             columnArray.push(latlon.lat.toString());
                             columnArray.push(latlon.lon.toString());
-                            columnArray.push("\"" + plSeg + "\"");
+                            columnArray.push(`"${plSeg}"`);
                             lineArray.push(columnArray);
                         }
                         if (isTab) {
-                            w.document.write("<tr><td>" + getStreetName(street) + "</td>");
+                            w.document.write(`<tr><td>${getStreetName(street)}</td>`);
                             if (includeAltNames) {
-                                w.document.write("<td>&nbsp;</td>");
+                                w.document.write('<td>&nbsp;</td>');
                             }
                             if (includeASC) {
                                 w.document.write(`<td>${street.asc}</td>`);
                             }
-                            w.document.write("<td>" + street.city + "</td>");
-                            w.document.write("<td>" + street.state + "</td>");
-                            w.document.write("<td>" + roadTypeText + "</td><td>" + street.lockLevel + "</td>");
+                            w.document.write(`<td>${street.city}</td>`);
+                            w.document.write(`<td>${street.state}</td>`);
+                            w.document.write(`<td>${roadTypeText}</td><td>${street.lockLevel}</td>`);
                             if (includeDirection) {
-                                w.document.write("<td>" + translateDirection(street.direction) + "</td>");
+                                w.document.write(`<td>${translateDirection(street.direction)}</td>`);
                             }
                             if (includeLength) {
-                                w.document.write("<td>" + street.length.toString() + "</td>");
+                                w.document.write(`<td>${street.length.toString()}</td>`);
+                            }
+                            if (includeShields) {
+                                w.document.write(`<td>${street.shieldText}</td><td>${street.shieldDirection}</td>`);
                             }
                             if (detectIssues) {
-                                w.document.write("<td>" + getIssues(street.issues) + "</td>");
+                                w.document.write(`<td>${getIssues(street.issues)}</td>`);
                             }
-                            w.document.write("<td>" + street.createdEditor + "</td><td>" + street.lastEditor + "</td><td>" + latlon.lat.toString() + "</td><td>" + latlon.lon.toString() + "</td>" +
-                                "<td><a href=\'" + plSeg + "\' target=\'_blank\'>Permalink</a></td></tr>");
+                            w.document.write(`<td>${street.createdEditor}</td><td>${street.lastEditor}</td><td>${latlon.lat.toString()}</td><td>${latlon.lon.toString()}</td>` +
+                                `<td><a href='${plSeg}' target='_blank'>Permalink</a></td></tr>`);
                         }
                     }
                 } else {
@@ -2004,55 +2148,61 @@ namespace WMEWAL_Streets {
                         }
                     }
                     if (isCSV) {
-                        columnArray = ["\"" + getStreetName(street) + "\""];
+                        columnArray = [`"${getStreetName(street)}"`];
                         if (includeAltNames) {
-                            columnArray.push("\"" + altNames + "\"");
+                            columnArray.push(`"${altNames}"`);
                         }
                         if (includeASC) {
                             columnArray.push(street.asc);
                         }
-                        columnArray.push("\"" + street.city + "\"");
-                        columnArray.push("\"" + street.state + "\"");
-                        columnArray.push("\"" + roadTypeText + "\"");
+                        columnArray.push(`"${street.city}"`);
+                        columnArray.push(`"${street.state}"`);
+                        columnArray.push(`"${roadTypeText}"`);
                         columnArray.push(street.lockLevel.toString());
                         if (includeDirection) {
-                            columnArray.push("\"" + translateDirection(street.direction) + "\"");
+                            columnArray.push(`"${translateDirection(street.direction)}"`);
                         }
                         if (includeLength) {
                             columnArray.push(street.length.toString());
                         }
-                        if (detectIssues) {
-                            columnArray.push("\"" + getIssues(street.issues) + "\"");
+                        if (includeShields) {
+                            columnArray.push(`"${street.shieldText}"`,`"${street.shieldDirection}"`);
                         }
-                        columnArray.push("\"" + street.createdEditor + "\"");
-                        columnArray.push("\"" + street.lastEditor + "\"");
+                        if (detectIssues) {
+                            columnArray.push(`"${getIssues(street.issues)}"`);
+                        }
+                        columnArray.push(`"${street.createdEditor}"`);
+                        columnArray.push(`"${street.lastEditor}"`);
                         columnArray.push(latlon.lat.toString());
                         columnArray.push(latlon.lon.toString());
-                        columnArray.push("\"" + plStreet + "\"");
+                        columnArray.push(`"${plStreet}"`);
                         lineArray.push(columnArray);
                     }
                     if (isTab) {
-                        w.document.write("<tr><td>" + getStreetName(street) + "</td>");
+                        w.document.write(`<tr><td>${getStreetName(street)}</td>`);
                         if (includeAltNames) {
-                            w.document.write("<td>" + altNames + "</td>");
+                            w.document.write(`<td>${altNames}</td>`);
                         }
                         if (includeASC) {
                             w.document.write(`<td>${street.asc}</td>`);
                         }
-                        w.document.write("<td>" + street.city + "</td>");
-                        w.document.write("<td>" + street.state + "</td>");
-                        w.document.write("<td>" + roadTypeText + "</td><td>" + street.lockLevel + "</td>");
+                        w.document.write(`<td>${street.city}</td>`);
+                        w.document.write(`<td>${street.state}</td>`);
+                        w.document.write(`<td>${roadTypeText + "</td><td>" + street.lockLevel}</td>`);
                         if (includeDirection) {
-                            w.document.write("<td>" + translateDirection(street.direction) + "</td>");
+                            w.document.write(`<td>${translateDirection(street.direction)}</td>`);
                         }
                         if (includeLength) {
-                            w.document.write("<td>" + street.length.toString() + "</td>");
+                            w.document.write(`<td>${street.length.toString()}</td>`);
+                        }
+                        if (includeShields) {
+                            w.document.write(`<td>${street.shieldText}</td><td>${street.shieldDirection}</td>`);
                         }
                         if (detectIssues) {
-                            w.document.write("<td>" + getIssues(street.issues) + "</td>");
+                            w.document.write(`<td>${getIssues(street.issues)}</td>`);
                         }
-                        w.document.write("<td>" + street.createdEditor + "</td><td>" + street.lastEditor + "</td><td>" + latlon.lat.toString() + "</td><td>" + latlon.lon.toString() + "</td>" +
-                            "<td><a href=\'" + plStreet + "\' target=\'_blank\'>Permalink</a></td></tr>");
+                        w.document.write(`<td>${street.createdEditor}</td><td>${street.lastEditor}</td><td>${latlon.lat.toString()}</td><td>${latlon.lon.toString()}</td>` +
+                            `<td><a href='${plStreet}' target='_blank'>Permalink</a></td></tr>`);
                     }
                 }
             }
@@ -2173,8 +2323,11 @@ namespace WMEWAL_Streets {
         if (issues & Issue.Loop) {
             issuesList.push("Loop");
         }
-        if (issues & Issue.Loop) {
+        if (issues & Issue.Shield) {
             issuesList.push("Shield");
+        }
+        if (issues & Issue.ShieldDirection) {
+            issuesList.push("Shield Direction");
         }
 
         if (issuesList.length === 0) {
@@ -2341,7 +2494,13 @@ namespace WMEWAL_Streets {
             TIO: TIO.Any,
             Loop: false,
             Shield: false,
-            ShieldOperation: 0
+            ShieldOperation: 0,
+            ShieldDirection: false,
+            ShieldDirectionOperation: 0,
+            ShieldTextRegex: null,
+            ShieldTextRegexIgnoreCase: true,
+            ShieldDirectionRegex: null,
+            ShieldDirectionRegexIgnoreCase: true
         };
     }
 
@@ -2556,6 +2715,39 @@ namespace WMEWAL_Streets {
 
             if (!settings.hasOwnProperty("ShieldOperation")) {
                 settings.ShieldOperation = 0;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("ShieldDirection")) {
+                settings.ShieldDirection = false;
+                settings.ShieldDirectionOperation = 0;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("ShieldDirectionOperation")) {
+                settings.ShieldDirectionOperation = 0;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("ShieldTextRegex")) {
+                settings.ShieldTextRegex = null;
+                settings.ShieldTextRegexIgnoreCase = true;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("ShieldTextRegexIgnoreCase")) {
+                settings.ShieldTextRegexIgnoreCase = true;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("ShieldDirectionRegex")) {
+                settings.ShieldDirectionRegex = null;
+                settings.ShieldDirectionRegexIgnoreCase = true;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("ShieldDirectionRegexIgnoreCase")) {
+                settings.ShieldDirectionRegexIgnoreCase = true;
                 upd = true;
             }
 
