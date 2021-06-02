@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.1
+// @version             1.7.2
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,9 +19,9 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added filters for shield text and direction</li>' +
-        "<li>Don't search alt names if that option isn't checked</li>" +
-        '</ul>';
+        '<li>Added issues for turn instructions (visual instructions, toward, exit signs, TTS)</li>' +
+        `<li>Fixed issue with determining TIO on one-way segments</li>`;
+    '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
@@ -67,6 +67,9 @@ var WMEWAL_Streets;
         Issue[Issue["Loop"] = 2097152] = "Loop";
         Issue[Issue["Shield"] = 4194304] = "Shield";
         Issue[Issue["ShieldDirection"] = 8388608] = "ShieldDirection";
+        Issue[Issue["TI"] = 16777216] = "TI";
+        Issue[Issue["TITTS"] = 33554432] = "TITTS";
+        Issue[Issue["TIExit"] = 67108864] = "TIExit";
     })(Issue || (Issue = {}));
     let Unit;
     (function (Unit) {
@@ -337,8 +340,20 @@ var WMEWAL_Streets;
             `<label for='${ctlPrefix}NewlyPaved' class='wal-label'>Newly paved</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}HasClosures' type='checkbox'/>` +
             `<label for='${ctlPrefix}HasClosures' class='wal-label'>Has closures</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}TI' type='checkbox'/>` +
+            `<label for='${ctlPrefix}TI' class='wal-label'>` +
+            `<select id='${ctlPrefix}TIOperation' style='margin-right: 0px'>` +
+            `<option value='0'>Missing</option>` +
+            `<option value='1'>Has</option>` +
+            `</select> TI (visual, toward)</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}TIExit' type='checkbox'/>` +
+            `<label for='${ctlPrefix}TIExit' class='wal-label'>` +
+            `<select id='${ctlPrefix}TIExitOperation' style='margin-right: 0px'>` +
+            `<option value='0'>Missing</option>` +
+            `<option value='1'>Has</option>` +
+            `</select> TI Exit sign(s)</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}HasTIO' type='checkbox'/>` +
-            `<label for='${ctlPrefix}HasTIO' class='wal-label'>Has TIO:</label>&nbsp;` +
+            `<label for='${ctlPrefix}HasTIO' class='wal-label'>Has TI voice prompt:</label>&nbsp;` +
             `<select id='${ctlPrefix}TIO'>` +
             `<option value='${TIO.Any}'>Any</option>` +
             `<option value='${TIO.None}'>${I18n.t('turn_tooltip.instruction_override.opcodes.NONE')}</option>` +
@@ -352,6 +367,12 @@ var WMEWAL_Streets;
             `<option value='${TIO.UTurn}'>${I18n.t('turn_tooltip.instruction_override.opcodes.UTURN')}</option>` +
             '</select>' +
             '</td></tr>';
+        html += `<tr><td><input id='${ctlPrefix}TITTS' type='checkbox'/>` +
+            `<label for='${ctlPrefix}TITTS' class='wal-label'>` +
+            `<select id='${ctlPrefix}TITTSOperation' style='margin-right: 0px'>` +
+            `<option value='0'>Missing</option>` +
+            `<option value='1'>Has</option>` +
+            `</select> TI TTS</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}Loop' type='checkbox'/>` +
             `<label for='${ctlPrefix}Loop' class='wal-label'>Loop</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}Shield' type='checkbox'/>` +
@@ -578,6 +599,12 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}ShieldOperation`).val(settings.ShieldOperation);
         $(`#${ctlPrefix}ShieldDirection`).prop("checked", settings.ShieldDirection);
         $(`#${ctlPrefix}ShieldDirectionOperation`).val(settings.ShieldDirectionOperation);
+        $(`#${ctlPrefix}TI`).prop('checked', settings.TI);
+        $(`#${ctlPrefix}TIOperation`).val(settings.TIOperation);
+        $(`#${ctlPrefix}TITTS`).prop('checked', settings.TITTS);
+        $(`#${ctlPrefix}TITTSOperation`).val(settings.TITTSOperation);
+        $(`#${ctlPrefix}TIExit`).prop('checked', settings.TIExit);
+        $(`#${ctlPrefix}TIExitOperation`).val(settings.TIExitOperation);
     }
     function loadSetting() {
         let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
@@ -777,9 +804,15 @@ var WMEWAL_Streets;
             ShieldDirectionRegex: null,
             ShieldDirectionRegexIgnoreCase: $(`#${ctlPrefix}ShieldDirectionIgnoreCase`).prop("checked"),
             Shield: $(`#${ctlPrefix}Shield`).prop('checked'),
-            ShieldOperation: $(`#${ctlPrefix}ShieldOperation`).val(),
+            ShieldOperation: parseInt($(`#${ctlPrefix}ShieldOperation`).val()),
             ShieldDirection: $(`#${ctlPrefix}ShieldDirection`).prop('checked'),
-            ShieldDirectionOperation: $(`#${ctlPrefix}ShieldDirectionOperation`).val(),
+            ShieldDirectionOperation: parseInt($(`#${ctlPrefix}ShieldDirectionOperation`).val()),
+            TI: $(`#${ctlPrefix}TI`).prop('checked'),
+            TIOperation: parseInt($(`#${ctlPrefix}TIOperation`).val()),
+            TITTS: $(`#${ctlPrefix}TITTS`).prop('checked'),
+            TITTSOperation: parseInt($(`#${ctlPrefix}TITTSOperation`).val()),
+            TIExit: $(`#${ctlPrefix}TIExit`).prop('checked'),
+            TIExitOperation: parseInt($(`#${ctlPrefix}TIExitOperation`).val())
         };
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
@@ -962,7 +995,10 @@ var WMEWAL_Streets;
                 || settings.HasTIO
                 || settings.Loop
                 || settings.Shield
-                || settings.ShieldDirection;
+                || settings.ShieldDirection
+                || settings.TI
+                || settings.TITTS
+                || settings.TIExit;
             updateSettings();
         }
         return allOk;
@@ -1289,33 +1325,78 @@ var WMEWAL_Streets;
                     if (settings.HasClosures && segment.attributes.hasClosures) {
                         issues |= Issue.HasClosures;
                     }
-                    if (settings.HasTIO) {
+                    if (settings.HasTIO || settings.TI || settings.TITTS || settings.TIExit) {
                         let hasTIO = false;
+                        let hasTI = false;
+                        let hasTITTS = false;
+                        let hasTIExit = false;
                         let directions = [];
-                        if (determineDirection(segment) == Direction.OneWay) {
-                            // One-way
-                            directions = ["from"];
+                        if (segment.attributes.fwdDirection) {
+                            directions.push("to");
                         }
-                        else if (determineDirection(segment) == Direction.TwoWay) {
-                            // Two way
-                            directions = ["from", "to"];
+                        if (segment.attributes.revDirection) {
+                            directions.push("from");
                         }
-                        if (directions.length > 0) {
-                            for (let ixDir = 0; ixDir < directions.length && !hasTIO; ixDir++) {
-                                let node = segment.getNodeByDirection(directions[ixDir]);
-                                let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
-                                for (let ixSeg = 0; ixSeg < connectedSegments.length && !hasTIO; ixSeg++) {
-                                    let connectedSegment = connectedSegments[ixSeg];
-                                    let turn = W.model.getTurnGraph().getTurnThroughNode(node, segment, connectedSegment).getTurnData();
-                                    if (turn.hasInstructionOpcode() && (settings.TIO == TIO.Any || turn.getInstructionOpcode() == settings.TIO)) {
-                                        hasTIO = true;
+                        for (let ixDir = 0; ixDir < directions.length; ixDir++) {
+                            let node = segment.getNodeByDirection(directions[ixDir]);
+                            let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
+                            for (let ixSeg = 0; ixSeg < connectedSegments.length && !hasTIO; ixSeg++) {
+                                let connectedSegment = connectedSegments[ixSeg];
+                                let turn = graph.getTurnThroughNode(node, segment, connectedSegment).getTurnData();
+                                if (settings.HasTIO && turn.hasInstructionOpcode() && (settings.TIO == TIO.Any || turn.getInstructionOpcode() == settings.TIO)) {
+                                    hasTIO = true;
+                                }
+                                if ((settings.TI || settings.TITTS || settings.TIExit) && turn.hasTurnGuidance()) {
+                                    let tg = turn.getTurnGuidance();
+                                    if (settings.TI &&
+                                        nullif(tg.getVisualInstruction(), '') !== null ||
+                                        nullif(tg.getTowards(), '') !== null) {
+                                        hasTI = true;
+                                    }
+                                    if (settings.TITTS &&
+                                        nullif(tg.getTTS(), '') !== null) {
+                                        hasTITTS = true;
+                                    }
+                                    if (settings.TIExit &&
+                                        tg.getExitSigns().length > 0) {
+                                        hasTIExit = true;
                                     }
                                 }
                             }
                         }
-                        if (hasTIO) {
+                        if (settings.HasTIO && hasTIO) {
                             issues |= Issue.HasTIO;
                             newSegment = true;
+                        }
+                        if (settings.TI) {
+                            if (settings.TIOperation === 0 && !hasTI) {
+                                issues |= Issue.TI;
+                                newSegment = true;
+                            }
+                            else if (settings.TIOperation === 1 && hasTI) {
+                                issues |= Issue.TI;
+                                newSegment = true;
+                            }
+                        }
+                        if (settings.TITTS) {
+                            if (settings.TITTSOperation === 0 && !hasTITTS) {
+                                issues |= Issue.TITTS;
+                                newSegment = true;
+                            }
+                            else if (settings.TITTSOperation === 1 && hasTITTS) {
+                                issues |= Issue.TITTS;
+                                newSegment = true;
+                            }
+                        }
+                        if (settings.TIExit) {
+                            if (settings.TIExitOperation === 0 && !hasTIExit) {
+                                issues |= Issue.TIExit;
+                                newSegment = true;
+                            }
+                            else if (settings.TIExitOperation === 1 && hasTIExit) {
+                                issues |= Issue.TIExit;
+                                newSegment = true;
+                            }
                         }
                     }
                     if (settings.Loop && !segment.isInRoundabout()) {
@@ -1333,13 +1414,13 @@ var WMEWAL_Streets;
                         }
                     }
                     if (settings.Shield) {
-                        if (settings.ShieldOperation == 0 &&
+                        if (settings.ShieldOperation === 0 &&
                             (primaryStreet == null ||
                                 primaryStreet.signType == null ||
                                 primaryStreet.signText == null)) {
                             issues |= Issue.Shield;
                         }
-                        else if (settings.ShieldOperation == 1 &&
+                        else if (settings.ShieldOperation === 1 &&
                             primaryStreet != null &&
                             primaryStreet.signType != null &&
                             primaryStreet.signText != null) {
@@ -1347,12 +1428,12 @@ var WMEWAL_Streets;
                         }
                     }
                     if (settings.ShieldDirection) {
-                        if (settings.ShieldDirectionOperation == 0 &&
+                        if (settings.ShieldDirectionOperation === 0 &&
                             (primaryStreet == null ||
                                 primaryStreet.direction == null)) {
                             issues |= Issue.ShieldDirection;
                         }
-                        else if (settings.ShieldDirectionOperation == 1 &&
+                        else if (settings.ShieldDirectionOperation === 1 &&
                             primaryStreet != null &&
                             primaryStreet.direction != null) {
                             issues |= Issue.ShieldDirection;
@@ -1773,14 +1854,38 @@ var WMEWAL_Streets;
                 if (settings.HasClosures) {
                     w.document.write("<div>Has closures</div>");
                 }
+                if (settings.TI) {
+                    if (settings.TIOperation === 0) {
+                        w.document.write(`<div>Does not have TI (visual instruction, toward)</div>`);
+                    }
+                    else {
+                        w.document.write(`<div>Has TI (visual instruction, toward)</div>`);
+                    }
+                }
+                if (settings.TIExit) {
+                    if (settings.TIExitOperation === 0) {
+                        w.document.write(`<div>Does not have TI Exit sign(s)</div>`);
+                    }
+                    else {
+                        w.document.write(`<div>Has TI Exit sign(s)</div>`);
+                    }
+                }
                 if (settings.HasTIO) {
-                    w.document.write(`<div>Has TIO${settings.TIO == TIO.Any ? "" : ": " + I18n.t("turn_tooltip.instruction_override.opcodes." + settings.TIO)}</div>`);
+                    w.document.write(`<div>Has TI voice prompt${settings.TIO == TIO.Any ? "" : ": " + I18n.t("turn_tooltip.instruction_override.opcodes." + settings.TIO)}</div>`);
+                }
+                if (settings.TITTS) {
+                    if (settings.TITTSOperation === 0) {
+                        w.document.write(`<div>Does not have TI TTS</div>`);
+                    }
+                    else {
+                        w.document.write(`<div>Has TI TTS</div>`);
+                    }
                 }
                 if (settings.Loop) {
                     w.document.write("<div>Loop</div>");
                 }
                 if (settings.Shield) {
-                    if (settings.ShieldOperation == 0) {
+                    if (settings.ShieldOperation === 0) {
                         w.document.write('<div>Does not have shield</div>');
                     }
                     else {
@@ -1788,7 +1893,7 @@ var WMEWAL_Streets;
                     }
                 }
                 if (settings.ShieldDirection) {
-                    if (settings.ShieldDirectionOperation == 0) {
+                    if (settings.ShieldDirectionOperation === 0) {
                         w.document.write('<div>Does not have shield direction</div>');
                     }
                     else {
@@ -2064,7 +2169,16 @@ var WMEWAL_Streets;
             issuesList.push("Has closures");
         }
         if (issues & Issue.HasTIO) {
-            issuesList.push('Has TIO');
+            issuesList.push('Has TI voice prompt');
+        }
+        if (issues & Issue.TI) {
+            issuesList.push('TI (visual, toward)');
+        }
+        if (issues & Issue.TITTS) {
+            issuesList.push('TI TTS');
+        }
+        if (issues & Issue.TIExit) {
+            issuesList.push('TI Exit sign(s)');
         }
         if (issues & Issue.Loop) {
             issuesList.push("Loop");
@@ -2241,7 +2355,13 @@ var WMEWAL_Streets;
             ShieldTextRegex: null,
             ShieldTextRegexIgnoreCase: true,
             ShieldDirectionRegex: null,
-            ShieldDirectionRegexIgnoreCase: true
+            ShieldDirectionRegexIgnoreCase: true,
+            TI: false,
+            TIOperation: 0,
+            TITTS: false,
+            TITTSOperation: 0,
+            TIExit: false,
+            TIExitOperation: 0
         };
     }
     function updateProperties() {
@@ -2442,6 +2562,33 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty("ShieldDirectionRegexIgnoreCase")) {
                 settings.ShieldDirectionRegexIgnoreCase = true;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("TI")) {
+                settings.TI = false;
+                settings.TIOperation = 0;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("TIOperation")) {
+                settings.TIOperation = 0;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("TITTS")) {
+                settings.TITTS = false;
+                settings.TITTSOperation = 0;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("TITTSOperation")) {
+                settings.TITTSOperation = 0;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("TIExit")) {
+                settings.TIExit = false;
+                settings.TIExitOperation = 0;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("TIExitOperation")) {
+                settings.TIExitOperation = 0;
                 upd = true;
             }
             if (settings.hasOwnProperty("OutputTo")) {
