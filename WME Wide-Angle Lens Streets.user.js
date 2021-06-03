@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.3
+// @version             1.7.4
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -1346,6 +1346,7 @@ var WMEWAL_Streets;
                         let hasTI = false;
                         let hasTTS = false;
                         let hasExit = false;
+                        let anyConnectedSegments = false;
                         let directions = [];
                         if (segment.attributes.fwdDirection) {
                             directions.push(settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'to' : 'from');
@@ -1357,6 +1358,7 @@ var WMEWAL_Streets;
                             let node = segment.getNodeByDirection(directions[ixDir]);
                             let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
                             for (let ixSeg = 0; ixSeg < connectedSegments.length && !hasTIO; ixSeg++) {
+                                anyConnectedSegments = true;
                                 let connectedSegment = connectedSegments[ixSeg];
                                 let turn;
                                 if (settings.TIDirection === IncomingOrOutgoing.Outgoing) {
@@ -1391,7 +1393,7 @@ var WMEWAL_Streets;
                             newSegment = true;
                         }
                         if (settings.TI) {
-                            if (settings.TIOperation === HasOrMissing.Missing && !hasTI) {
+                            if (settings.TIOperation === HasOrMissing.Missing && !hasTI && anyConnectedSegments) {
                                 issues |= Issue.TI;
                                 newSegment = true;
                             }
@@ -1401,7 +1403,7 @@ var WMEWAL_Streets;
                             }
                         }
                         if (settings.TITTS) {
-                            if (settings.TITTSOperation === HasOrMissing.Missing && !hasTTS) {
+                            if (settings.TITTSOperation === HasOrMissing.Missing && !hasTTS && anyConnectedSegments) {
                                 issues |= Issue.TITTS;
                                 newSegment = true;
                             }
@@ -1411,7 +1413,7 @@ var WMEWAL_Streets;
                             }
                         }
                         if (settings.TIExit) {
-                            if (settings.TIExitOperation === HasOrMissing.Missing && !hasExit) {
+                            if (settings.TIExitOperation === HasOrMissing.Missing && !hasExit && anyConnectedSegments) {
                                 issues |= Issue.TIExit;
                                 newSegment = true;
                             }
