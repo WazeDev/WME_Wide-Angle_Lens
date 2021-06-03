@@ -5,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.7
+// @version             1.5.8
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,7 +19,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with determining zoom level when multiple plugins are active</li>' +
+        '<li>Allow for tightening up spacing a bit on the various plugins</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -301,7 +301,8 @@ var WMEWAL;
         style.type = "text/css";
         let css = ".wal-heading { font-size: 1.2em; font-weight: bold }";
         css += ".wal-indent { padding-left: 20px }";
-        css += ".wal-label { margin-left: 8px }";
+        css += ".wal-label { margin-left: 8px; font-weight: normal; margin-bottom: 0px }";
+        css += '.wal-check { margin-top: 0px }';
         css += "#wal-progressBarInfo { display: none; width: 90%; float: left; position: absolute; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; margin-bottom: -100%; background-color: #c9e1e9; z-index: 999; margin: 5px; margin-right: 20px; }";
         css += ".wal-progressBarBG { margin-top: 2px; margin-bottom: 2px; margin-left: 2px; margin-right: 2px; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; padding-right: 0px; width: 33%; background-color: #93c4d3; border: 3px rgb(147, 196, 211); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; height: 22px;}";
         css += ".wal-progressBarFG { float: left; position: relative; bottom: 22px; height: 0px; text-align: center; width: 100% }";
