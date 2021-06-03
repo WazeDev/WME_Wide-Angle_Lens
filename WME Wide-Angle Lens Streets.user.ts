@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.2
+// @version             1.7.3
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,8 +27,7 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added issues for turn instructions (visual instructions, toward, exit signs, TTS)</li>' +
-        `<li>Fixed issue with determining TIO on one-way segments</li>`
+        '<li>Added ability to specify incoming/outgoing for turn guidance issues</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -50,6 +49,16 @@ namespace WMEWAL_Streets {
         LessThanOrEqual = 4,
         GreaterThan = 5,
         GreaterThanOrEqual = 6
+    }
+
+    enum HasOrMissing {
+        Missing = 0,
+        Has = 1
+    }
+
+    enum IncomingOrOutgoing {
+        Incoming = 0,
+        Outgoing = 1
     }
 
     enum Issue {
@@ -205,19 +214,20 @@ namespace WMEWAL_Streets {
         TIO: TIO;
         Loop: boolean;
         Shield: boolean;
-        ShieldOperation: number;
+        ShieldOperation: HasOrMissing;
         ShieldTextRegex: string;
         ShieldTextRegexIgnoreCase: boolean;
         ShieldDirectionRegex: string;
         ShieldDirectionRegexIgnoreCase: boolean;
         ShieldDirection: boolean;
-        ShieldDirectionOperation: number;
+        ShieldDirectionOperation: HasOrMissing;
         TI: boolean;
-        TIOperation: number;
+        TIOperation: HasOrMissing;
         TITTS: boolean;
-        TITTSOperation: number;
+        TITTSOperation: HasOrMissing;
         TIExit: boolean;
-        TIExitOperation: number;
+        TIExitOperation: HasOrMissing;
+        TIDirection: IncomingOrOutgoing
     }
 
     interface ISettings extends ISaveableSettings {
@@ -273,10 +283,10 @@ namespace WMEWAL_Streets {
         html += `<tr><td style='border-top: 1px solid'><button class='btn btn-primary' style='margin-top: 6px;margin-bottom: 6px' id='${ctlPrefix}Reset' title='Reset'>Reset</button></td></tr>`;
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Output Options</td></tr>";
-        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt'>` +
-            `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`;
-        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeASC'>` +
-            `<label for='${ctlPrefix}IncludeASC' style='margin-left:8px;'>Include Avg Speed Cams</label></td></tr>`;
+        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt' class='wal-check'>` +
+            `<label for='${ctlPrefix}IncludeAlt' class='wal-label'>Include Alt Names</label></td></tr>`;
+        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeASC' class='wal-check'>` +
+            `<label for='${ctlPrefix}IncludeASC' class='wal-label'>Include Avg Speed Cams</label></td></tr>`;
 
         // Filters
 
@@ -298,11 +308,11 @@ namespace WMEWAL_Streets {
             "</select></td></tr>";
         html += "<tr><td><b>Name RegEx:</b></td></tr>";
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}Name' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}IgnoreCase' type='checkbox'/>` +
+            `<input id='${ctlPrefix}IgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}IgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>City RegEx:</b></td></tr>";
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox'/>` +
+            `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}CityIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>State:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
@@ -320,7 +330,7 @@ namespace WMEWAL_Streets {
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}CreatedBy'/></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Created' type='checkbox' />` +
+        html += `<tr><td><input id='${ctlPrefix}Created' type='checkbox' class='wal-check'/>` +
             `<label for=${ctlPrefix}Created' class='wal-label'>Date Created:</label> ` +
             `<select id='${ctlPrefix}CreatedOp'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -333,7 +343,7 @@ namespace WMEWAL_Streets {
         html += "<tr><td><b>Last Updated By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}LastModifiedBy'/></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Updated' type='checkbox' />` +
+        html += `<tr><td><input id='${ctlPrefix}Updated' type='checkbox' class='wal-check'/>` +
             `<label for=${ctlPrefix}Updated' class='wal-label'>Date Updated:</label> ` +
             `<select id='${ctlPrefix}UpdatedOp'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -345,78 +355,78 @@ namespace WMEWAL_Streets {
             `<input id='${ctlPrefix}UpdatedDate' type='date'/> <input id='${ctlPrefix}UpdatedTime' type='time'/></td></tr>`;
         html += "<tr><td><b>Shield Text RegEx:</b></td></tr>";
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}ShieldTextRegex' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}ShieldTextIgnoreCase' type='checkbox'/>` +
+            `<input id='${ctlPrefix}ShieldTextIgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}ShieldTextIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Shield Direction RegEx:</b></td></tr>";
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}ShieldDirectionRegex' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}ShieldDirectionIgnoreCase' type='checkbox'/>` +
+            `<input id='${ctlPrefix}ShieldDirectionIgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}ShieldDirectionIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
             `<button id='${ctlPrefix}RoadTypeClear' class='btn btn-primary' title='Clear'>Clear</button>` +
-            `<div><input type='checkbox' checked='checked' id='${ctlPrefix}RoadTypeFreeway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Freeway}'/>` +
+            `<div><input type='checkbox' checked='checked' id='${ctlPrefix}RoadTypeFreeway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Freeway}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeFreeway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Freeway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRamp' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ramp}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRamp' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ramp}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeRamp' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ramp))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeMajorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MajorHighway}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeMajorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MajorHighway}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeMajorHighway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MajorHighway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeMinorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MinorHighway}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeMinorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MinorHighway}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeMinorHighway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MinorHighway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePrimary' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrimaryStreet}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePrimary' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrimaryStreet}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypePrimary' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeStreet' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Street}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeStreet' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Street}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeStreet' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Street))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeAlley' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Alley}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeAlley' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Alley}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeAlley' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Alley))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeUnpaved' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Unpaved}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeUnpaved' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Unpaved}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeUnpaved' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Unpaved))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePLR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.ParkingLotRoad}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePLR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.ParkingLotRoad}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypePLR' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.ParkingLotRoad))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePrivate' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrivateRoad}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePrivate' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrivateRoad}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypePrivate' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrivateRoad))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeFerry' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ferry}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeFerry' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ferry}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeFerry' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ferry))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeWT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.WalkingTrail}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeWT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.WalkingTrail}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeWT' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.WalkingTrail))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePB' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PedestrianBoardwalk}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePB' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PedestrianBoardwalk}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypePB' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PedestrianBoardwalk))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeStairway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Stairway}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeStairway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Stairway}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeStairway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Stairway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Railroad}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Railroad}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeRR' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Railroad))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.RunwayTaxiway}'/>` +
+            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.RunwayTaxiway}' class='wal-check'/>` +
             `<label for='${ctlPrefix}RoadTypeRT' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.RunwayTaxiway))}</label></div>` +
             "</td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Roundabouts' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Roundabouts' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}Roundabouts' class='wal-label'>`;
         html += `<select id='${ctlPrefix}RoundaboutsOp' style='margin-right: 0px'>` +
             "<option value='0'>Exclude</option>" +
             "<option value='1'>Only</option>" +
             "</select> Roundabouts</label></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}ExcludeJunctionBoxes' type='checkbox' checked='checked'/>` +
+        html += `<tr><td><input id='${ctlPrefix}ExcludeJunctionBoxes' type='checkbox' checked='checked' class='wal-check'/>` +
             `<label for='${ctlPrefix}ExcludeJunctionBoxes' class='wal-label'>Exclude Junction Boxes</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Unpaved' type='checkbox' checked='checked'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Unpaved' type='checkbox' checked='checked' class='wal-check'/>` +
             `<label for='${ctlPrefix}Unpaved' class='wal-label'>` + I18n.t("edit.segment.fields.unpaved") + "</label></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}Tunnel' type='checkbox' checked='checked'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Tunnel' type='checkbox' checked='checked' class='wal-check'/>` +
             `<label for='${ctlPrefix}Tunnel' class='wal-label'>` + I18n.t("edit.segment.fields.tunnel") + "</label></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}HeadlightsRequired' type='checkbox' checked='checked'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HeadlightsRequired' type='checkbox' checked='checked' class='wal-check'/>` +
             `<label for='${ctlPrefix}HeadlightsRequired' class='wal-label'>` + I18n.t("edit.segment.fields.headlights") + "</label></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}NearHOV' type='checkbox' checked='checked'/>` +
+        html += `<tr><td><input id='${ctlPrefix}NearHOV' type='checkbox' checked='checked' class='wal-check'/>` +
             `<label for='${ctlPrefix}NearHOV' class='wal-label'>` + I18n.t("edit.segment.fields.nearbyHOV") + "</label></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}Toll' type='checkbox' checked='checked'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Toll' type='checkbox' checked='checked' class='wal-check'/>` +
             `<label for='${ctlPrefix}Toll' class='wal-label'>${I18n.t("edit.segment.fields.toll_road")}</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Beacons' type='checkbox' checked='checked'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Beacons' type='checkbox' checked='checked' class='wal-check'/>` +
             `<label for='${ctlPrefix}Beacons' class='wal-label'>` + I18n.t("edit.segment.fields.beacons") + "</label></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}LaneGuidance' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}LaneGuidance' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}LaneGuidance' class='wal-label'>`;
         html += `<select id='${ctlPrefix}LaneGuidanceOp' style='margin-right: 0px'>` +
             "<option value='0'>Has</option>" +
             "<option value='1'>Missing</option>" +
             "</select> Lane guidance</label></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}SegmentLengthFilter' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}SegmentLengthFilter' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}SegmentLengthFilter' class='wal-label'>Segment length</label>&nbsp;` +
             `<select id='${ctlPrefix}SegmentLengthFilterOperation' style='margin-right: 0px'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -432,25 +442,25 @@ namespace WMEWAL_Streets {
         // Issues
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}NoSpeedLimit' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}NoSpeedLimit' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}NoSpeedLimit' class='wal-label'>No speed limit</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasRestrictions' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasRestrictions' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasRestrictions' class='wal-label'>Has time-based restrictions</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasTurnRestrictions' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasTurnRestrictions' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasTurnRestrictions' class='wal-label'>Has time-based turn restrictions</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}UnknownDirection' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}UnknownDirection' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}UnknownDirection' class='wal-label'>Unknown Direction</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}OneWay' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}OneWay' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}OneWay' class='wal-label'>One way</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasRestrictedJunctionArrow' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasRestrictedJunctionArrow' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasRestrictedJunctionArrow' class='wal-label'>Has restricted junction arrow</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasUTurn' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasUTurn' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasUTurn' class='wal-label'>Has U-turn</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasSoftTurns' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasSoftTurns' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasSoftTurns' class='wal-label'>Has soft turns</label></td></tr>`;
-        // html += `<tr><td><input id='${ctlPrefix}HasExtraJunctionNode' type='checkbox'/>` +
+        // html += `<tr><td><input id='${ctlPrefix}HasExtraJunctionNode' type='checkbox' class='wal-check'/>` +
         //     `<label for='${ctlPrefix}HasExtraJunctionNode' class='wal-label'>Has unnecessary junction node</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Elevation' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Elevation' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}Elevation' class='wal-label'>Elevation</label>&nbsp;` +
             `<select id='${ctlPrefix}ElevationOperation'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -458,7 +468,7 @@ namespace WMEWAL_Streets {
             `<option value='${Operation.GreaterThan}'>&gt;</option>` +
             "</select>0" +
             "</td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}SegmentLength' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}SegmentLength' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}SegmentLength' class='wal-label'>Segment length</label>&nbsp;` +
             `<select id='${ctlPrefix}SegmentLengthOperation' style='margin-right: 0px'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -470,38 +480,57 @@ namespace WMEWAL_Streets {
             `<option value='${Unit.Metric}'>m</option>` +
             `<option value='${Unit.Imperial}'>ft</option></select>` +
             "</td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}HasNoName' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasNoName' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasNoName' class='wal-label'>Has no name</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasNoCity' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasNoCity' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasNoCity' class='wal-label'>Has no city (primary or alt)</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}NoHN' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}NoHN' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}NoHN' class='wal-label'>Has no house numbers</label></td></tr>`;
-//        html += `<tr><td><input id='${ctlPrefix}NonNeutralRoutingPreference' type='checkbox'/>` +
+//        html += `<tr><td><input id='${ctlPrefix}NonNeutralRoutingPreference' type='checkbox' class='wal-check'/>` +
 //            `<label for='${ctlPrefix}NonNeutralRoutingPreference' class='wal-label'>Non-neutral routing preference</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Minus1RoutingPreference' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Minus1RoutingPreference' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}Minus1RoutingPreference' class='wal-label'>-1 routing preference</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Plus1RoutingPreference' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Plus1RoutingPreference' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}Plus1RoutingPreference' class='wal-label'>+1 routing preference</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}RampWithSL' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}RampWithSL' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}RampWithSL' class='wal-label'>Ramp with speed limit</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}NewlyPaved' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}NewlyPaved' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}NewlyPaved' class='wal-label'>Newly paved</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasClosures' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}HasClosures' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}HasClosures' class='wal-label'>Has closures</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}TI' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Loop' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}Loop' class='wal-label'>Loop</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}Shield' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}Shield' class='wal-label'>` +
+            `<select id='${ctlPrefix}ShieldOperation' style='margin-right: 0px'>` +
+            `<option value='${HasOrMissing.Missing}'>Missing</option>` +
+            `<option value='${HasOrMissing.Has}'>Has</option>` +
+            `</select> Shield</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}ShieldDirection' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}ShieldDirection' class='wal-label'>` +
+            `<select id='${ctlPrefix}ShieldDirectionOperation' style='margin-right: 0px'>` +
+            `<option value='${HasOrMissing.Missing}'>Missing</option>` +
+            `<option value='${HasOrMissing.Has}'>Has</option>` +
+            `</select> Shield Direction</label></td></tr>`;
+        html += '<tr><td style="font-size: 1.1em; font-weight: bold">Turn Guidance</td></tr>';
+        html += `<tr><td><select id='${ctlPrefix}TIDirection'>` +
+            `<option value='${IncomingOrOutgoing.Incoming}'>Incoming</option>` +
+            `<option value='${IncomingOrOutgoing.Outgoing}'>Outgoing</option>` +
+            '</select></td></tr>'
+        html += `<tr><td><input id='${ctlPrefix}TI' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}TI' class='wal-label'>` +
             `<select id='${ctlPrefix}TIOperation' style='margin-right: 0px'>` +
-            `<option value='0'>Missing</option>` +
-            `<option value='1'>Has</option>` +
-            `</select> TI (visual, toward)</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}TIExit' type='checkbox'/>` +
+            `<option value='${HasOrMissing.Missing}'>Missing</option>` +
+            `<option value='${HasOrMissing.Has}'>Has</option>` +
+            `</select> Instruction (visual, toward)</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}TIExit' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}TIExit' class='wal-label'>` +
             `<select id='${ctlPrefix}TIExitOperation' style='margin-right: 0px'>` +
-            `<option value='0'>Missing</option>` +
-            `<option value='1'>Has</option>` +
-            `</select> TI Exit sign(s)</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}HasTIO' type='checkbox'/>` +
-            `<label for='${ctlPrefix}HasTIO' class='wal-label'>Has TI voice prompt:</label>&nbsp;` +
+            `<option value='${HasOrMissing.Missing}'>Missing</option>` +
+            `<option value='${HasOrMissing.Has}'>Has</option>` +
+            `</select> Exit sign(s)</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}HasTIO' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HasTIO' class='wal-label'>Has voice prompt:</label>&nbsp;` +
             `<select id='${ctlPrefix}TIO'>` +
             `<option value='${TIO.Any}'>Any</option>` +
             `<option value='${TIO.None}'>${I18n.t('turn_tooltip.instruction_override.opcodes.NONE')}</option>` +
@@ -515,26 +544,12 @@ namespace WMEWAL_Streets {
             `<option value='${TIO.UTurn}'>${I18n.t('turn_tooltip.instruction_override.opcodes.UTURN')}</option>` +
             '</select>' +
             '</td></tr>';
-        html += `<tr><td><input id='${ctlPrefix}TITTS' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}TITTS' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}TITTS' class='wal-label'>` +
             `<select id='${ctlPrefix}TITTSOperation' style='margin-right: 0px'>` +
-            `<option value='0'>Missing</option>` +
-            `<option value='1'>Has</option>` +
-            `</select> TI TTS</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Loop' type='checkbox'/>` +
-            `<label for='${ctlPrefix}Loop' class='wal-label'>Loop</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Shield' type='checkbox'/>` +
-            `<label for='${ctlPrefix}Shield' class='wal-label'>` +
-            `<select id='${ctlPrefix}ShieldOperation' style='margin-right: 0px'>` +
-            `<option value='0'>Missing</option>` +
-            `<option value='1'>Has</option>` +
-            `</select> Shield</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}ShieldDirection' type='checkbox'/>` +
-            `<label for='${ctlPrefix}ShieldDirection' class='wal-label'>` +
-            `<select id='${ctlPrefix}ShieldDirectionOperation' style='margin-right: 0px'>` +
-            `<option value='0'>Missing</option>` +
-            `<option value='1'>Has</option>` +
-            `</select> Shield Direction</label></td></tr>`;
+            `<option value='${HasOrMissing.Missing}'>Missing</option>` +
+            `<option value='${HasOrMissing.Has}'>Has</option>` +
+            `</select> TTS</label></td></tr>`;
 
         html += "</tbody></table>";
 
@@ -771,6 +786,7 @@ namespace WMEWAL_Streets {
         $(`#${ctlPrefix}TITTSOperation`).val(settings.TITTSOperation);
         $(`#${ctlPrefix}TIExit`).prop('checked', settings.TIExit);
         $(`#${ctlPrefix}TIExitOperation`).val(settings.TIExitOperation);
+        $(`#${ctlPrefix}TIDirection`).val(settings.TIDirection);
     }
 
     function loadSetting(): void {
@@ -999,7 +1015,8 @@ namespace WMEWAL_Streets {
             TITTS: $(`#${ctlPrefix}TITTS`).prop('checked'),
             TITTSOperation: parseInt($(`#${ctlPrefix}TITTSOperation`).val()),
             TIExit: $(`#${ctlPrefix}TIExit`).prop('checked'),
-            TIExitOperation: parseInt($(`#${ctlPrefix}TIExitOperation`).val())
+            TIExitOperation: parseInt($(`#${ctlPrefix}TIExitOperation`).val()),
+            TIDirection: parseInt($(`#${ctlPrefix}TIDirection`).val())
         };
 
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
@@ -1569,21 +1586,26 @@ namespace WMEWAL_Streets {
                     if (settings.HasTIO || settings.TI || settings.TITTS || settings.TIExit) {
                         let hasTIO = false;
                         let hasTI = false;
-                        let hasTITTS = false;
-                        let hasTIExit = false;
+                        let hasTTS = false;
+                        let hasExit = false;
                         let directions: string[] = [];
                         if (segment.attributes.fwdDirection) {
-                            directions.push("to");
+                            directions.push(settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'to' : 'from');
                         }
                         if (segment.attributes.revDirection) {
-                            directions.push("from");
+                            directions.push(settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'from' : 'to');
                         }
                         for (let ixDir = 0; ixDir < directions.length; ixDir++) {
                             let node = segment.getNodeByDirection(directions[ixDir]);
                             let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
                             for (let ixSeg = 0; ixSeg < connectedSegments.length && !hasTIO; ixSeg++) {
                                 let connectedSegment = connectedSegments[ixSeg];
-                                let turn = graph.getTurnThroughNode(node, segment, connectedSegment).getTurnData();
+                                let turn: WazeNS.Model.Graph.TurnData;
+                                if (settings.TIDirection === IncomingOrOutgoing.Outgoing) {
+                                    turn = graph.getTurnThroughNode(node, segment, connectedSegment).getTurnData();
+                                } else {
+                                    turn = graph.getTurnThroughNode(node, connectedSegment, segment).getTurnData();
+                                }
                                 if (settings.HasTIO && turn.hasInstructionOpcode() && (settings.TIO == TIO.Any || turn.getInstructionOpcode() == settings.TIO)) {
                                     hasTIO = true;
                                 }
@@ -1596,11 +1618,11 @@ namespace WMEWAL_Streets {
                                     }
                                     if (settings.TITTS &&
                                         nullif(tg.getTTS(), '') !== null) {
-                                        hasTITTS = true;
+                                        hasTTS = true;
                                     }
                                     if (settings.TIExit &&
                                         tg.getExitSigns().length > 0) {
-                                        hasTIExit = true;
+                                        hasExit = true;
                                     }
                                 }
                             }
@@ -1610,28 +1632,28 @@ namespace WMEWAL_Streets {
                             newSegment = true;
                         }
                         if (settings.TI) {
-                            if (settings.TIOperation === 0 && !hasTI) {
+                            if (settings.TIOperation === HasOrMissing.Missing && !hasTI) {
                                 issues |= Issue.TI;
                                 newSegment = true;
-                            } else if (settings.TIOperation === 1 && hasTI) {
+                            } else if (settings.TIOperation === HasOrMissing.Has && hasTI) {
                                 issues |= Issue.TI;
                                 newSegment = true;
                             }
                         }
                         if (settings.TITTS) {
-                            if (settings.TITTSOperation === 0 && !hasTITTS) {
+                            if (settings.TITTSOperation === HasOrMissing.Missing && !hasTTS) {
                                 issues |= Issue.TITTS;
                                 newSegment = true;
-                            } else if (settings.TITTSOperation === 1 && hasTITTS) {
+                            } else if (settings.TITTSOperation === HasOrMissing.Has && hasTTS) {
                                 issues |= Issue.TITTS;
                                 newSegment = true;
                             }
                         }
                         if (settings.TIExit) {
-                            if (settings.TIExitOperation === 0 && !hasTIExit) {
+                            if (settings.TIExitOperation === HasOrMissing.Missing && !hasExit) {
                                 issues |= Issue.TIExit;
                                 newSegment = true;
-                            } else if (settings.TIExitOperation === 1 && hasTIExit) {
+                            } else if (settings.TIExitOperation === HasOrMissing.Has && hasExit) {
                                 issues |= Issue.TIExit;
                                 newSegment = true;
                             }
@@ -1655,12 +1677,12 @@ namespace WMEWAL_Streets {
                     }
 
                     if (settings.Shield) {
-                        if (settings.ShieldOperation === 0 &&
+                        if (settings.ShieldOperation === HasOrMissing.Missing &&
                             (primaryStreet == null ||
                              primaryStreet.signType == null ||
                              primaryStreet.signText == null)) {
                             issues |= Issue.Shield;
-                        } else if (settings.ShieldOperation === 1 &&
+                        } else if (settings.ShieldOperation === HasOrMissing.Has &&
                             primaryStreet != null &&
                             primaryStreet.signType != null &&
                             primaryStreet.signText != null) {
@@ -1669,11 +1691,11 @@ namespace WMEWAL_Streets {
                     }
 
                     if (settings.ShieldDirection) {
-                        if (settings.ShieldDirectionOperation === 0 &&
+                        if (settings.ShieldDirectionOperation === HasOrMissing.Missing &&
                             (primaryStreet == null ||
                              primaryStreet.direction == null)) {
                             issues |= Issue.ShieldDirection;
-                        } else if (settings.ShieldDirectionOperation === 1 &&
+                        } else if (settings.ShieldDirectionOperation === HasOrMissing.Has &&
                             primaryStreet != null &&
                             primaryStreet.direction != null) {
                             issues |= Issue.ShieldDirection;
@@ -2108,41 +2130,41 @@ namespace WMEWAL_Streets {
                     w.document.write("<div>Has closures</div>");
                 }
                 if (settings.TI) {
-                    if (settings.TIOperation === 0) {
-                        w.document.write(`<div>Does not have TI (visual instruction, toward)</div>`);
+                    if (settings.TIOperation === HasOrMissing.Missing) {
+                        w.document.write(`<div>Does not have ${settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'outgoing' : 'incoming'} TI (visual instruction, toward)</div>`);
                     } else {
-                        w.document.write(`<div>Has TI (visual instruction, toward)</div>`);
+                        w.document.write(`<div>Has ${settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'outgoing' : 'incoming'} TI (visual instruction, toward)</div>`);
                     }
                 }
                 if (settings.TIExit) {
-                    if (settings.TIExitOperation === 0) {
-                        w.document.write(`<div>Does not have TI Exit sign(s)</div>`);
+                    if (settings.TIExitOperation === HasOrMissing.Missing) {
+                        w.document.write(`<div>Does not have ${settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'outgoing' : 'incoming'} TI Exit sign(s)</div>`);
                     } else {
-                        w.document.write(`<div>Has TI Exit sign(s)</div>`);
+                        w.document.write(`<div>Has ${settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'outgoing' : 'incoming'} TI Exit sign(s)</div>`);
                     }
                 }
                 if (settings.HasTIO) {
-                    w.document.write(`<div>Has TI voice prompt${settings.TIO == TIO.Any ? "" : ": " + I18n.t("turn_tooltip.instruction_override.opcodes." + settings.TIO)}</div>`);
+                    w.document.write(`<div>Has ${settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'outgoing' : 'incoming'} TI voice prompt${settings.TIO == TIO.Any ? "" : ": " + I18n.t("turn_tooltip.instruction_override.opcodes." + settings.TIO)}</div>`);
                 }
                 if (settings.TITTS) {
-                    if (settings.TITTSOperation === 0) {
-                        w.document.write(`<div>Does not have TI TTS</div>`);
+                    if (settings.TITTSOperation === HasOrMissing.Missing) {
+                        w.document.write(`<div>Does not have ${settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'outgoing' : 'incoming'} TI TTS</div>`);
                     } else {
-                        w.document.write(`<div>Has TI TTS</div>`);
+                        w.document.write(`<div>Has ${settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'outgoing' : 'incoming'} TI TTS</div>`);
                     }
                 }
                 if (settings.Loop) {
                     w.document.write("<div>Loop</div>")
                 }
                 if (settings.Shield) {
-                    if (settings.ShieldOperation === 0) {
+                    if (settings.ShieldOperation === HasOrMissing.Missing) {
                         w.document.write('<div>Does not have shield</div>');
                     } else {
                         w.document.write('<div>Has shield</div>')
                     }
                 }
                 if (settings.ShieldDirection) {
-                    if (settings.ShieldDirectionOperation === 0) {
+                    if (settings.ShieldDirectionOperation === HasOrMissing.Missing) {
                         w.document.write('<div>Does not have shield direction</div>');
                     } else {
                         w.document.write('<div>Has shield direction</div>')
@@ -2621,7 +2643,8 @@ namespace WMEWAL_Streets {
             TITTS: false,
             TITTSOperation: 0,
             TIExit: false,
-            TIExitOperation: 0
+            TIExitOperation: 0,
+            TIDirection: IncomingOrOutgoing.Outgoing
         };
     }
 
@@ -2830,23 +2853,23 @@ namespace WMEWAL_Streets {
 
             if (!settings.hasOwnProperty("Shield")) {
                 settings.Shield = false;
-                settings.ShieldOperation = 0;
+                settings.ShieldOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("ShieldOperation")) {
-                settings.ShieldOperation = 0;
+                settings.ShieldOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("ShieldDirection")) {
                 settings.ShieldDirection = false;
-                settings.ShieldDirectionOperation = 0;
+                settings.ShieldDirectionOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("ShieldDirectionOperation")) {
-                settings.ShieldDirectionOperation = 0;
+                settings.ShieldDirectionOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
@@ -2874,34 +2897,39 @@ namespace WMEWAL_Streets {
 
             if (!settings.hasOwnProperty("TI")) {
                 settings.TI = false;
-                settings.TIOperation = 0;
+                settings.TIOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("TIOperation")) {
-                settings.TIOperation = 0;
+                settings.TIOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("TITTS")) {
                 settings.TITTS = false;
-                settings.TITTSOperation = 0;
+                settings.TITTSOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("TITTSOperation")) {
-                settings.TITTSOperation = 0;
+                settings.TITTSOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("TIExit")) {
                 settings.TIExit = false;
-                settings.TIExitOperation = 0;
+                settings.TIExitOperation = HasOrMissing.Missing;
                 upd = true;
             }
 
             if (!settings.hasOwnProperty("TIExitOperation")) {
-                settings.TIExitOperation = 0;
+                settings.TIExitOperation = HasOrMissing.Missing;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("TIDirection")) {
+                settings.TIDirection = IncomingOrOutgoing.Outgoing;
                 upd = true;
             }
 
