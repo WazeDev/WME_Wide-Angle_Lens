@@ -30,6 +30,7 @@ namespace WMEWAL_Places {
         '<li>Add Category Operation</li>' +
         '<li>Add No Phone Number option</li>' +
         '<li>Added No Website option</li>' +
+        '<li>Added No Name option</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -61,7 +62,8 @@ namespace WMEWAL_Places {
         NoPhoneNumber = 1 << 10,
         InvalidPhoneNumber = 1 << 11,
         NoWebsite = 1 << 12,
-        NoCity = 1 << 13
+        NoCity = 1 << 13,
+        NoName = 1 << 14
     }
 
     interface IPlace {
@@ -99,6 +101,7 @@ namespace WMEWAL_Places {
     }
 
     interface ISaveableSettings {
+        NoName: boolean;
         Regex: string;
         RegexIgnoreCase: boolean;
         Category: string;
@@ -293,7 +296,9 @@ namespace WMEWAL_Places {
             "<option value='RESTRICTED'>" + I18n.t("edit.venue.parking.types.parkingType.RESTRICTED") + "</option>" +
             "</select></label></td></tr>";
 
-        html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>"
+        html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoName'/>` +
+            `<label for='${ctlPrefix}NoName' class='wal-label'>No Name</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
             `<label for='${ctlPrefix}NoHouseNumber' class='wal-label'>Missing House Number</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoStreet'/>` +
@@ -439,6 +444,7 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}Category`).val(settings.Category);
         $(`#${ctlPrefix}LockLevel`).val(settings.LockLevel);
         $(`#${ctlPrefix}LockLevelOp`).val(settings.LockLevelOperation || Operation.Equal);
+        $(`#${ctlPrefix}NoName`).prop("checked", settings.NoName);
         $(`#${ctlPrefix}Name`).val(settings.Regex || "");
         $(`#${ctlPrefix}IgnoreCase`).prop("checked", settings.RegexIgnoreCase);
         $(`#${ctlPrefix}City`).val(settings.CityRegex || "");
@@ -635,6 +641,7 @@ namespace WMEWAL_Places {
 
     function getSettings(): ISaveableSettings {
         let s: ISaveableSettings = {
+            NoName: $(`#${ctlPrefix}NoName`).prop("checked"),
             Regex: null,
             RegexIgnoreCase: $(`#${ctlPrefix}IgnoreCase`).prop("checked"),
             CategoryOperation: parseInt($(`#${ctlPrefix}CategoryOp`).val()),
@@ -814,7 +821,8 @@ namespace WMEWAL_Places {
                 createdByName = null;
             }
 
-            detectIssues = settings.NoHouseNumber ||
+            detectIssues = settings.NoName ||
+                settings.NoHouseNumber ||
                 settings.NoStreet ||
                 settings.NoCity ||
                 settings.AdLocked ||
@@ -949,7 +957,11 @@ namespace WMEWAL_Places {
                         }
                     }
 
-                    if (settings.NoHouseNumber && (!address || !address || address.attributes.houseNumber == null)) {
+                    if (settings.NoName && !venue.attributes.name) {
+                        issues |= Issue.NoName;
+                    }
+
+                    if (settings.NoHouseNumber && (!address || address.attributes.houseNumber == null)) {
                         issues |= Issue.MissingHouseNumber;
                     }
 
@@ -1179,7 +1191,9 @@ namespace WMEWAL_Places {
                 if (detectIssues) {
                     w.document.write("<h4>Issues</h4>");
                 }
-
+                if (settings.NoName) {
+                    w.document.write("<br/>No Name");
+                }
                 if (settings.NoHouseNumber) {
                     w.document.write("<br/>Missing house number");
                 }
@@ -1398,6 +1412,7 @@ namespace WMEWAL_Places {
 
         if (settings == null) {
             settings = {
+                NoName: false,
                 Regex: null,
                 RegexIgnoreCase: true,
                 Category: null,
@@ -1457,6 +1472,11 @@ namespace WMEWAL_Places {
         let upd = false;
 
         if (settings !== null) {
+            if (!settings.hasOwnProperty("NoName")) {
+                settings.NoName = false;
+                upd = true;
+            }
+
             if (!settings.hasOwnProperty("NoStreet")) {
                 settings.NoStreet = false;
                 upd = true;
@@ -1591,6 +1611,9 @@ namespace WMEWAL_Places {
 
     function getIssues(issues: number): string {
         let issuesList = [];
+        if (issues & Issue.NoName) {
+            issuesList.push("No name");
+        }
         if (issues & Issue.AdLocked) {
             issuesList.push("Ad locked");
         }
