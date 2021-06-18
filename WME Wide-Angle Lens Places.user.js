@@ -701,7 +701,7 @@ var WMEWAL_Places;
                 return e.localeCompare(category) === 0;
             });
             if (typeof match === "undefined" || match == null || match.length === 0) {
-                return false;
+                return operation === Operation.NotEqual;
             }
             return operation === Operation.Equal;
         }
