@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.4
+// @version             1.4.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL_Places;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with exporting multiple alt names to csv</li>' +
+        '<li>Added No Name option</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -52,6 +52,7 @@ var WMEWAL_Places;
         Issue[Issue["NoHours"] = 128] = "NoHours";
         Issue[Issue["NoEntryExitPoints"] = 256] = "NoEntryExitPoints";
         Issue[Issue["MissingBrand"] = 512] = "MissingBrand";
+        Issue[Issue["NoName"] = 1024] = "NoName";
     })(Issue || (Issue = {}));
     let pluginName = "WMEWAL-Places";
     WMEWAL_Places.Title = "Places";
@@ -186,6 +187,8 @@ var WMEWAL_Places;
             "<option value='RESTRICTED'>" + I18n.t("edit.venue.parking.types.parkingType.RESTRICTED") + "</option>" +
             "</select></label></td></tr>";
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoName'/>` +
+            `<label for='${ctlPrefix}NoName' class='wal-label'>No Name</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
             `<label for='${ctlPrefix}NoHouseNumber' class='wal-label'>Missing House Number</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoStreet'/>` +
@@ -304,6 +307,7 @@ var WMEWAL_Places;
         $(`#${ctlPrefix}Category`).val(settings.Category);
         $(`#${ctlPrefix}LockLevel`).val(settings.LockLevel);
         $(`#${ctlPrefix}LockLevelOp`).val(settings.LockLevelOperation || Operation.Equal);
+        $(`#${ctlPrefix}NoName`).prop("checked", settings.NoName);
         $(`#${ctlPrefix}Name`).val(settings.Regex || "");
         $(`#${ctlPrefix}IgnoreCase`).prop("checked", settings.RegexIgnoreCase);
         $(`#${ctlPrefix}City`).val(settings.CityRegex || "");
@@ -477,6 +481,7 @@ var WMEWAL_Places;
     }
     function getSettings() {
         let s = {
+            NoName: $(`#${ctlPrefix}NoName`).prop("checked"),
             Regex: null,
             RegexIgnoreCase: $(`#${ctlPrefix}IgnoreCase`).prop("checked"),
             Category: null,
@@ -633,7 +638,8 @@ var WMEWAL_Places;
                 createdBy = null;
                 createdByName = null;
             }
-            detectIssues = settings.NoHouseNumber ||
+            detectIssues = settings.NoName ||
+                settings.NoHouseNumber ||
                 settings.NoStreet ||
                 settings.AdLocked ||
                 settings.UpdateRequests ||
@@ -751,7 +757,10 @@ var WMEWAL_Places;
                             continue;
                         }
                     }
-                    if (settings.NoHouseNumber && (!address || !address || address.attributes.houseNumber == null)) {
+                    if (settings.NoName && !venue.attributes.name) {
+                        issues |= Issue.NoName;
+                    }
+                    if (settings.NoHouseNumber && (!address || address.attributes.houseNumber == null)) {
                         issues |= Issue.MissingHouseNumber;
                     }
                     if (settings.AdLocked && venue.attributes.adLocked) {
@@ -943,6 +952,9 @@ var WMEWAL_Places;
                 }
                 if (detectIssues) {
                     w.document.write("<h4>Issues</h4>");
+                }
+                if (settings.NoName) {
+                    w.document.write("<br/>No Name");
                 }
                 if (settings.NoHouseNumber) {
                     w.document.write("<br/>Missing house number");
@@ -1140,6 +1152,7 @@ var WMEWAL_Places;
         }
         if (settings == null) {
             settings = {
+                NoName: false,
                 Regex: null,
                 RegexIgnoreCase: true,
                 Category: null,
@@ -1191,6 +1204,10 @@ var WMEWAL_Places;
     function updateProperties() {
         let upd = false;
         if (settings !== null) {
+            if (!settings.hasOwnProperty("NoName")) {
+                settings.NoName = false;
+                upd = true;
+            }
             if (!settings.hasOwnProperty("NoStreet")) {
                 settings.NoStreet = false;
                 upd = true;
@@ -1284,6 +1301,9 @@ var WMEWAL_Places;
     }
     function getIssues(issues) {
         let issuesList = [];
+        if (issues & Issue.NoName) {
+            issuesList.push("No name");
+        }
         if (issues & Issue.AdLocked) {
             issuesList.push("Ad locked");
         }
