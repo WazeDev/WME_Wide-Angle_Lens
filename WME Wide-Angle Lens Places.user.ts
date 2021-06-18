@@ -60,7 +60,8 @@ namespace WMEWAL_Places {
         MissingBrand = 1 << 9,
         NoPhoneNumber = 1 << 10,
         InvalidPhoneNumber = 1 << 11,
-        NoWebsite = 1 << 12
+        NoWebsite = 1 << 12,
+        NoCity = 1 << 13
     }
 
     interface IPlace {
@@ -115,6 +116,7 @@ namespace WMEWAL_Places {
         CityRegex: string;
         CityRegexIgnoreCase: boolean;
         NoStreet: boolean;
+        NoCity: boolean;
         LastModifiedBy: number;
         UndefStreet: boolean;
         CreatedBy: number;
@@ -296,6 +298,8 @@ namespace WMEWAL_Places {
             `<label for='${ctlPrefix}NoHouseNumber' class='wal-label'>Missing House Number</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoStreet'/>` +
             `<label for='${ctlPrefix}NoStreet' class='wal-label'>Missing Street</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoCity'/>` +
+            `<label for='${ctlPrefix}NoCity' class='wal-label'>Missing City</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}AdLocked'/>` +
             `<label for='${ctlPrefix}AdLocked' class='wal-label'>Ad Locked</label></td></tr>`;
         html += `<tr><td ><input type='checkbox' id='${ctlPrefix}UpdateRequests'/>` +
@@ -449,6 +453,7 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}UpdateRequests`).prop("checked", settings.UpdateRequests);
         $(`#${ctlPrefix}PendingApproval`).prop("checked", settings.PendingApproval);
         $(`#${ctlPrefix}NoStreet`).prop("checked", settings.NoStreet);
+        $(`#${ctlPrefix}NoCity`).prop("checked", settings.NoCity);
         $(`#${ctlPrefix}LastModifiedBy`).val(settings.LastModifiedBy);
         $(`#${ctlPrefix}CreatedBy`).val(settings.CreatedBy);
         $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
@@ -648,6 +653,7 @@ namespace WMEWAL_Places {
             CityRegex: null,
             CityRegexIgnoreCase: $(`#${ctlPrefix}CityIgnoreCase`).prop("checked"),
             NoStreet: $(`#${ctlPrefix}NoStreet`).prop("checked"),
+            NoCity: $(`#${ctlPrefix}NoCity`).prop("checked"),
             LastModifiedBy: null,
             CreatedBy: null,
             NoExternalProviders: $(`#${ctlPrefix}NoExternalProviders`).prop("checked"),
@@ -810,6 +816,7 @@ namespace WMEWAL_Places {
 
             detectIssues = settings.NoHouseNumber ||
                 settings.NoStreet ||
+                settings.NoCity ||
                 settings.AdLocked ||
                 settings.UpdateRequests ||
                 settings.PendingApproval ||
@@ -964,6 +971,12 @@ namespace WMEWAL_Places {
 
                     if (settings.NoStreet && (!address || address.isEmpty() || address.isEmptyStreet())) {
                         issues |= Issue.MissingStreet;
+                    }
+
+                    if (settings.NoCity && (!address || address.isEmpty() || !address.getCity() || address.getCity().isEmpty())) {
+
+                        //((!address || address.isEmpty() || !address.attributes.city || address.attributes.city.isEmpty() || !address.attributes.city.hasName())
+                        issues |= Issue.NoCity;
                     }
 
                     if (settings.NoExternalProviders && (!venue.attributes.externalProviderIDs || venue.attributes.externalProviderIDs.length === 0)) {
@@ -1174,6 +1187,9 @@ namespace WMEWAL_Places {
                 }
                 if (settings.NoStreet) {
                     w.document.write("<br/>Missing street");
+                }
+                if (settings.NoCity) {
+                    w.document.write("<br/>Missing city");
                 }
                 if (settings.AdLocked) {
                     w.document.write("<br/>Ad locked");
@@ -1401,6 +1417,7 @@ namespace WMEWAL_Places {
                 CityRegex: null,
                 CityRegexIgnoreCase: true,
                 NoStreet: false,
+                NoCity: false,
                 LastModifiedBy: null,
                 CreatedBy: null,
                 UndefStreet: false,
@@ -1444,6 +1461,11 @@ namespace WMEWAL_Places {
         if (settings !== null) {
             if (!settings.hasOwnProperty("NoStreet")) {
                 settings.NoStreet = false;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("NoCity")) {
+                settings.NoCity = false;
                 upd = true;
             }
 
@@ -1582,6 +1604,9 @@ namespace WMEWAL_Places {
         }
         if (issues & Issue.MissingStreet) {
             issuesList.push("Missing street");
+        }
+        if (issues & Issue.NoCity) {
+            issuesList.push("No City");
         }
         if (issues & Issue.NoExternalProviders) {
             issuesList.push("No external provider IDs");
