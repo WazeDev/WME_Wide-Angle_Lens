@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.4
+// @version             1.4.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL_Places;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with exporting multiple alt names to csv</li>' +
+        '<li>Added No Website option</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -52,6 +52,7 @@ var WMEWAL_Places;
         Issue[Issue["NoHours"] = 128] = "NoHours";
         Issue[Issue["NoEntryExitPoints"] = 256] = "NoEntryExitPoints";
         Issue[Issue["MissingBrand"] = 512] = "MissingBrand";
+        Issue[Issue["NoWebsite"] = 1024] = "NoWebsite";
     })(Issue || (Issue = {}));
     let pluginName = "WMEWAL-Places";
     WMEWAL_Places.Title = "Places";
@@ -202,6 +203,8 @@ var WMEWAL_Places;
             `<label for='${ctlPrefix}NoExternalProviders' class='wal-label'>No External Provider Links</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHours' />` +
             `<label for='${ctlPrefix}NoHours' class='wal-label'>No Hours</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoWebsite' />` +
+            `<label for='${ctlPrefix}NoWebsite' class='wal-label'>No Website</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoEntryExitPoints' />` +
             `<label for='${ctlPrefix}NoEntryExitPoints' class='wal-label'>No Entry/Exit Points</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}MissingBrand' />` +
@@ -322,6 +325,7 @@ var WMEWAL_Places;
         $(`#${ctlPrefix}CreatedBy`).val(settings.CreatedBy);
         $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
         $(`#${ctlPrefix}NoHours`).prop("checked", settings.NoHours);
+        $(`#${ctlPrefix}NoWebsite`).prop("checked", settings.NoWebsite);
         $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked", settings.NoEntryExitPoints);
         $(`#${ctlPrefix}ParkingLotType`).prop("checked", settings.ParkingLotType);
         $(`#${ctlPrefix}ParkingLotTypeFilter`).val(settings.ParkingLotTypeFilter);
@@ -498,6 +502,7 @@ var WMEWAL_Places;
             CreatedBy: null,
             NoExternalProviders: $(`#${ctlPrefix}NoExternalProviders`).prop("checked"),
             NoHours: $(`#${ctlPrefix}NoHours`).prop("checked"),
+            NoWebsite: $(`#${ctlPrefix}NoWebsite`).prop("checked"),
             NoEntryExitPoints: $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked"),
             ParkingLotType: $(`#${ctlPrefix}ParkingLotType`).prop("checked"),
             ParkingLotTypeFilter: $(`#${ctlPrefix}ParkingLotTypeFilter`).val(),
@@ -641,6 +646,7 @@ var WMEWAL_Places;
                 settings.UndefStreet ||
                 settings.NoExternalProviders ||
                 settings.NoHours ||
+                settings.NoWebsite ||
                 settings.NoEntryExitPoints ||
                 settings.MissingBrand;
             updateSettings();
@@ -774,6 +780,9 @@ var WMEWAL_Places;
                     }
                     if (settings.NoHours && (!venue.attributes.openingHours || venue.attributes.openingHours.length === 0)) {
                         issues |= Issue.NoHours;
+                    }
+                    if (settings.NoWebsite && !venue.attributes.url) {
+                        issues |= Issue.NoWebsite;
                     }
                     if (settings.NoEntryExitPoints && (!venue.attributes.entryExitPoints || venue.attributes.entryExitPoints.length === 0)) {
                         issues |= Issue.NoEntryExitPoints;
@@ -968,6 +977,9 @@ var WMEWAL_Places;
                 if (settings.NoHours) {
                     w.document.write("<br/>No hours");
                 }
+                if (settings.NoWebsite) {
+                    w.document.write("<br/>No website");
+                }
                 if (settings.NoEntryExitPoints) {
                     w.document.write("<br/>No entry/exit points");
                 }
@@ -1161,6 +1173,7 @@ var WMEWAL_Places;
                 UndefStreet: false,
                 NoExternalProviders: false,
                 NoHours: false,
+                NoWebsite: false,
                 NoEntryExitPoints: false,
                 ParkingLotType: false,
                 ParkingLotTypeFilter: null,
@@ -1205,6 +1218,10 @@ var WMEWAL_Places;
             }
             if (!settings.hasOwnProperty("NoHours")) {
                 settings.NoHours = false;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("NoWebsite")) {
+                settings.NoWebsite = false;
                 upd = true;
             }
             if (!settings.hasOwnProperty("NoEntryExitPoints")) {
@@ -1307,6 +1324,9 @@ var WMEWAL_Places;
         }
         if (issues & Issue.NoHours) {
             issuesList.push("No hours");
+        }
+        if (issues & Issue.NoHours) {
+            issuesList.push("No website");
         }
         if (issues & Issue.NoEntryExitPoints) {
             issuesList.push("No entry/exit points");
