@@ -29,6 +29,7 @@ namespace WMEWAL_Places {
     const updateText = '<ul>' +
         '<li>Add Category Operation</li>' +
         '<li>Add No Phone Number option</li>' +
+        '<li>Added No Website option</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -57,7 +58,8 @@ namespace WMEWAL_Places {
         NoHours = 1 << 7,
         NoEntryExitPoints = 1 << 8,
         MissingBrand = 1 << 9,
-        NoPhoneNumber = 1 << 10
+        NoPhoneNumber = 1 << 10,
+        NoWebsite = 1 << 11
     }
 
     interface IPlace {
@@ -118,6 +120,7 @@ namespace WMEWAL_Places {
         NoExternalProviders: boolean;
         NoHours: boolean;
         NoPhoneNumber: boolean;
+        NoWebsite: boolean;
         NoEntryExitPoints: boolean;
         ParkingLotType: boolean;
         ParkingLotTypeFilter: string;
@@ -303,8 +306,10 @@ namespace WMEWAL_Places {
             `<label for='${ctlPrefix}NoExternalProviders' class='wal-label'>No External Provider Links</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHours' />` +
             `<label for='${ctlPrefix}NoHours' class='wal-label'>No Hours</label></td></tr>`;
-            html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoPhoneNumber' />` +
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoPhoneNumber' />` +
             `<label for='${ctlPrefix}NoPhoneNumber' class='wal-label'>No Phone Number</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoWebsite' />` +
+            `<label for='${ctlPrefix}NoWebsite' class='wal-label'>No Website</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoEntryExitPoints' />` +
             `<label for='${ctlPrefix}NoEntryExitPoints' class='wal-label'>No Entry/Exit Points</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}MissingBrand' />` +
@@ -445,6 +450,7 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
         $(`#${ctlPrefix}NoHours`).prop("checked", settings.NoHours);
         $(`#${ctlPrefix}NoPhoneNumber`).prop("checked", settings.NoPhoneNumber);
+        $(`#${ctlPrefix}NoWebsite`).prop("checked", settings.NoWebsite);
         $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked", settings.NoEntryExitPoints);
         $(`#${ctlPrefix}ParkingLotType`).prop("checked", settings.ParkingLotType);
         $(`#${ctlPrefix}ParkingLotTypeFilter`).val(settings.ParkingLotTypeFilter);
@@ -642,6 +648,7 @@ namespace WMEWAL_Places {
             NoExternalProviders: $(`#${ctlPrefix}NoExternalProviders`).prop("checked"),
             NoHours: $(`#${ctlPrefix}NoHours`).prop("checked"),
             NoPhoneNumber: $(`#${ctlPrefix}NoPhoneNumber`).prop("checked"),
+            NoWebsite: $(`#${ctlPrefix}NoWebsite`).prop("checked"),
             NoEntryExitPoints: $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked"),
             ParkingLotType: $(`#${ctlPrefix}ParkingLotType`).prop("checked"),
             ParkingLotTypeFilter: $(`#${ctlPrefix}ParkingLotTypeFilter`).val(),
@@ -804,6 +811,7 @@ namespace WMEWAL_Places {
                 settings.NoExternalProviders ||
                 settings.NoHours ||
                 settings.NoPhoneNumber ||
+                settings.NoWebsite ||
                 settings.NoEntryExitPoints ||
                 settings.MissingBrand;
 
@@ -957,9 +965,12 @@ namespace WMEWAL_Places {
                         issues |= Issue.NoHours;
                     }
 
-                    //we can have another option for invalid phone number
                     if (settings.NoPhoneNumber && !venue.attributes.phone) {
                         issues |= Issue.NoPhoneNumber;
+                    }
+
+                    if (settings.NoWebsite && !venue.attributes.url) {
+                        issues |= Issue.NoWebsite;
                     }
 
                     if (settings.NoEntryExitPoints && (!venue.attributes.entryExitPoints || venue.attributes.entryExitPoints.length === 0)) {
@@ -1172,6 +1183,9 @@ namespace WMEWAL_Places {
                 if (settings.NoPhoneNumber) {
                     w.document.write("<br/>No phone number");
                 }
+                if (settings.NoWebsite) {
+                    w.document.write("<br/>No website");
+                }
                 if (settings.NoEntryExitPoints) {
                     w.document.write("<br/>No entry/exit points");
                 }
@@ -1377,6 +1391,7 @@ namespace WMEWAL_Places {
                 NoExternalProviders: false,
                 NoHours: false,
                 NoPhoneNumber: false,
+                NoWebsite: false,
                 NoEntryExitPoints: false,
                 ParkingLotType: false,
                 ParkingLotTypeFilter: null,
@@ -1432,6 +1447,10 @@ namespace WMEWAL_Places {
 
             if (!settings.hasOwnProperty("NoPhoneNumber")) {
                 settings.NoPhoneNumber = false;
+            }
+            
+            if (!settings.hasOwnProperty("NoWebsite")) {
+                settings.NoWebsite = false;
                 upd = true;
             }
 
@@ -1557,6 +1576,9 @@ namespace WMEWAL_Places {
         }
         if (issues & Issue.NoPhoneNumber) {
             issuesList.push("No phone number");
+        }
+        if (issues & Issue.NoHours) {
+            issuesList.push("No website");
         }
         if (issues & Issue.NoEntryExitPoints) {
             issuesList.push("No entry/exit points");
