@@ -974,8 +974,6 @@ namespace WMEWAL_Places {
                     }
 
                     if (settings.NoCity && (!address || address.isEmpty() || !address.getCity() || address.getCity().isEmpty())) {
-
-                        //((!address || address.isEmpty() || !address.attributes.city || address.attributes.city.isEmpty() || !address.attributes.city.hasName())
                         issues |= Issue.NoCity;
                     }
 
