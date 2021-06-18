@@ -1,3 +1,8 @@
+/// <reference path="../typescript-typings/globals/openlayers/index.d.ts" />
+/// <reference path="../typescript-typings/waze.d.ts" />
+/// <reference path="../typescript-typings/globals/jquery/index.d.ts" />
+/// <reference path="WME Wide-Angle Lens.user.ts" />
+/// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Locks
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
