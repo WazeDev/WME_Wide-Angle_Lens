@@ -29,8 +29,10 @@ namespace WMEWAL_Places {
     const updateText = '<ul>' +
         '<li>Add Category Operation</li>' +
         '<li>Add No Phone Number option</li>' +
+        '<li>Add Bad Phone Number Format option</li>' +
         '<li>Added No Website option</li>' +
         '<li>Added No Name option</li>' +
+        '<li>Add No City option</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -60,7 +62,7 @@ namespace WMEWAL_Places {
         NoEntryExitPoints = 1 << 8,
         MissingBrand = 1 << 9,
         NoPhoneNumber = 1 << 10,
-        InvalidPhoneNumber = 1 << 11,
+        BadPhoneNumberFormat = 1 << 11,
         NoWebsite = 1 << 12,
         NoCity = 1 << 13,
         NoName = 1 << 14
@@ -126,7 +128,7 @@ namespace WMEWAL_Places {
         NoExternalProviders: boolean;
         NoHours: boolean;
         NoPhoneNumber: boolean;
-        InvalidPhoneNumber: boolean;
+        BadPhoneNumberFormat: boolean;
         NoWebsite: boolean;
         NoEntryExitPoints: boolean;
         ParkingLotType: boolean;
@@ -321,8 +323,8 @@ namespace WMEWAL_Places {
             `<label for='${ctlPrefix}NoWebsite' class='wal-label'>No Website</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoPhoneNumber' />` +
             `<label for='${ctlPrefix}NoPhoneNumber' class='wal-label'>No Phone Number</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}InvalidPhoneNumber' />` +
-            `<label for='${ctlPrefix}InvalidPhoneNumber' class='wal-label'>Invalid Phone Number</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}BadPhoneNumberFormat' />` +
+            `<label for='${ctlPrefix}BadPhoneNumberFormat' class='wal-label'>Bad Phone Number Format</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoEntryExitPoints' />` +
             `<label for='${ctlPrefix}NoEntryExitPoints' class='wal-label'>No Entry/Exit Points</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}MissingBrand' />` +
@@ -465,7 +467,7 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
         $(`#${ctlPrefix}NoHours`).prop("checked", settings.NoHours);
         $(`#${ctlPrefix}NoPhoneNumber`).prop("checked", settings.NoPhoneNumber);
-        $(`#${ctlPrefix}InvalidPhoneNumber`).prop("checked", settings.InvalidPhoneNumber);
+        $(`#${ctlPrefix}BadPhoneNumberFormat`).prop("checked", settings.BadPhoneNumberFormat);
         $(`#${ctlPrefix}NoWebsite`).prop("checked", settings.NoWebsite);
         $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked", settings.NoEntryExitPoints);
         $(`#${ctlPrefix}ParkingLotType`).prop("checked", settings.ParkingLotType);
@@ -666,7 +668,7 @@ namespace WMEWAL_Places {
             NoExternalProviders: $(`#${ctlPrefix}NoExternalProviders`).prop("checked"),
             NoHours: $(`#${ctlPrefix}NoHours`).prop("checked"),
             NoPhoneNumber: $(`#${ctlPrefix}NoPhoneNumber`).prop("checked"),
-            InvalidPhoneNumber: $(`#${ctlPrefix}InvalidPhoneNumber`).prop("checked"),
+            BadPhoneNumberFormat: $(`#${ctlPrefix}BadPhoneNumberFormat`).prop("checked"),
             NoWebsite: $(`#${ctlPrefix}NoWebsite`).prop("checked"),
             NoEntryExitPoints: $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked"),
             ParkingLotType: $(`#${ctlPrefix}ParkingLotType`).prop("checked"),
@@ -832,7 +834,7 @@ namespace WMEWAL_Places {
                 settings.NoExternalProviders ||
                 settings.NoHours ||
                 settings.NoPhoneNumber ||
-                settings.InvalidPhoneNumber ||
+                settings.BadPhoneNumberFormat ||
                 settings.NoWebsite ||
                 settings.NoEntryExitPoints ||
                 settings.MissingBrand;
@@ -1001,8 +1003,8 @@ namespace WMEWAL_Places {
                         issues |= Issue.NoPhoneNumber;
                     }
 
-                    if (settings.InvalidPhoneNumber && (venue.attributes.phone && !validPhoneRegex.test(venue.attributes.phone))) {
-                        issues |= Issue.InvalidPhoneNumber;
+                    if (settings.BadPhoneNumberFormat && (venue.attributes.phone && !validPhoneRegex.test(venue.attributes.phone))) {
+                        issues |= Issue.BadPhoneNumberFormat;
                     }
 
                     if (settings.NoWebsite && !venue.attributes.url) {
@@ -1224,8 +1226,8 @@ namespace WMEWAL_Places {
                 if (settings.NoPhoneNumber) {
                     w.document.write("<br/>No phone number");
                 }
-                if (settings.InvalidPhoneNumber) {
-                    w.document.write("<br/>Invalid phone number");
+                if (settings.BadPhoneNumberFormat) {
+                    w.document.write("<br/>Bad phone number format");
                 }
                 if (settings.NoWebsite) {
                     w.document.write("<br/>No website");
@@ -1437,7 +1439,7 @@ namespace WMEWAL_Places {
                 NoExternalProviders: false,
                 NoHours: false,
                 NoPhoneNumber: false,
-                InvalidPhoneNumber: false,
+                BadPhoneNumberFormat: false,
                 NoWebsite: false,
                 NoEntryExitPoints: false,
                 ParkingLotType: false,
@@ -1506,8 +1508,8 @@ namespace WMEWAL_Places {
                 settings.NoPhoneNumber = false;
             }
             
-            if (!settings.hasOwnProperty("InvalidPhoneNumber")) {
-                settings.InvalidPhoneNumber = false;
+            if (!settings.hasOwnProperty("BadPhoneNumberFormat")) {
+                settings.BadPhoneNumberFormat = false;
                 upd = true;
             }
             
@@ -1644,8 +1646,8 @@ namespace WMEWAL_Places {
         if (issues & Issue.NoPhoneNumber) {
             issuesList.push("No phone number");
         }
-        if (issues & Issue.InvalidPhoneNumber) {
-            issuesList.push("Invalid phone number");
+        if (issues & Issue.BadPhoneNumberFormat) {
+            issuesList.push("Bad phone number format");
         }
         if (issues & Issue.NoHours) {
             issuesList.push("No website");
