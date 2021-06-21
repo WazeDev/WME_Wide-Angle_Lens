@@ -1,3 +1,9 @@
+/// <reference path="../typescript-typings/globals/openlayers/index.d.ts" />
+/// <reference path="../typescript-typings/I18n.d.ts" />
+/// <reference path="../typescript-typings/waze.d.ts" />
+/// <reference path="../typescript-typings/globals/jquery/index.d.ts" />
+/// <reference path="WME Wide-Angle Lens.user.ts" />
+/// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Places
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -5,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.4
+// @version             1.4.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,7 +25,10 @@ var WMEWAL_Places;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with exporting multiple alt names to csv</li>' +
+        '<li>Add Category Operation</li>' +
+        '<li>Add No Phone Number option</li>' +
+        '<li>Added No Website option</li>' +
+        '<li>Added No Name option</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -46,6 +55,11 @@ var WMEWAL_Places;
         Issue[Issue["NoHours"] = 128] = "NoHours";
         Issue[Issue["NoEntryExitPoints"] = 256] = "NoEntryExitPoints";
         Issue[Issue["MissingBrand"] = 512] = "MissingBrand";
+        Issue[Issue["NoPhoneNumber"] = 1024] = "NoPhoneNumber";
+        Issue[Issue["BadPhoneNumberFormat"] = 2048] = "BadPhoneNumberFormat";
+        Issue[Issue["NoWebsite"] = 4096] = "NoWebsite";
+        Issue[Issue["NoCity"] = 8192] = "NoCity";
+        Issue[Issue["NoName"] = 16384] = "NoName";
     })(Issue || (Issue = {}));
     let pluginName = "WMEWAL-Places";
     WMEWAL_Places.Title = "Places";
@@ -85,8 +99,11 @@ var WMEWAL_Places;
             `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`;
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'><b>Filters (All of these)</b></td></tr>";
         html += "<tr><td><b>Category:</b></td></tr>";
-        html += "<tr><td style='padding-left:20px'>" +
-            `<select id='${ctlPrefix}Category'>` +
+        html += `<tr><td style='padding-left:20px'><select id='${ctlPrefix}CategoryOp'>` +
+            "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
+            "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option>" +
+            "</select>";
+        html += `<select id='${ctlPrefix}Category'>` +
             "<option value=''></option>";
         for (var topIx = 0; topIx < W.Config.venues.categories.length; topIx++) {
             var topCategory = W.Config.venues.categories[topIx];
@@ -180,10 +197,14 @@ var WMEWAL_Places;
             "<option value='RESTRICTED'>" + I18n.t("edit.venue.parking.types.parkingType.RESTRICTED") + "</option>" +
             "</select></label></td></tr>";
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoName'/>` +
+            `<label for='${ctlPrefix}NoName' class='wal-label'>No Name</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
             `<label for='${ctlPrefix}NoHouseNumber' class='wal-label'>Missing House Number</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoStreet'/>` +
             `<label for='${ctlPrefix}NoStreet' class='wal-label'>Missing Street</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoCity'/>` +
+            `<label for='${ctlPrefix}NoCity' class='wal-label'>Missing City</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}AdLocked'/>` +
             `<label for='${ctlPrefix}AdLocked' class='wal-label'>Ad Locked</label></td></tr>`;
         html += `<tr><td ><input type='checkbox' id='${ctlPrefix}UpdateRequests'/>` +
@@ -196,6 +217,12 @@ var WMEWAL_Places;
             `<label for='${ctlPrefix}NoExternalProviders' class='wal-label'>No External Provider Links</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHours' />` +
             `<label for='${ctlPrefix}NoHours' class='wal-label'>No Hours</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoWebsite' />` +
+            `<label for='${ctlPrefix}NoWebsite' class='wal-label'>No Website</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoPhoneNumber' />` +
+            `<label for='${ctlPrefix}NoPhoneNumber' class='wal-label'>No Phone Number</label></td></tr>`;
+        html += `<tr><td><input type='checkbox' id='${ctlPrefix}BadPhoneNumberFormat' />` +
+            `<label for='${ctlPrefix}BadPhoneNumberFormat' class='wal-label'>Bad Phone Number Format</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoEntryExitPoints' />` +
             `<label for='${ctlPrefix}NoEntryExitPoints' class='wal-label'>No Entry/Exit Points</label></td></tr>`;
         html += `<tr><td><input type='checkbox' id='${ctlPrefix}MissingBrand' />` +
@@ -295,9 +322,11 @@ var WMEWAL_Places;
     }
     function updateUI() {
         // $(`#${ctlPrefix}OutputTo`).val(settings.OutputTo);
+        $(`#${ctlPrefix}CategoryOp`).val(settings.CategoryOperation || Operation.Equal);
         $(`#${ctlPrefix}Category`).val(settings.Category);
         $(`#${ctlPrefix}LockLevel`).val(settings.LockLevel);
         $(`#${ctlPrefix}LockLevelOp`).val(settings.LockLevelOperation || Operation.Equal);
+        $(`#${ctlPrefix}NoName`).prop("checked", settings.NoName);
         $(`#${ctlPrefix}Name`).val(settings.Regex || "");
         $(`#${ctlPrefix}IgnoreCase`).prop("checked", settings.RegexIgnoreCase);
         $(`#${ctlPrefix}City`).val(settings.CityRegex || "");
@@ -312,10 +341,14 @@ var WMEWAL_Places;
         $(`#${ctlPrefix}UpdateRequests`).prop("checked", settings.UpdateRequests);
         $(`#${ctlPrefix}PendingApproval`).prop("checked", settings.PendingApproval);
         $(`#${ctlPrefix}NoStreet`).prop("checked", settings.NoStreet);
+        $(`#${ctlPrefix}NoCity`).prop("checked", settings.NoCity);
         $(`#${ctlPrefix}LastModifiedBy`).val(settings.LastModifiedBy);
         $(`#${ctlPrefix}CreatedBy`).val(settings.CreatedBy);
         $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
         $(`#${ctlPrefix}NoHours`).prop("checked", settings.NoHours);
+        $(`#${ctlPrefix}NoPhoneNumber`).prop("checked", settings.NoPhoneNumber);
+        $(`#${ctlPrefix}BadPhoneNumberFormat`).prop("checked", settings.BadPhoneNumberFormat);
+        $(`#${ctlPrefix}NoWebsite`).prop("checked", settings.NoWebsite);
         $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked", settings.NoEntryExitPoints);
         $(`#${ctlPrefix}ParkingLotType`).prop("checked", settings.ParkingLotType);
         $(`#${ctlPrefix}ParkingLotTypeFilter`).val(settings.ParkingLotTypeFilter);
@@ -471,8 +504,10 @@ var WMEWAL_Places;
     }
     function getSettings() {
         let s = {
+            NoName: $(`#${ctlPrefix}NoName`).prop("checked"),
             Regex: null,
             RegexIgnoreCase: $(`#${ctlPrefix}IgnoreCase`).prop("checked"),
+            CategoryOperation: parseInt($(`#${ctlPrefix}CategoryOp`).val()),
             Category: null,
             NoHouseNumber: $(`#${ctlPrefix}NoHouseNumber`).prop("checked"),
             State: null,
@@ -488,10 +523,14 @@ var WMEWAL_Places;
             CityRegex: null,
             CityRegexIgnoreCase: $(`#${ctlPrefix}CityIgnoreCase`).prop("checked"),
             NoStreet: $(`#${ctlPrefix}NoStreet`).prop("checked"),
+            NoCity: $(`#${ctlPrefix}NoCity`).prop("checked"),
             LastModifiedBy: null,
             CreatedBy: null,
             NoExternalProviders: $(`#${ctlPrefix}NoExternalProviders`).prop("checked"),
             NoHours: $(`#${ctlPrefix}NoHours`).prop("checked"),
+            NoPhoneNumber: $(`#${ctlPrefix}NoPhoneNumber`).prop("checked"),
+            BadPhoneNumberFormat: $(`#${ctlPrefix}BadPhoneNumberFormat`).prop("checked"),
+            NoWebsite: $(`#${ctlPrefix}NoWebsite`).prop("checked"),
             NoEntryExitPoints: $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked"),
             ParkingLotType: $(`#${ctlPrefix}ParkingLotType`).prop("checked"),
             ParkingLotTypeFilter: $(`#${ctlPrefix}ParkingLotTypeFilter`).val(),
@@ -627,14 +666,19 @@ var WMEWAL_Places;
                 createdBy = null;
                 createdByName = null;
             }
-            detectIssues = settings.NoHouseNumber ||
+            detectIssues = settings.NoName ||
+                settings.NoHouseNumber ||
                 settings.NoStreet ||
+                settings.NoCity ||
                 settings.AdLocked ||
                 settings.UpdateRequests ||
                 settings.PendingApproval ||
                 settings.UndefStreet ||
                 settings.NoExternalProviders ||
                 settings.NoHours ||
+                settings.NoPhoneNumber ||
+                settings.BadPhoneNumberFormat ||
+                settings.NoWebsite ||
                 settings.NoEntryExitPoints ||
                 settings.MissingBrand;
             updateSettings();
@@ -652,15 +696,16 @@ var WMEWAL_Places;
     }
     WMEWAL_Places.ScanExtent = ScanExtent;
     function scan(segments, venues) {
-        function checkCategory(categories, category) {
+        function checkCategory(categories, category, operation) {
             let match = categories.find(function (e) {
                 return e.localeCompare(category) === 0;
             });
             if (typeof match === "undefined" || match == null || match.length === 0) {
-                return false;
+                return operation === Operation.NotEqual;
             }
-            return true;
+            return operation === Operation.Equal;
         }
+        let validPhoneRegex = new RegExp("\\(\\d\\d\\d\\) \\d\\d\\d-\\d\\d\\d\\d");
         for (let ix = 0; ix < venues.length; ix++) {
             let venue = venues[ix];
             if (venue != null) {
@@ -715,7 +760,7 @@ var WMEWAL_Places;
                     //     }
                     // }
                     if (settings.Category != null) {
-                        if (!checkCategory(categories, settings.Category)) {
+                        if (!checkCategory(categories, settings.Category, settings.CategoryOperation)) {
                             continue;
                         }
                     }
@@ -745,7 +790,10 @@ var WMEWAL_Places;
                             continue;
                         }
                     }
-                    if (settings.NoHouseNumber && (!address || !address || address.attributes.houseNumber == null)) {
+                    if (settings.NoName && !venue.attributes.name) {
+                        issues |= Issue.NoName;
+                    }
+                    if (settings.NoHouseNumber && (!address || address.attributes.houseNumber == null)) {
                         issues |= Issue.MissingHouseNumber;
                     }
                     if (settings.AdLocked && venue.attributes.adLocked) {
@@ -763,16 +811,28 @@ var WMEWAL_Places;
                     if (settings.NoStreet && (!address || address.isEmpty() || address.isEmptyStreet())) {
                         issues |= Issue.MissingStreet;
                     }
+                    if (settings.NoCity && (!address || address.isEmpty() || !address.getCity() || address.getCity().isEmpty())) {
+                        issues |= Issue.NoCity;
+                    }
                     if (settings.NoExternalProviders && (!venue.attributes.externalProviderIDs || venue.attributes.externalProviderIDs.length === 0)) {
                         issues |= Issue.NoExternalProviders;
                     }
                     if (settings.NoHours && (!venue.attributes.openingHours || venue.attributes.openingHours.length === 0)) {
                         issues |= Issue.NoHours;
                     }
+                    if (settings.NoPhoneNumber && !venue.attributes.phone) {
+                        issues |= Issue.NoPhoneNumber;
+                    }
+                    if (settings.BadPhoneNumberFormat && (venue.attributes.phone && !validPhoneRegex.test(venue.attributes.phone))) {
+                        issues |= Issue.BadPhoneNumberFormat;
+                    }
+                    if (settings.NoWebsite && !venue.attributes.url) {
+                        issues |= Issue.NoWebsite;
+                    }
                     if (settings.NoEntryExitPoints && (!venue.attributes.entryExitPoints || venue.attributes.entryExitPoints.length === 0)) {
                         issues |= Issue.NoEntryExitPoints;
                     }
-                    if (settings.MissingBrand && checkCategory(categories, "GAS_STATION") && venue.attributes.brand === null) {
+                    if (settings.MissingBrand && checkCategory(categories, "GAS_STATION", Operation.Equal) && venue.attributes.brand === null) {
                         issues |= Issue.MissingBrand;
                     }
                     if (detectIssues && issues === 0) {
@@ -848,16 +908,19 @@ var WMEWAL_Places;
                 fileName = "Places_" + WMEWAL.areaName;
                 fileName += ".csv";
             }
+            function getOperationText(operation) {
+                return operation === Operation.NotEqual ? "does not equal " : "equals ";
+            }
             if (isTab) {
                 w = window.open();
                 w.document.write("<html><head><title>Places</title></head><body>");
                 w.document.write("<h3>Area: " + WMEWAL.areaName + "</h3>");
                 w.document.write("<h4>Filters</h4>");
                 if (settings.Category != null) {
-                    w.document.write("<br/>Category: " + I18n.t("venues.categories." + settings.Category));
+                    w.document.write("<br/>Category: " + getOperationText(settings.CategoryOperation) + I18n.t("venues.categories." + settings.Category));
                 }
                 if (settings.LockLevel != null) {
-                    w.document.write("<br/>Lock Level " + (settings.LockLevelOperation === Operation.NotEqual ? "does not equal " : "equals ") + settings.LockLevel.toString());
+                    w.document.write("<br/>Lock Level " + getOperationText(settings.LockLevelOperation) + settings.LockLevel.toString());
                 }
                 if (settings.Regex != null) {
                     w.document.write("<br/>Name matches " + settings.Regex);
@@ -878,7 +941,7 @@ var WMEWAL_Places;
                     }
                 }
                 if (stateName != null) {
-                    w.document.write("<br/>State " + (settings.StateOperation === Operation.NotEqual ? "does not equal " : "equals ") + stateName);
+                    w.document.write("<br/>State " + getOperationText(settings.StateOperation) + stateName);
                 }
                 if (settings.PlaceType != null) {
                     w.document.write("<br/>Type " + I18n.t("edit.venue.type." + settings.PlaceType));
@@ -938,11 +1001,17 @@ var WMEWAL_Places;
                 if (detectIssues) {
                     w.document.write("<h4>Issues</h4>");
                 }
+                if (settings.NoName) {
+                    w.document.write("<br/>No Name");
+                }
                 if (settings.NoHouseNumber) {
                     w.document.write("<br/>Missing house number");
                 }
                 if (settings.NoStreet) {
                     w.document.write("<br/>Missing street");
+                }
+                if (settings.NoCity) {
+                    w.document.write("<br/>Missing city");
                 }
                 if (settings.AdLocked) {
                     w.document.write("<br/>Ad locked");
@@ -961,6 +1030,15 @@ var WMEWAL_Places;
                 }
                 if (settings.NoHours) {
                     w.document.write("<br/>No hours");
+                }
+                if (settings.NoPhoneNumber) {
+                    w.document.write("<br/>No phone number");
+                }
+                if (settings.BadPhoneNumberFormat) {
+                    w.document.write("<br/>Bad phone number format");
+                }
+                if (settings.NoWebsite) {
+                    w.document.write("<br/>No website");
                 }
                 if (settings.NoEntryExitPoints) {
                     w.document.write("<br/>No entry/exit points");
@@ -1134,9 +1212,11 @@ var WMEWAL_Places;
         }
         if (settings == null) {
             settings = {
+                NoName: false,
                 Regex: null,
                 RegexIgnoreCase: true,
                 Category: null,
+                CategoryOperation: Operation.Equal,
                 NoHouseNumber: false,
                 State: null,
                 StateOperation: Operation.Equal,
@@ -1150,11 +1230,15 @@ var WMEWAL_Places;
                 CityRegex: null,
                 CityRegexIgnoreCase: true,
                 NoStreet: false,
+                NoCity: false,
                 LastModifiedBy: null,
                 CreatedBy: null,
                 UndefStreet: false,
                 NoExternalProviders: false,
                 NoHours: false,
+                NoPhoneNumber: false,
+                BadPhoneNumberFormat: false,
+                NoWebsite: false,
                 NoEntryExitPoints: false,
                 ParkingLotType: false,
                 ParkingLotTypeFilter: null,
@@ -1185,8 +1269,16 @@ var WMEWAL_Places;
     function updateProperties() {
         let upd = false;
         if (settings !== null) {
+            if (!settings.hasOwnProperty("NoName")) {
+                settings.NoName = false;
+                upd = true;
+            }
             if (!settings.hasOwnProperty("NoStreet")) {
                 settings.NoStreet = false;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("NoCity")) {
+                settings.NoCity = false;
                 upd = true;
             }
             if (!settings.hasOwnProperty("LastModifiedBy")) {
@@ -1200,6 +1292,16 @@ var WMEWAL_Places;
             if (!settings.hasOwnProperty("NoHours")) {
                 settings.NoHours = false;
                 upd = true;
+            }
+            if (!settings.hasOwnProperty("NoPhoneNumber")) {
+                settings.NoPhoneNumber = false;
+            }
+            if (!settings.hasOwnProperty("BadPhoneNumberFormat")) {
+                settings.BadPhoneNumberFormat = false;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("NoWebsite")) {
+                settings.NoWebsite = false;
             }
             if (!settings.hasOwnProperty("NoEntryExitPoints")) {
                 settings.NoEntryExitPoints = false;
@@ -1278,6 +1380,9 @@ var WMEWAL_Places;
     }
     function getIssues(issues) {
         let issuesList = [];
+        if (issues & Issue.NoName) {
+            issuesList.push("No name");
+        }
         if (issues & Issue.AdLocked) {
             issuesList.push("Ad locked");
         }
@@ -1290,6 +1395,9 @@ var WMEWAL_Places;
         if (issues & Issue.MissingStreet) {
             issuesList.push("Missing street");
         }
+        if (issues & Issue.NoCity) {
+            issuesList.push("No City");
+        }
         if (issues & Issue.NoExternalProviders) {
             issuesList.push("No external provider IDs");
         }
@@ -1301,6 +1409,15 @@ var WMEWAL_Places;
         }
         if (issues & Issue.NoHours) {
             issuesList.push("No hours");
+        }
+        if (issues & Issue.NoPhoneNumber) {
+            issuesList.push("No phone number");
+        }
+        if (issues & Issue.BadPhoneNumberFormat) {
+            issuesList.push("Bad phone number format");
+        }
+        if (issues & Issue.NoHours) {
+            issuesList.push("No website");
         }
         if (issues & Issue.NoEntryExitPoints) {
             issuesList.push("No entry/exit points");

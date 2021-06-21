@@ -45,3 +45,8 @@ Here you specify filters that are used to limit the streets that are scanned. St
 ## Issues
 
 Here you specify the issues you would like to be identified for streets. If you don't select any issues, all segments matching the filter criteria will be included in the output. If you choose at least one issue, only streets that have at least one of the issues will be included. This is an "OR" selection, meaning that a street only has to have one of the issues to be included.
+
+## Are you a dev?
+
+Hey, glad you got here. If you're interested in helping out, we use VS Code with node package manager to compile the typescript.
+You'll also need to clone https://github.com/WazeDev/typescript-typings into the folder above this repo, as this references those.
