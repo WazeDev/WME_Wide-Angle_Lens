@@ -1,9 +1,3 @@
-/// <reference path="../typescript-typings/globals/openlayers/index.d.ts" />
-/// <reference path="../typescript-typings/I18n.d.ts" />
-/// <reference path="../typescript-typings/waze.d.ts" />
-/// <reference path="../typescript-typings/globals/jquery/index.d.ts" />
-/// <reference path="../typescript-typings/wazewrap.d.ts" />
-/// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
@@ -11,7 +5,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.8
+// @version             1.5.9
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +19,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Allow for tightening up spacing a bit on the various plugins</li>' +
+        '<li>Ability to scan current window</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -646,6 +640,12 @@ var WMEWAL;
                 let br = $("<br/>");
                 e.appendChild(br[0]);
             }
+            let ix = 999;
+            let id = `wmewalScanArea_${eIx}_${ix}`;
+            let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
+            e.appendChild(input[0]);
+            let label = $("<label/>").attr("for", id).css("margin-left", "8px").text('Current window');
+            e.appendChild(label[0]);
         });
         updateSettings();
         updateLayer();
@@ -910,11 +910,20 @@ var WMEWAL;
             alert("Please select an area to scan.");
             return;
         }
-        else if (index >= settings.SavedAreas.length) {
+        else if (index > settings.SavedAreas.length) {
             return;
         }
-        WMEWAL.areaToScan = settings.SavedAreas[index].geometry;
-        await scan(settings.SavedAreas[index].name);
+        let name;
+        if (index == settings.SavedAreas.length) {
+            // Scanning current window
+            WMEWAL.areaToScan = W.map.getExtent().toGeometry();
+            name = 'Current window';
+        }
+        else {
+            WMEWAL.areaToScan = settings.SavedAreas[index].geometry;
+            name = settings.SavedAreas[index].name;
+        }
+        await scan(name);
     }
     async function scan(name) {
         getBounds();
