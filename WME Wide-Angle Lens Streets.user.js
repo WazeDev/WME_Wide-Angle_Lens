@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.4
+// @version             1.7.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,8 +25,8 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added ability to specify incoming/outgoing for turn guidance issues</li>' +
-        '</ul>';
+        '<li>Added ability to filter on visual instruction/towards text</li>';
+    '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
@@ -122,6 +122,8 @@ var WMEWAL_Streets;
     let cityRegex = null;
     let shieldTextRegex = null;
     let shieldDirectionRegex = null;
+    let viRegex = null;
+    let towardsRegex = null;
     let roundabouts = null;
     let detectIssues = false;
     let initCount = 0;
@@ -220,6 +222,14 @@ var WMEWAL_Streets;
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}ShieldDirectionRegex' class='wal-textbox'/><br/>` +
             `<input id='${ctlPrefix}ShieldDirectionIgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}ShieldDirectionIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
+        html += "<tr><td><b>Visual Instruction RegEx:</b></td></tr>";
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}VIRegex' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}VIIgnoreCase' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}VIIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
+        html += "<tr><td><b>Towards RegEx:</b></td></tr>";
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}TowardsRegex' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}TowardsIgnoreCase' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}TowardsIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
@@ -626,6 +636,10 @@ var WMEWAL_Streets;
         $(`#${ctlPrefix}TIExit`).prop('checked', settings.TIExit);
         $(`#${ctlPrefix}TIExitOperation`).val(settings.TIExitOperation);
         $(`#${ctlPrefix}TIDirection`).val(settings.TIDirection);
+        $(`#${ctlPrefix}VIRegex`).val(settings.VIRegex ?? '');
+        $(`#${ctlPrefix}VIIgnoreCase`).prop('checked', settings.VIRegexIgnoreCase);
+        $(`#${ctlPrefix}TowardsRegex`).val(settings.TowardsRegex ?? '');
+        $(`#${ctlPrefix}TowardsIgnoreCase`).prop('checked', settings.TowardsRegexIgnoreCase);
     }
     function loadSetting() {
         let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
@@ -717,6 +731,22 @@ var WMEWAL_Streets;
             }
             catch (error) {
                 addMessage("Shield Direction RegEx is invalid");
+            }
+        }
+        if (nullif(s.VIRegex, '')) {
+            try {
+                r = (s.VIRegexIgnoreCase ? new RegExp(s.VIRegex, 'i') : new RegExp(s.VIRegex));
+            }
+            catch (error) {
+                addMessage('Visual Instruction RegEx is invalid');
+            }
+        }
+        if (nullif(s.TowardsRegex, '')) {
+            try {
+                r = (s.TowardsRegexIgnoreCase ? new RegExp(s.TowardsRegex, 'i') : new RegExp(s.TowardsRegex));
+            }
+            catch (error) {
+                addMessage('Towards RegEx is invalid');
             }
         }
         if (message.length > 0) {
@@ -834,7 +864,11 @@ var WMEWAL_Streets;
             TITTSOperation: parseInt($(`#${ctlPrefix}TITTSOperation`).val()),
             TIExit: $(`#${ctlPrefix}TIExit`).prop('checked'),
             TIExitOperation: parseInt($(`#${ctlPrefix}TIExitOperation`).val()),
-            TIDirection: parseInt($(`#${ctlPrefix}TIDirection`).val())
+            TIDirection: parseInt($(`#${ctlPrefix}TIDirection`).val()),
+            VIRegex: null,
+            VIRegexIgnoreCase: $(`#${ctlPrefix}VIIgnoreCase`).prop('checked'),
+            TowardsRegex: null,
+            TowardsRegexIgnoreCase: $(`#${ctlPrefix}TowardsIgnoreCase`).prop('checked')
         };
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
@@ -913,6 +947,14 @@ var WMEWAL_Streets;
         pattern = $(`#${ctlPrefix}ShieldDirectionRegex`).val();
         if (nullif(pattern, "") !== null) {
             s.ShieldDirectionRegex = pattern;
+        }
+        pattern = $(`#${ctlPrefix}VIRegex`).val();
+        if (nullif(pattern, '') !== null) {
+            s.VIRegex = pattern;
+        }
+        pattern = $(`#${ctlPrefix}TowardsRegex`).val();
+        if (nullif(pattern, '') !== null) {
+            s.TowardsRegex = pattern;
         }
         return s;
     }
@@ -994,6 +1036,18 @@ var WMEWAL_Streets;
             }
             else {
                 includeShields = false;
+            }
+            if (settings.VIRegex !== null) {
+                viRegex = (settings.VIRegexIgnoreCase ? new RegExp(settings.VIRegex, 'i') : new RegExp(settings.VIRegex));
+            }
+            else {
+                viRegex = null;
+            }
+            if (settings.TowardsRegex !== null) {
+                towardsRegex = (settings.TowardsRegexIgnoreCase ? new RegExp(settings.TowardsRegex, 'i') : new RegExp(settings.TowardsRegex));
+            }
+            else {
+                towardsRegex = null;
             }
             detectIssues = settings.NoSpeedLimit
                 || settings.HasTimeBasedRestrictions
@@ -1197,6 +1251,48 @@ var WMEWAL_Streets;
                             continue;
                         }
                     }
+                    if (shieldTextRegex != null &&
+                        (primaryStreet == null || primaryStreet.signText == null || !shieldTextRegex.test(primaryStreet.signText))) {
+                        continue;
+                    }
+                    if (shieldDirectionRegex != null &&
+                        (primaryStreet == null || primaryStreet.direction == null || !shieldDirectionRegex.test(primaryStreet.direction))) {
+                        continue;
+                    }
+                    if (viRegex !== null || towardsRegex !== null) {
+                        let instructionMatches = false;
+                        let directions = [];
+                        if (segment.attributes.fwdDirection) {
+                            directions.push('to');
+                        }
+                        if (segment.attributes.revDirection) {
+                            directions.push('from');
+                        }
+                        for (let ixDir = 0; ixDir < directions.length && !instructionMatches; ixDir++) {
+                            let node = segment.getNodeByDirection(directions[ixDir]);
+                            let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
+                            for (let ixSeg = 0; ixSeg < connectedSegments.length && !instructionMatches; ixSeg++) {
+                                let connectedSegment = connectedSegments[ixSeg];
+                                if (settings.EditableByMe && !connectedSegment.arePropertiesEditable()) {
+                                    continue;
+                                }
+                                let turn = graph.getTurnThroughNode(node, segment, connectedSegments[ixSeg]).getTurnData();
+                                if (turn.hasTurnGuidance()) {
+                                    let tg = turn.getTurnGuidance();
+                                    if (viRegex !== null && nullif(tg.getVisualInstruction(), '') !== null && viRegex.test(getInstruction(tg, tg.getVisualInstruction()))) {
+                                        instructionMatches = true;
+                                    }
+                                    if (towardsRegex !== null && nullif(tg.getTowards(), '') !== null && towardsRegex.test(getInstruction(tg, tg.getTowards()))) {
+                                        instructionMatches = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (!instructionMatches) {
+                            continue;
+                        }
+                        newSegment = true;
+                    }
                     if (settings.NoSpeedLimit &&
                         ((segment.attributes.fwdDirection && (segment.attributes.fwdMaxSpeed == null || segment.attributes.fwdMaxSpeedUnverified)) ||
                             (segment.attributes.revDirection && (segment.attributes.revMaxSpeed == null || segment.attributes.revMaxSpeedUnverified)))) {
@@ -1347,25 +1443,35 @@ var WMEWAL_Streets;
                     if (settings.HasClosures && segment.attributes.hasClosures) {
                         issues |= Issue.HasClosures;
                     }
-                    if (settings.HasTIO || settings.TI || settings.TITTS || settings.TIExit) {
+                    if (settings.HasTIO || settings.TI || settings.TITTS || settings.TIExit || viRegex !== null || towardsRegex !== null) {
                         let hasTIO = false;
                         let hasTI = false;
                         let hasTTS = false;
                         let hasExit = false;
                         let anyConnectedSegments = false;
-                        let directions = [];
+                        let dirs = [];
                         if (segment.attributes.fwdDirection) {
-                            directions.push(settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'to' : 'from');
+                            if (viRegex !== null || towardsRegex !== null) {
+                                dirs.push('to');
+                            }
+                            dirs.push(settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'to' : 'from');
                         }
                         if (segment.attributes.revDirection) {
-                            directions.push(settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'from' : 'to');
+                            if (viRegex !== null || towardsRegex !== null) {
+                                dirs.push('from');
+                            }
+                            dirs.push(settings.TIDirection === IncomingOrOutgoing.Outgoing ? 'from' : 'to');
                         }
+                        let directions = [...new Set(dirs)];
                         for (let ixDir = 0; ixDir < directions.length; ixDir++) {
                             let node = segment.getNodeByDirection(directions[ixDir]);
                             let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
                             for (let ixSeg = 0; ixSeg < connectedSegments.length && !hasTIO; ixSeg++) {
-                                anyConnectedSegments = true;
                                 let connectedSegment = connectedSegments[ixSeg];
+                                if (settings.EditableByMe && !connectedSegment.arePropertiesEditable()) {
+                                    continue;
+                                }
+                                anyConnectedSegments = true;
                                 let turn;
                                 if (settings.TIDirection === IncomingOrOutgoing.Outgoing) {
                                     turn = graph.getTurnThroughNode(node, segment, connectedSegment).getTurnData();
@@ -1504,14 +1610,6 @@ var WMEWAL_Streets;
                         if (!nameMatched) {
                             continue;
                         }
-                    }
-                    if (shieldTextRegex != null &&
-                        (primaryStreet == null || primaryStreet.signText == null || !shieldTextRegex.test(primaryStreet.signText))) {
-                        continue;
-                    }
-                    if (shieldDirectionRegex != null &&
-                        (primaryStreet == null || primaryStreet.direction == null || !shieldDirectionRegex.test(primaryStreet.direction))) {
-                        continue;
                     }
                     if (!WMEWAL.IsSegmentInArea(segment)) {
                         continue;
@@ -1787,6 +1885,20 @@ var WMEWAL_Streets;
                     w.document.write("<div>Shield Direction matches " + shieldDirectionRegex.source);
                     if (settings.ShieldDirectionRegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
+                    }
+                    w.document.write('</div>');
+                }
+                if (viRegex !== null) {
+                    w.document.write(`<div>Visual Instruction matches ${viRegex.source}`);
+                    if (settings.VIRegexIgnoreCase) {
+                        w.document.write(' (ignoring case)');
+                    }
+                    w.document.write('</div>');
+                }
+                if (towardsRegex !== null) {
+                    w.document.write(`<div>Towards matches ${towardsRegex.source}`);
+                    if (settings.TowardsRegexIgnoreCase) {
+                        w.document.write(' (ignoring case)');
                     }
                     w.document.write('</div>');
                 }
@@ -2392,7 +2504,11 @@ var WMEWAL_Streets;
             TITTSOperation: 0,
             TIExit: false,
             TIExitOperation: 0,
-            TIDirection: IncomingOrOutgoing.Outgoing
+            TIDirection: IncomingOrOutgoing.Outgoing,
+            VIRegex: null,
+            VIRegexIgnoreCase: true,
+            TowardsRegex: null,
+            TowardsRegexIgnoreCase: true
         };
     }
     function updateProperties() {
@@ -2626,6 +2742,24 @@ var WMEWAL_Streets;
                 settings.TIDirection = IncomingOrOutgoing.Outgoing;
                 upd = true;
             }
+            if (!settings.hasOwnProperty("VIRegex")) {
+                settings.VIRegex = null;
+                settings.VIRegexIgnoreCase = true;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty('VIRegexIgnoreCase')) {
+                settings.VIRegexIgnoreCase = true;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty("TowardsRegex")) {
+                settings.TowardsRegex = null;
+                settings.TowardsRegexIgnoreCase = true;
+                upd = true;
+            }
+            if (!settings.hasOwnProperty('TowardsRegexIgnoreCase')) {
+                settings.TowardsRegexIgnoreCase = true;
+                upd = true;
+            }
             if (settings.hasOwnProperty("OutputTo")) {
                 delete settings["OutputTo"];
                 upd = true;
@@ -2682,6 +2816,20 @@ var WMEWAL_Streets;
             return null;
         }
         return s;
+    }
+    function getInstruction(tg, instruction) {
+        let finalInstruction = instruction;
+        var shields = tg.getRoadShields();
+        for (let rs in shields) {
+            if (Object.prototype.hasOwnProperty.call(shields, rs)) {
+                let rsText = shields[rs].text;
+                if (nullif(shields[rs].direction, '') !== null) {
+                    rsText += ` ${shields[rs].direction}`;
+                }
+                finalInstruction = finalInstruction.replace(`$${rs}`, rsText);
+            }
+        }
+        return finalInstruction;
     }
     Init();
 })(WMEWAL_Streets || (WMEWAL_Streets = {}));
