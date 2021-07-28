@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.2
+// @version             1.2.3
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -23,8 +23,9 @@ var WMEWAL_Cities;
 (function (WMEWAL_Cities) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = '<ul><li>Option to include alt names in output</li>' +
-        '<li>Option to only check primary city all include alt cities</li></ul>';
+    const updateText = '<ul>' +
+        '<li>Support for adding byte order mark for unicode output</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalCities";
@@ -54,73 +55,73 @@ var WMEWAL_Cities;
         let html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
         html += "<tr><td class='wal-heading'><b>Saved Filters</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px; padding-bottom: 8px'>" +
+        html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
             `<select id='${ctlPrefix}SavedSettings'/><br/>` +
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Output Options</td></tr>";
-        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt'>` +
-            `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`;
+        html += `<tr><td class='wal-indent'><input type='checkbox' class='wal-check' id='${ctlPrefix}IncludeAlt'>` +
+            `<label for='${ctlPrefix}IncludeAlt' class='wal-label'>Include Alt Names</label></td></tr>`;
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Settings</b></td></tr>";
         html += "<tr><td><b>Polygon Layer:</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px'>" +
+        html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}Layer'/>` +
             "</td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}IgnoreAlt' type='checkbox' checked='checked'/>` +
-            `<label for='${ctlPrefix}IgnoreAlt' style='margin-left: 8px'>Only check primary name</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}IgnoreAlt' type='checkbox' class='wal-check' checked='checked'/>` +
+            `<label for='${ctlPrefix}IgnoreAlt' class='wal-label'>Only check primary name</label></td></tr>`;
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Filters</b></td></tr>";
         html += "<tr><td><b>City RegEx:</b></td></tr>";
-        html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox'/>` +
-            `<label for='${ctlPrefix}CityIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}CityIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>State:</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px'>" +
+        html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}StateOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
             "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option></select>" +
             `<select id='${ctlPrefix}State'/></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px'>" +
+        html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
             `<button id='${ctlPrefix}RoadTypeClear' class='btn btn-primary' title='Clear'>Clear</button>` +
-            `<div><input type='checkbox' checked='checked' id='${ctlPrefix}RoadTypeFreeway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Freeway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeFreeway' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Freeway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRamp' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ramp}'/>` +
-            `<label for='${ctlPrefix}RoadTypeRamp' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ramp))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeMajorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MajorHighway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeMajorHighway' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MajorHighway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeMinorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MinorHighway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeMinorHighway' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MinorHighway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePrimary' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrimaryStreet}'/>` +
-            `<label for='${ctlPrefix}RoadTypePrimary' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeStreet' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Street}'/>` +
-            `<label for='${ctlPrefix}RoadTypeStreet' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Street))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeAlley' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Alley}'/>` +
-            `<label for='${ctlPrefix}RoadTypeAlley' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Alley))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeUnpaved' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Unpaved}'/>` +
-            `<label for='${ctlPrefix}RoadTypeUnpaved' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Unpaved))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePLR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.ParkingLotRoad}'/>` +
-            `<label for='${ctlPrefix}RoadTypePLR' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.ParkingLotRoad))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePrivate' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrivateRoad}'/>` +
-            `<label for='${ctlPrefix}RoadTypePrivate' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrivateRoad))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeFerry' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ferry}'/>` +
-            `<label for='${ctlPrefix}RoadTypeFerry' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ferry))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeWT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.WalkingTrail}'/>` +
-            `<label for='${ctlPrefix}RoadTypeWT' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.WalkingTrail))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypePB' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PedestrianBoardwalk}'/>` +
-            `<label for='${ctlPrefix}RoadTypePB' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PedestrianBoardwalk))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeStairway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Stairway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeStairway' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Stairway))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Railroad}'/>` +
-            `<label for='${ctlPrefix}RoadTypeRR' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Railroad))}</label></div>` +
-            `<div><input type='checkbox' id='${ctlPrefix}RoadTypeRT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.RunwayTaxiway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeRT' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.RunwayTaxiway))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' checked='checked' id='${ctlPrefix}RoadTypeFreeway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Freeway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeFreeway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Freeway))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeRamp' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ramp}'/>` +
+            `<label for='${ctlPrefix}RoadTypeRamp' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ramp))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeMajorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MajorHighway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeMajorHighway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MajorHighway))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeMinorHighway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MinorHighway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeMinorHighway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MinorHighway))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypePrimary' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrimaryStreet}'/>` +
+            `<label for='${ctlPrefix}RoadTypePrimary' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeStreet' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Street}'/>` +
+            `<label for='${ctlPrefix}RoadTypeStreet' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Street))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeAlley' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Alley}'/>` +
+            `<label for='${ctlPrefix}RoadTypeAlley' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Alley))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeUnpaved' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Unpaved}'/>` +
+            `<label for='${ctlPrefix}RoadTypeUnpaved' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Unpaved))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypePLR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.ParkingLotRoad}'/>` +
+            `<label for='${ctlPrefix}RoadTypePLR' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.ParkingLotRoad))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypePrivate' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrivateRoad}'/>` +
+            `<label for='${ctlPrefix}RoadTypePrivate' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrivateRoad))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeFerry' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ferry}'/>` +
+            `<label for='${ctlPrefix}RoadTypeFerry' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ferry))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeWT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.WalkingTrail}'/>` +
+            `<label for='${ctlPrefix}RoadTypeWT' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.WalkingTrail))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypePB' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PedestrianBoardwalk}'/>` +
+            `<label for='${ctlPrefix}RoadTypePB' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PedestrianBoardwalk))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeStairway' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Stairway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeStairway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Stairway))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeRR' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Railroad}'/>` +
+            `<label for='${ctlPrefix}RoadTypeRR' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Railroad))}</label></div>` +
+            `<div><input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeRT' data-group='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.RunwayTaxiway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeRT' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.RunwayTaxiway))}</label></div>` +
             "</td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox'/>` +
-            `<label for='${ctlPrefix}Editable' style='margin-left: 8px'>Editable by me</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}ExcludeJunctionBoxes' type='checkbox' checked='checked'/>` +
-            `<label for='${ctlPrefix}ExcludeJunctionBoxes' style='margin-left: 8px'>Exclude Junction Boxes</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}ExcludeJunctionBoxes' type='checkbox' class='wal-check' checked='checked'/>` +
+            `<label for='${ctlPrefix}ExcludeJunctionBoxes' class='wal-label'>Exclude Junction Boxes</label></td></tr>`;
         html += "</tbody></table>";
         return html;
     }
@@ -688,6 +689,7 @@ var WMEWAL_Cities;
             });
             let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
             let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            let addBOM = WMEWAL.addBOM ?? false;
             let lineArray;
             let columnArray;
             let w;
@@ -817,8 +819,12 @@ var WMEWAL_Cities;
             }
             if (isCSV) {
                 let csvContent = lineArray.join("\n");
-                //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-                let blob = new Blob([csvContent], { type: "data:text/csv;charset=utf-8;" });
+                let blobContent = [];
+                if (addBOM) {
+                    blobContent.push('\uFEFF');
+                }
+                blobContent.push(csvContent);
+                let blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
                 let link = document.createElement("a");
                 let url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);

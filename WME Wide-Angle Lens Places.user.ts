@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.5
+// @version             1.4.6
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,12 +27,8 @@ namespace WMEWAL_Places {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Add Category Operation</li>' +
-        '<li>Add No Phone Number option</li>' +
-        '<li>Add Bad Phone Number Format option</li>' +
-        '<li>Added No Website option</li>' +
-        '<li>Added No Name option</li>' +
-        '<li>Add No City option</li>' +
+        '<li>Support for adding byte order mark for unicode output</li>' +
+        '<li>Fixed issue with filtering on created or last modified by</li>'
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -187,18 +183,20 @@ namespace WMEWAL_Places {
 
         html += "<tbody>";
         html += "<tr><td class='wal-heading'><b>Saved Filters</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px; padding-bottom: 8px'>" +
+        html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
             `<select id='${ctlPrefix}SavedSettings'/><br/>` +
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
+        html += `<tr><td style='border-top: 1px solid'><button class='btn btn-primary' style='margin-top: 6px;margin-bottom: 6px' id='${ctlPrefix}Reset' title='Reset'>Reset</button></td></tr>`;
+
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Output Options</td></tr>";
-        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt' name='${ctlPrefix}IncludeAlt'>` +
-            `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`
+        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt' class='wal-check' name='${ctlPrefix}IncludeAlt'>` +
+            `<label for='${ctlPrefix}IncludeAlt' class='wal-label'>Include Alt Names</label></td></tr>`
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'><b>Filters (All of these)</b></td></tr>";
         html += "<tr><td><b>Category:</b></td></tr>";
-        html += `<tr><td style='padding-left:20px'><select id='${ctlPrefix}CategoryOp'>` +
+        html += `<tr><td class='wal-indent'><select id='${ctlPrefix}CategoryOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
             "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option>" +
             "</select>";
@@ -218,7 +216,7 @@ namespace WMEWAL_Places {
         html += "<option value='" + rpp + "'>" + I18n.t("venues.categories." + rpp) + "</option>";
         html += "</select></td></tr>";
         html += "<tr><td><b>Lock Level:</b></td></tr>" +
-            "<tr><td style='padding-left: 20px'>" +
+            "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}LockLevelOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
             "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option></select>" +
@@ -233,22 +231,22 @@ namespace WMEWAL_Places {
             "<option value='7'>7</option>" +
             "</select></td></tr>";
         html += "<tr><td><b>Name RegEx</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px'>" +
+        html += "<tr><td class='wal-indent'>" +
             `<input type='text' id='${ctlPrefix}Name' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}IgnoreCase' type='checkbox'/>` +
-            `<label for='${ctlPrefix}IgnoreCase' style='padding-left: 20px'>Ignore case</label></td>`;
+            `<input id='${ctlPrefix}IgnoreCase' class='wal-check' type='checkbox'/>` +
+            `<label for='${ctlPrefix}IgnoreCase' class='wal-indent'>Ignore case</label></td>`;
         html += "<tr><td><b>Street RegEx</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px'>" +
+        html += "<tr><td class='wal-indent'>" +
             `<input type='text' id='${ctlPrefix}Street' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}StreetIgnoreCase' type='checkbox'/>` +
-            `<label for='${ctlPrefix}StreetIgnoreCase' style='padding-left: 20px'>Ignore case</label></td>`;
+            `<input id='${ctlPrefix}StreetIgnoreCase' class='wal-check' type='checkbox'/>` +
+            `<label for='${ctlPrefix}StreetIgnoreCase' class='wal-indent'>Ignore case</label></td>`;
         html += "<tr><td><b>City RegEx:</b></td></tr>";
-        html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox'/>` +
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}CityIgnoreCase' class='wal-check' type='checkbox'/>` +
             `<label for='${ctlPrefix}CityIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Website RegEx:</b></td></tr>";
-        html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}Website' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}WebsiteIgnoreCase' type='checkbox'/>` +
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}Website' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}WebsiteIgnoreCase' class='wal-check' type='checkbox'/>` +
             `<label for='${ctlPrefix}WebsiteIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>State:</b></td></tr>";
         html += "<tr><td style='padding-left:20px'>" +
@@ -257,7 +255,7 @@ namespace WMEWAL_Places {
             "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option></select>" +
             `<select id='${ctlPrefix}State'/>`;
         html += "<tr><td><b>Type:</b></td></tr>" +
-            `<tr><td style='padding-left: 20px'><select id='${ctlPrefix}Type'>` +
+            `<tr><td class='wal-indent'><select id='${ctlPrefix}Type'>` +
             "<option value=''></option>" +
             "<option value='area'>" + I18n.t("edit.venue.type.area") + "</option>" +
             "<option value='point'>" + I18n.t("edit.venue.type.point") + "</option>" +
@@ -265,7 +263,7 @@ namespace WMEWAL_Places {
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}CreatedBy'/></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Created' type='checkbox' />` +
+        html += `<tr><td><input id='${ctlPrefix}Created' class='wal-check' type='checkbox' />` +
             `<label for=${ctlPrefix}Created' class='wal-label'>Date Created:</label> ` +
             `<select id='${ctlPrefix}CreatedOp'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -278,7 +276,7 @@ namespace WMEWAL_Places {
         html += "<tr><td><b>Last Updated By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}LastModifiedBy'/></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Updated' type='checkbox' />` +
+        html += `<tr><td><input id='${ctlPrefix}Updated' class='wal-check' type='checkbox' />` +
             `<label for=${ctlPrefix}Updated' class='wal-label'>Date Updated:</label> ` +
             `<select id='${ctlPrefix}UpdatedOp'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -288,9 +286,9 @@ namespace WMEWAL_Places {
             "</td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<input id='${ctlPrefix}UpdatedDate' type='date'/> <input id='${ctlPrefix}UpdatedTime' type='time'/></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Editable' class='wal-check' type='checkbox'/>` +
             `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}ParkingLotType' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}ParkingLotType' class='wal-check' type='checkbox'/>` +
             `<label for='${ctlPrefix}ParkingLotType' class='wal-label'>`;
         html += `Parking Lot Type: <select id='${ctlPrefix}ParkingLotTypeFilter'>` +
             "<option value='PRIVATE'>" + I18n.t("edit.venue.parking.types.parkingType.PRIVATE") + "</option>" +
@@ -299,35 +297,35 @@ namespace WMEWAL_Places {
             "</select></label></td></tr>";
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoName'/>` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoName'/>` +
             `<label for='${ctlPrefix}NoName' class='wal-label'>No Name</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
             `<label for='${ctlPrefix}NoHouseNumber' class='wal-label'>Missing House Number</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoStreet'/>` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoStreet'/>` +
             `<label for='${ctlPrefix}NoStreet' class='wal-label'>Missing Street</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoCity'/>` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoCity'/>` +
             `<label for='${ctlPrefix}NoCity' class='wal-label'>Missing City</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}AdLocked'/>` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}AdLocked'/>` +
             `<label for='${ctlPrefix}AdLocked' class='wal-label'>Ad Locked</label></td></tr>`;
-        html += `<tr><td ><input type='checkbox' id='${ctlPrefix}UpdateRequests'/>` +
+        html += `<tr><td ><input class='wal-check' type='checkbox' id='${ctlPrefix}UpdateRequests'/>` +
             `<label for='${ctlPrefix}UpdateRequests' class='wal-label'>Has Update Requests</label></td></tr>`;
-        html += `<tr><td ><input type='checkbox' id='${ctlPrefix}PendingApproval'/>` +
+        html += `<tr><td ><input class='wal-check' type='checkbox' id='${ctlPrefix}PendingApproval'/>` +
             `<label for='${ctlPrefix}PendingApproval' class='wal-label'>Pending Approval</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}UndefStreet' />` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}UndefStreet' />` +
             `<label for='${ctlPrefix}UndefStreet' class='wal-label' title='Street ID not found in W.model.streets.objects, possibly as a result of a cities form Merge or Delete'>Undefined Street ID</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoExternalProviders' />` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoExternalProviders' />` +
             `<label for='${ctlPrefix}NoExternalProviders' class='wal-label'>No External Provider Links</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoHours' />` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoHours' />` +
             `<label for='${ctlPrefix}NoHours' class='wal-label'>No Hours</label></td></tr>`;
-            html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoWebsite' />` +
+            html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoWebsite' />` +
             `<label for='${ctlPrefix}NoWebsite' class='wal-label'>No Website</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoPhoneNumber' />` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoPhoneNumber' />` +
             `<label for='${ctlPrefix}NoPhoneNumber' class='wal-label'>No Phone Number</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}BadPhoneNumberFormat' />` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}BadPhoneNumberFormat' />` +
             `<label for='${ctlPrefix}BadPhoneNumberFormat' class='wal-label'>Bad Phone Number Format</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}NoEntryExitPoints' />` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoEntryExitPoints' />` +
             `<label for='${ctlPrefix}NoEntryExitPoints' class='wal-label'>No Entry/Exit Points</label></td></tr>`;
-        html += `<tr><td><input type='checkbox' id='${ctlPrefix}MissingBrand' />` +
+        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}MissingBrand' />` +
             `<label for='${ctlPrefix}MissingBrand' class='wal-label'>Missing Brand (GS)</label></td></tr>`;
 
         html += "</tbody></table>"
@@ -351,6 +349,12 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}LoadSetting`).on("click", loadSetting);
         $(`#${ctlPrefix}SaveSetting`).on("click", saveSetting);
         $(`#${ctlPrefix}DeleteSetting`).on("click", deleteSetting);
+        $(`#${ctlPrefix}Reset`).on('click', reset);
+    }
+
+    function reset(): void {
+        initSettings();
+        updateUI();
     }
 
     function updateStates(): void {
@@ -509,8 +513,8 @@ namespace WMEWAL_Places {
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        // settings.OutputTo = $(`#${ctlPrefix}OutputTo`).val();
 
+        initSettings();
         let savedSetting = savedSettings[selectedSetting].Setting;
 
         for (let name in savedSetting) {
@@ -889,9 +893,9 @@ namespace WMEWAL_Places {
                         (settings.UpdatedOperation === Operation.GreaterThanOrEqual && (venue.attributes.updatedOn || venue.attributes.createdOn) >= settings.UpdatedDate) ||
                         (settings.UpdatedOperation === Operation.GreaterThan && (venue.attributes.updatedOn || venue.attributes.createdOn) > settings.UpdatedDate)) &&
                     ((settings.CreatedBy === null) ||
-                        (venue.attributes.createdBy === settings.CreatedBy)) &&
+                        (venue.getCreatedBy() === settings.CreatedBy)) &&
                     ((settings.LastModifiedBy === null) ||
-                        ((venue.attributes.updatedBy || venue.attributes.createdBy) === settings.LastModifiedBy)) &&
+                        ((venue.getUpdatedBy() ?? venue.getCreatedBy()) === settings.LastModifiedBy)) &&
                     (websiteRegex === null ||
                         websiteRegex.test(venue.attributes.url))) {
 
@@ -1031,10 +1035,10 @@ namespace WMEWAL_Places {
                     // Don't add it if we've already done so
                     if (savedVenues.indexOf(venue.getID()) === -1) {
                         savedVenues.push(venue.getID());
-                        let lastEditorID = venue.attributes.updatedBy || venue.attributes.createdBy;
-                        var lastEditor = W.model.users.getObjectById(lastEditorID);
-                        var createdByID = venue.attributes.createdBy;
-                        var createdBy = W.model.users.getObjectById(createdByID);
+                        let lastEditorID = venue.getUpdatedBy() ?? venue.getCreatedBy();
+                        var lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found'};
+                        var createdByID = venue.getCreatedBy();
+                        var createdBy = W.model.users.getObjectById(createdByID) ?? { userName : 'Not found'};
                         let place: IPlace = {
                             id: venue.attributes.id,
                             mainCategory: venue.getMainCategory(),
@@ -1076,6 +1080,7 @@ namespace WMEWAL_Places {
 
             let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
             let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            let addBOM = WMEWAL.addBOM ?? false;
 
             let lineArray: Array<Array<string>>;
             let columnArray: Array<string>;
@@ -1108,135 +1113,138 @@ namespace WMEWAL_Places {
                 w.document.write("<h3>Area: " + WMEWAL.areaName + "</h3>");
                 w.document.write("<h4>Filters</h4>");
                 if (settings.Category != null) {
-                    w.document.write("<br/>Category: " +getOperationText(settings.CategoryOperation) + I18n.t("venues.categories." + settings.Category));
+                    w.document.write(`<div>Category: ${getOperationText(settings.CategoryOperation)}${I18n.t("venues.categories." + settings.Category)}</div>`);
                 }
                 if (settings.LockLevel != null) {
-                    w.document.write("<br/>Lock Level " + getOperationText(settings.LockLevelOperation) + settings.LockLevel.toString());
+                    w.document.write(`<div>Lock Level ${getOperationText(settings.LockLevelOperation)}${settings.LockLevel.toString()}</div>`);
                 }
                 if (settings.Regex != null) {
-                    w.document.write("<br/>Name matches " + settings.Regex);
+                    w.document.write(`<div>Name matches: ${settings.Regex}`);
                     if (settings.RegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
                     }
+                    w.document.write('</div>');
                 }
                 if (streetRegex != null) {
-                    w.document.write("<br/>Street Name matches: " + settings.StreetRegex);
+                    w.document.write(`<div>Street Name matches: ${settings.StreetRegex}`);
                     if (settings.StreetRegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
                     }
+                    w.document.write('</div>');
                 }
                 if (cityRegex != null) {
-                    w.document.write("<br/>City Name matches: " + settings.CityRegex);
+                    w.document.write(`<div>City Name matches: ${settings.CityRegex}`);
                     if (settings.CityRegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
                     }
+                    w.document.write('</div>');
                 }
                 if (stateName != null) {
-                    w.document.write("<br/>State " + getOperationText(settings.StateOperation) + stateName);
+                    w.document.write(`<div>State ${getOperationText(settings.StateOperation)}${stateName}</div>`);
                 }
                 if (settings.PlaceType != null) {
-                    w.document.write("<br/>Type " + I18n.t("edit.venue.type." + settings.PlaceType));
+                    w.document.write(`<div>Type ${I18n.t("edit.venue.type." + settings.PlaceType)}</div>`);
                 }
                 if (settings.LastModifiedBy != null) {
-                    w.document.write("<br/>Last modified by " + lastModifiedByName);
+                    w.document.write(`<div>Last modified by ${lastModifiedByName}</div>`);
                 }
                 if (settings.CreatedBy != null) {
-                    w.document.write(`<br/>Created by ${createdByName}`);
+                    w.document.write(`<div>Created by ${createdByName}</div>`);
                 }
                 if (settings.EditableByMe) {
-                    w.document.write("<br/>Editable by me");
+                    w.document.write('<div>Editable by me</div>');
                 }
                 if (settings.ParkingLotType) {
-                    w.document.write(`<br/>Parking lot type: ${settings.ParkingLotTypeFilter}`);
+                    w.document.write(`<div>Parking lot type: ${settings.ParkingLotTypeFilter}</div>`);
                 }
                 if (settings.Created) {
-                    w.document.write("<br/>Created ");
+                    w.document.write('<div>Created ');
                     switch (settings.CreatedOperation) {
                         case Operation.GreaterThan:
-                            w.document.write("after");
+                            w.document.write('after');
                             break;
                         case Operation.GreaterThanOrEqual:
-                            w.document.write("on or after");
+                            w.document.write('on or after');
                             break;
                         case Operation.LessThan:
-                            w.document.write("before");
+                            w.document.write('before');
                             break;
                         case Operation.LessThanOrEqual:
-                            w.document.write("on or before");
+                            w.document.write('on or before');
                             break;
                         default:
                             break;
                     }
-                    w.document.write(` ${new Date(settings.CreatedDate).toString()}`);
+                    w.document.write(` ${new Date(settings.CreatedDate).toString()}</div>`);
                 }
                 if (settings.Updated) {
-                    w.document.write("<br/>Updated ");
+                    w.document.write('<div>Updated ');
                     switch (settings.UpdatedOperation) {
                         case Operation.GreaterThan:
-                            w.document.write("after");
+                            w.document.write('after');
                             break;
                         case Operation.GreaterThanOrEqual:
-                            w.document.write("on or after");
+                            w.document.write('on or after');
                             break;
                         case Operation.LessThan:
-                            w.document.write("before");
+                            w.document.write('before');
                             break;
                         case Operation.LessThanOrEqual:
-                            w.document.write("on or before");
+                            w.document.write('on or before');
                             break;
                         default:
                             break;
                     }
-                    w.document.write(` ${new Date(settings.UpdatedDate).toString()}`);
+                    w.document.write(` ${new Date(settings.UpdatedDate).toString()}</div>`);
                 }
 
                 if (detectIssues) {
                     w.document.write("<h4>Issues</h4>");
                 }
                 if (settings.NoName) {
-                    w.document.write("<br/>No Name");
+                    w.document.write("<div>No Name</div>");
                 }
                 if (settings.NoHouseNumber) {
-                    w.document.write("<br/>Missing house number");
+                    w.document.write("<div>Missing house number</div>");
                 }
                 if (settings.NoStreet) {
-                    w.document.write("<br/>Missing street");
+                    w.document.write("<div>Missing street</div>");
                 }
                 if (settings.NoCity) {
-                    w.document.write("<br/>Missing city");
+                    w.document.write("<div>Missing city</div>");
                 }
                 if (settings.AdLocked) {
-                    w.document.write("<br/>Ad locked");
+                    w.document.write("<div>Ad locked</div>");
                 }
                 if (settings.UpdateRequests) {
-                    w.document.write("<br/>Has update requests");
+                    w.document.write("<div>Has update requests</div>");
                 }
                 if (settings.PendingApproval) {
-                    w.document.write("<br/>Pending approval");
+                    w.document.write("<div>Pending approval</div>");
                 }
                 if (settings.UndefStreet) {
-                    w.document.write("<br/>Undefined street ID")
+                    w.document.write("<div>Undefined street ID</div>")
                 }
                 if (settings.NoExternalProviders) {
-                    w.document.write("<br/>No external provider links");
+                    w.document.write("<div>No external provider links</div>");
                 }
                 if (settings.NoHours) {
-                    w.document.write("<br/>No hours");
+                    w.document.write("<div>No hours</div>");
                 }
                 if (settings.NoPhoneNumber) {
-                    w.document.write("<br/>No phone number");
+                    w.document.write("<div>No phone number</div>");
                 }
                 if (settings.BadPhoneNumberFormat) {
-                    w.document.write("<br/>Bad phone number format");
+                    w.document.write("<div>Bad phone number format</div>");
                 }
                 if (settings.NoWebsite) {
-                    w.document.write("<br/>No website");
+                    w.document.write("<div>No website</div>");
                 }
                 if (settings.NoEntryExitPoints) {
-                    w.document.write("<br/>No entry/exit points");
+                    w.document.write("<div>No entry/exit points</div>");
                 }
                 if (settings.MissingBrand) {
-                    w.document.write("<br/>Missing brand");
+                    w.document.write("<div>Missing brand</div>");
                 }
 
                 w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><thead><tr><th>Name</th>");
@@ -1312,8 +1320,12 @@ namespace WMEWAL_Places {
             }
             if (isCSV) {
                 let csvContent = lineArray.join("\n");
-                //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-                var blob = new Blob([csvContent], {type: "data:text/csv;charset=utf-8;"});
+                let blobContent: BlobPart[] = [];
+                if (addBOM) {
+                    blobContent.push('\uFEFF');
+                }
+                blobContent.push(csvContent);
+                var blob = new Blob(blobContent, {type: "data:text/csv;charset=utf-8"});
                 let link = document.createElement("a");
                 let url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
@@ -1413,50 +1425,7 @@ namespace WMEWAL_Places {
         }
 
         if (settings == null) {
-            settings = {
-                NoName: false,
-                Regex: null,
-                RegexIgnoreCase: true,
-                Category: null,
-                CategoryOperation: Operation.Equal,
-                NoHouseNumber: false,
-                State: null,
-                StateOperation: Operation.Equal,
-                LockLevel: null,
-                LockLevelOperation: Operation.Equal,
-                EditableByMe: true,
-                AdLocked: false,
-                UpdateRequests: false,
-                PlaceType: null,
-                PendingApproval: false,
-                CityRegex: null,
-                CityRegexIgnoreCase: true,
-                NoStreet: false,
-                NoCity: false,
-                LastModifiedBy: null,
-                CreatedBy: null,
-                UndefStreet: false,
-                NoExternalProviders: false,
-                NoHours: false,
-                NoPhoneNumber: false,
-                BadPhoneNumberFormat: false,
-                NoWebsite: false,
-                NoEntryExitPoints: false,
-                ParkingLotType: false,
-                ParkingLotTypeFilter: null,
-                MissingBrand: false,
-                IncludeAlt: false,
-                Created: false,
-                CreatedOperation: Operation.GreaterThanOrEqual,
-                CreatedDate: null,
-                Updated: false,
-                UpdatedOperation: Operation.GreaterThanOrEqual,
-                UpdatedDate: null,
-                WebsiteRegex: null,
-                WebsiteRegexIgnoreCase: true,
-                StreetRegex: null,
-                StreetRegexIgnoreCase: true
-            };
+            initSettings();
         } else {
             if (updateProperties()) {
                 updateSettings();
@@ -1468,6 +1437,53 @@ namespace WMEWAL_Places {
 
         WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         WMEWAL.RegisterPlugIn(WMEWAL_Places);
+    }
+
+    function initSettings(): void {
+        settings = {
+            NoName: false,
+            Regex: null,
+            RegexIgnoreCase: true,
+            Category: null,
+            CategoryOperation: Operation.Equal,
+            NoHouseNumber: false,
+            State: null,
+            StateOperation: Operation.Equal,
+            LockLevel: null,
+            LockLevelOperation: Operation.Equal,
+            EditableByMe: true,
+            AdLocked: false,
+            UpdateRequests: false,
+            PlaceType: null,
+            PendingApproval: false,
+            CityRegex: null,
+            CityRegexIgnoreCase: true,
+            NoStreet: false,
+            NoCity: false,
+            LastModifiedBy: null,
+            CreatedBy: null,
+            UndefStreet: false,
+            NoExternalProviders: false,
+            NoHours: false,
+            NoPhoneNumber: false,
+            BadPhoneNumberFormat: false,
+            NoWebsite: false,
+            NoEntryExitPoints: false,
+            ParkingLotType: false,
+            ParkingLotTypeFilter: null,
+            MissingBrand: false,
+            IncludeAlt: false,
+            Created: false,
+            CreatedOperation: Operation.GreaterThanOrEqual,
+            CreatedDate: null,
+            Updated: false,
+            UpdatedOperation: Operation.GreaterThanOrEqual,
+            UpdatedDate: null,
+            WebsiteRegex: null,
+            WebsiteRegexIgnoreCase: true,
+            StreetRegex: null,
+            StreetRegexIgnoreCase: true
+        };
     }
 
     function updateProperties(): boolean {
@@ -1507,12 +1523,12 @@ namespace WMEWAL_Places {
             if (!settings.hasOwnProperty("NoPhoneNumber")) {
                 settings.NoPhoneNumber = false;
             }
-            
+
             if (!settings.hasOwnProperty("BadPhoneNumberFormat")) {
                 settings.BadPhoneNumberFormat = false;
                 upd = true;
             }
-            
+
             if (!settings.hasOwnProperty("NoWebsite")) {
                 settings.NoWebsite = false;
             }

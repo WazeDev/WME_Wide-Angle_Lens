@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.0.0
+// @version             1.0.1
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,8 +26,9 @@ namespace WMEWAL_MapComments {
 
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = '<ul><li>Filter by created by user</li>' +
-        '<li>More granularity on expiration date filter</li></ul>';
+    const updateText = '<ul>' +
+        '<li>Support for adding byte order mark for unicode output</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40644';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -138,11 +139,11 @@ namespace WMEWAL_MapComments {
             "<option value='6'>6</option></select></td></tr>";
         html += "<tr><td><b>Title RegEx:</b></td></tr>";
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}Title' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}TitleIgnoreCase' type='checkbox'/>` +
+            `<input id='${ctlPrefix}TitleIgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}TitleIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Comments RegEx:</b></td></tr>";
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}Comments' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}CommentsIgnoreCase' type='checkbox'/>` +
+            `<input id='${ctlPrefix}CommentsIgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}CommentsIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
@@ -156,7 +157,7 @@ namespace WMEWAL_MapComments {
             "<option value='area'>" + I18n.t("edit.venue.type.area") + "</option>" +
             "<option value='point'>" + I18n.t("edit.venue.type.point") + "</option>" +
             "</select></td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}Expiration' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Expiration' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}Expiration' class='wal-label'>Expires:</label> ` +
             `<select id='${ctlPrefix}ExpirationOp'>` +
             `<option value='${Operation.LessThan}'>&lt;</option>` +
@@ -164,7 +165,7 @@ namespace WMEWAL_MapComments {
             `<option value='${Operation.GreaterThanOrEqual}'>&gt;=</option>` +
             `<option value='${Operation.GreaterThan}'>&gt;</option></select></td></tr>`
         html += `<tr><td class='wal-indent'><input type='date' id='${ctlPrefix}ExpirationDate' class='wal-textbox'/></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox'/>` +
+        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
 
         html += "</tbody></table>";
@@ -511,9 +512,9 @@ namespace WMEWAL_MapComments {
                         (settings.GeometryType == null || (settings.GeometryType === "point" && mapComment.isPoint()) || (settings.GeometryType === "area" && !mapComment.isPoint())) &&
                         (titleRegex == null || titleRegex.test(mapComment.attributes.subject)) &&
                         ((settings.LastModifiedBy === null) ||
-                            ((mapComment.attributes.updatedBy || mapComment.attributes.createdBy) === settings.LastModifiedBy)) &&
+                            ((mapComment.getUpdatedBy() ?? mapComment.getCreatedBy()) === settings.LastModifiedBy)) &&
                         ((settings.CreatedBy === null) ||
-                            (mapComment.attributes.createdBy === settings.CreatedBy))) {
+                            (mapComment.getCreatedBy() === settings.CreatedBy))) {
 
                         if (settings.Expiration) {
                             if (mapComment.attributes.endDate === null) {
@@ -579,8 +580,8 @@ namespace WMEWAL_MapComments {
                             continue;
                         }
 
-                        let lastEditorID = mapComment.attributes.updatedBy || mapComment.attributes.createdBy;
-                        let lastEditor = W.model.users.getObjectById(lastEditorID);
+                        let lastEditorID = mapComment.getUpdatedBy() ?? mapComment.getCreatedBy();
+                        let lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found'};
                         let endDate: number = null;
                         let expirationDate = mapComment.attributes.endDate;
                         if (expirationDate != null) {
@@ -618,6 +619,7 @@ namespace WMEWAL_MapComments {
 
             let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
             let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            let addBOM = WMEWAL.addBOM ?? false;
 
             let lineArray: Array<Array<string>>;
             let columnArray: Array<string>;
@@ -714,8 +716,12 @@ namespace WMEWAL_MapComments {
             }
             if (isCSV) {
                 let csvContent = lineArray.join("\n");
-                //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-                var blob = new Blob([csvContent], {type: "data:text/csv;charset=utf-8;"});
+                let blobContent: BlobPart[] = [];
+                if (addBOM) {
+                    blobContent.push('\uFEFF');
+                }
+                blobContent.push(csvContent);
+                var blob = new Blob(blobContent, {type: "data:text/csv;charset=utf-8"});
                 let link = <HTMLAnchorElement> document.createElement("a");
                 let url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);

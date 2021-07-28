@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.9
+// @version             1.5.10
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -23,11 +23,10 @@
 /* global W, OL, $, WazeWrap, OpenLayers, I18n */
 
 namespace WMEWAL {
-
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Ability to scan current window</li>' +
+        '<li>Ability to add Byte Order Mark to CSV output to better support unicode.</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -119,6 +118,7 @@ namespace WMEWAL {
         OutputTo: string;
         Version: string;
         showLayer: boolean;
+        AddBOM: boolean;
     }
 
     interface IPrivatePlugin extends IPlugIn {
@@ -151,6 +151,7 @@ namespace WMEWAL {
     export let areaName: string = null;
     export let zoomLevel: number;
     export let outputTo: OutputTo;
+    export let addBOM: boolean;
 
     let currentX: number;
     let currentY: number;
@@ -187,7 +188,7 @@ namespace WMEWAL {
             "W.vent",
             "W.controller",
             "W.model.actionManager",
-            "WazeWrap.Interface"];
+            "WazeWrap.Ready"];
         for (let i: number = 0; i < objectToCheck.length; i++) {
             let path = objectToCheck[i].split(".");
             let object: Window = window;
@@ -220,7 +221,6 @@ namespace WMEWAL {
 
         if (typeof (Storage) !== "undefined") {
             if (localStorage[settingsKey]) {
-                let upd: boolean = false;
                 let settingsString = localStorage[settingsKey];
                 if (settingsString.substring(0, 1) === "~") {
                     // Compressed value - decompress
@@ -247,15 +247,16 @@ namespace WMEWAL {
                     if (typeof settings === "undefined" || settings === null) {
                         log("warning", "Unable to decompress! Using empty settings");
                         outputTo = OutputTo.CSV;
+                        addBOM = false;
                         settings = {
                             SavedAreas: [],
                             ActivePlugins: [],
                             OutputTo: "csv",
                             Version: Version,
-                            showLayer: false
+                            showLayer: false,
+                            AddBOM: addBOM
                         };
                     }
-                    upd = true;
                 }
 
                 settings.SavedAreas.sort(function (a, b) {
@@ -263,13 +264,14 @@ namespace WMEWAL {
                 });
 
                 delete this.settingsString;
-                if (!settings.hasOwnProperty("Version")) {
-                    settings.Version = Version;
-                    upd = true;
+                if (!Object.prototype.hasOwnProperty.call(settings, 'AddBOM')) {
+                    settings.AddBOM = false;
                 }
-                if (!settings.hasOwnProperty("showLayer")) {
+                if (!Object.prototype.hasOwnProperty.call(settings, 'Version')) {
+                    settings.Version = Version;
+                }
+                if (!Object.prototype.hasOwnProperty.call(settings, 'showLayer')) {
                     settings.showLayer = false;
-                    upd = true;
                 }
 
                 for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
@@ -279,14 +281,9 @@ namespace WMEWAL {
                                 settings.SavedAreas[ix].geometry.CLASS_NAME === "OpenLayers.Geometry.Collection") &&
                                 (<OpenLayers.Geometry.Collection> settings.SavedAreas[ix].geometry).components.length === 1) {
                             settings.SavedAreas[ix].geometry = (<OpenLayers.Geometry.Collection> settings.SavedAreas[ix].geometry).components[0];
-                            upd = true;
                         }
                         delete settings.SavedAreas[ix].geometryText;
                     }
-                }
-
-                if (upd) {
-                    updateSettings();
                 }
             } else if (localStorage["WMEMSL_areaList"]) {
                 // Import settings from old MSL script
@@ -295,12 +292,14 @@ namespace WMEWAL {
                     return a.name.localeCompare(b.name);
                 });
                 outputTo = OutputTo.CSV;
+                addBOM = false;
                 settings = {
                     SavedAreas: savedAreas,
                     ActivePlugins: [],
                     OutputTo: "csv",
                     Version: Version,
-                    showLayer: false
+                    showLayer: false,
+                    AddBOM: addBOM
                 };
                 for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
@@ -311,60 +310,17 @@ namespace WMEWAL {
 
             } else {
                 outputTo = OutputTo.CSV;
+                addBOM = false;
                 settings = {
                     SavedAreas: [],
                     ActivePlugins: [],
                     OutputTo: "csv",
                     Version: Version,
-                    showLayer: false
+                    showLayer: false,
+                    AddBOM: false
                 };
             }
         }
-
-        /*if (CompareVersions(settings.Version, Version) < 0) {
-            var versionHistory = "WME Wide-Angle Lens\nv" + Version + "\n\nWhat's New\n--------";
-            if (CompareVersions(settings.Version, "1.4.7") < 0) {
-                versionHistory += "\nv1.4.7: Choose output on scan tab for all plugins";
-            }
-            if (CompareVersions(settings.Version, "1.4.6") < 0) {
-                versionHistory += "\nv1.4.6: Fixes for the latest release of WME";
-            }
-            if (CompareVersions(settings.Version, "1.4.5") < 0) {
-                versionHistory += "\nv1.4.5: Fixes for the latest release of WME";
-            }
-            if (CompareVersions(settings.Version, "1.4.4") < 0) {
-                versionHistory += "\nv1.4.4: Show tab when changing mode or unit\n"+
-                                    "        Always hide segments when scanning";
-            }
-            if (CompareVersions(settings.Version, "1.4.3.1") < 0) {
-                versionHistory += "\nv1.4.3.1: Fix for Firefox unable to load settings";
-            }
-            if (CompareVersions(settings.Version, "1.4.3") < 0) {
-                versionHistory += "\nv1.4.3: Add Alley road type and fixes for WME release";
-            }
-            if (CompareVersions(settings.Version, "1.4.2") < 0) {
-                versionHistory += "\nv1.4.2: Fix tab placement";
-            }
-            if (CompareVersions(settings.Version, "1.4.1") < 0) {
-                versionHistory += "\nv1.4.1: Hotfix for 1.4.0";
-            }
-            if (CompareVersions(settings.Version, "1.4.0") < 0) {
-                versionHistory += "\nv1.4.0: Updates to support Firefox.";
-            }
-            /*if (CompareVersions(settings.Version, "1.3.4.1") < 0) {
-                versionHistory += "\nv1.3.4.1: ***BACKUP YOUR AREAS NOW!!***\nThe next version of WAL"+
-                                  " could potentially cause data loss.\nSee the forum thread for more info";
-            }
-            if (CompareVersions(settings.Version, "1.3.4") < 0) {
-                versionHistory += "\nv1.3.4: Updates to WME URL";
-            }
-            if (CompareVersions(settings.Version, "1.3.3") < 0) {
-                versionHistory += "\nv1.3.3: Updates to support latest version of WME Editor.";
-            }
-            alert(versionHistory);
-            settings.Version = Version;
-            updateSettings();
-        }*/
 
         WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
 
@@ -378,6 +334,7 @@ namespace WMEWAL {
         css += ".wal-progressBarBG { margin-top: 2px; margin-bottom: 2px; margin-left: 2px; margin-right: 2px; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; padding-right: 0px; width: 33%; background-color: #93c4d3; border: 3px rgb(147, 196, 211); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; height: 22px;}";
         css += ".wal-progressBarFG { float: left; position: relative; bottom: 22px; height: 0px; text-align: center; width: 100% }";
         css += ".wal-textbox { width: 100% }";
+        css += "#sidepanel-wme-wal hr { border: 1px inset; margin-top: 10px; margin-bottom: 10px "
         style.innerHTML = css;
         document.body.appendChild(style);
 
@@ -432,7 +389,8 @@ namespace WMEWAL {
         let addonTabContent = $("<div class='tab-content'/>").appendTo(addon);
         let tabScan = $("<div class='tab-pane active' id='sidepanel-wmewal-scan'/>").appendTo(addonTabContent);
         tabScan.append("<div><b>Output to: </b><select class='form-control' id='_wmewalScanOutputTo'><option value='csv'>CSV File</option><option value='tab'>Browser Tab</option>" +
-        "<option value='both'>Both CSV File and Browser Tab</option></select></div><hr/>");
+        "<option value='both'>Both CSV File and Browser Tab</option></select></div>");
+        tabScan.append("<div><input type='checkbox' id='_wmewalAddBOM'><label for='_wmewalAddBOM' class='wal-label'>Add Byte Order Mark to CSV</label></div><hr/>")
         tabScan.append("<div><b>Active Plug-Ins</b><div id='_wmewalPlugins'></div>");
         tabScan.append("<div><b>Scan</b><div id='_wmewalOptionsSavedAreas' name='_wmewalSavedAreas'/></div>");
         tabScan.append("<hr/>");
@@ -461,9 +419,13 @@ namespace WMEWAL {
         $("#_wmewalScanOutputTo").val(settings.OutputTo || "csv");
         outputTo = parseOutputTo(settings.OutputTo || "csv");
 
+        $('#_wmewalAddBOM').prop('checked', settings.AddBOM);
+        addBOM = settings.AddBOM;
+
         updateSavedAreasList();
 
         $("#_wmewalScanOutputTo").on("change", updateSettings);
+        $('#_wmewalAddBOM').on('change', updateSettings);
         $("#_wmewalAddNewArea").on("click", addNewArea);
         $("#_wmewalCancel").on("click", cancelScan);
         $("#_wmewalScan").on("click", scanArea);
@@ -544,7 +506,7 @@ namespace WMEWAL {
             if (plugins[ix].Active) {
                 c.attr("checked", "checked");
             }
-            list.append($("<label/>").attr("for", id).css("margin-left", "8px").text(plugins[ix].Title));
+            list.append($("<label/>").attr("for", id).addClass('wal-label').text(plugins[ix].Title));
         }
     }
 
@@ -753,7 +715,7 @@ namespace WMEWAL {
                 let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
                 e.appendChild(input[0]);
 
-                let label = $("<label/>").attr("for", id).css("margin-left", "8px").text(settings.SavedAreas[ix].name);
+                let label = $("<label/>").attr("for", id).addClass('wal-label').text(settings.SavedAreas[ix].name);
                 e.appendChild(label[0]);
 
                 let center = $("<i/>").addClass("fa").addClass("fa-crosshairs").css("margin-left", "4px").on("click", getCenterFunc(ix));
@@ -780,7 +742,7 @@ namespace WMEWAL {
             let id = `wmewalScanArea_${eIx}_${ix}`;
             let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
             e.appendChild(input[0]);
-            let label = $("<label/>").attr("for", id).css("margin-left", "8px").text('Current window');
+            let label = $("<label/>").attr("for", id).addClass('wal-label').text('Current window');
             e.appendChild(label[0]);
         });
 
@@ -791,12 +753,14 @@ namespace WMEWAL {
     function updateSettings(): void {
         if (typeof Storage !== "undefined") {
             outputTo = parseOutputTo($("#_wmewalScanOutputTo").val());
+            addBOM = $('#_wmewalAddBOM').prop('checked');
             let newSettings: ISettings = {
                 SavedAreas: [],
                 ActivePlugins: settings.ActivePlugins,
                 OutputTo: $("#_wmewalScanOutputTo").val(),
                 Version: settings.Version,
-                showLayer: settings.showLayer
+                showLayer: settings.showLayer,
+                AddBOM: addBOM
             };
             for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                 newSettings.SavedAreas.push({
@@ -1508,7 +1472,7 @@ namespace WMEWAL {
 
     function parseOutputTo(outputTo: string): OutputTo {
         let ot: OutputTo;
-        switch (outputTo.toLowerCase()) {
+        switch ((outputTo ?? '').toLowerCase()) {
             case "csv":
                 ot = OutputTo.CSV;
                 break;

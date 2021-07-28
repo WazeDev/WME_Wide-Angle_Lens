@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.5
+// @version             1.7.6
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,14 +27,14 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Added ability to filter on visual instruction/towards text</li>'
+        '<li>Create CSV files with appropriate encoding</li>'
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
     const ctlPrefix = "_wmewalStreets";
 
-    const minimumWALVersionRequired = "1.5.6";
+    const minimumWALVersionRequired = "1.5.10";
 
     enum Direction {
         OneWay = 1,
@@ -1312,9 +1312,9 @@ namespace WMEWAL_Streets {
             if (savedSegments.indexOf(s.getID()) === -1 ) {
                 savedSegments.push(s.getID());
                 let sid = s.attributes.primaryStreetID;
-                let lastEditorID = s.attributes.updatedBy || s.attributes.createdBy;
-                let lastEditor = W.model.users.getObjectById(lastEditorID) || {userName: 'Not found'};
-                let createdEditorID = s.attributes.createdBy;
+                let lastEditorID = s.getUpdatedBy() ?? s.getCreatedBy();
+                let lastEditor = W.model.users.getObjectById(lastEditorID) ?? {userName: 'Not found'};
+                let createdEditorID = s.getCreatedBy();
                 let createdEditor = W.model.users.getObjectById(createdEditorID) || {userName: 'Not found'};
                 let address = s.getAddress();
                 let thisStreet: IStreet = null;
@@ -1436,7 +1436,11 @@ namespace WMEWAL_Streets {
                         (settings.SegmentLengthFilterOperation === Operation.LessThan && (segment.attributes.length * segmentLengthFilterMultipier) < settings.SegmentLengthFilterValue) ||
                         (settings.SegmentLengthFilterOperation === Operation.LessThanOrEqual && (segment.attributes.length * segmentLengthFilterMultipier) <= settings.SegmentLengthFilterValue) ||
                         (settings.SegmentLengthFilterOperation === Operation.GreaterThan && (segment.attributes.length * segmentLengthFilterMultipier) > settings.SegmentLengthFilterValue) ||
-                        (settings.SegmentLengthFilterOperation === Operation.GreaterThanOrEqual && (segment.attributes.length * segmentLengthFilterMultipier) >= settings.SegmentLengthFilterValue))) {
+                        (settings.SegmentLengthFilterOperation === Operation.GreaterThanOrEqual && (segment.attributes.length * segmentLengthFilterMultipier) >= settings.SegmentLengthFilterValue)) &&
+                    ((settings.CreatedBy === null) ||
+                        (segment.getCreatedBy() === settings.CreatedBy)) &&
+                    ((settings.LastModifiedBy === null) ||
+                        ((segment.getUpdatedBy() ?? segment.getCreatedBy()) === settings.LastModifiedBy))) {
 
                     let primaryStreet: WazeNS.Model.Object.Street = null;
                     let primaryStreetID = segment.attributes.primaryStreetID;
@@ -1455,22 +1459,6 @@ namespace WMEWAL_Streets {
                             }
 
                         } else if (settings.StateOperation === Operation.Equal) {
-                            continue;
-                        }
-                    }
-
-                    if (settings.LastModifiedBy != null) {
-                        if (segment.attributes.updatedBy != null) {
-                            if (segment.attributes.updatedBy !== settings.LastModifiedBy) {
-                                continue;
-                            }
-                        } else if (segment.attributes.createdBy !== settings.LastModifiedBy) {
-                            continue;
-                        }
-                    }
-
-                    if (settings.CreatedBy != null) {
-                        if (segment.attributes.createdBy !== settings.CreatedBy) {
                             continue;
                         }
                     }
@@ -1924,6 +1912,7 @@ namespace WMEWAL_Streets {
 
             let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
             let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            let addBOM: boolean = WMEWAL.addBOM ?? false;
 
             let includeAltNames = settings.IncludeAltNames;
             var includeASC = settings.IncludeASC;
@@ -2460,8 +2449,12 @@ namespace WMEWAL_Streets {
             }
             if (isCSV) {
                 let csvContent = lineArray.join("\n");
-                //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-                var blob = new Blob([csvContent], {type: "data:text/csv;charset=utf-8;"});
+                let blobContent: BlobPart[] = [];
+                if (addBOM) {
+                    blobContent.push('\uFEFF');
+                }
+                blobContent.push(csvContent);
+                var blob = new Blob(blobContent, {type: "data:text/csv;charset=utf-8"});
                 let link = document.createElement("a");
                 let url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);

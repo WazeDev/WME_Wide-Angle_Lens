@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.1
+// @version             1.3.2
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -23,7 +23,9 @@ var WMEWAL_Locks;
 (function (WMEWAL_Locks) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = 'Option to include alt names in output';
+    const updateText = '<ul>' +
+        '<li>Support for adding byte order mark for unicode output</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = `_wmewalLocks`;
@@ -64,8 +66,8 @@ var WMEWAL_Locks;
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
         html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Output Options</td></tr>";
-        html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt' name='${ctlPrefix}IncludeAlt'>` +
-            `<label for='${ctlPrefix}IncludeAlt' style='margin-left:8px;'>Include Alt Names</label></td></tr>`;
+        html += `<tr><td class='wal-indent'><input type='checkbox' class='wal-check' id='${ctlPrefix}IncludeAlt' name='${ctlPrefix}IncludeAlt'>` +
+            `<label for='${ctlPrefix}IncludeAlt' class='wal-label'>Include Alt Names</label></td></tr>`;
         html += "<tr><td class='wal-indent'><b>Include:</b>" +
             `<select id='${ctlPrefix}IncludeInOutput'>` +
             `<option value='${IncludeInOutput.Low}'>Locked too low</option>` +
@@ -80,7 +82,7 @@ var WMEWAL_Locks;
             "<option value='4'>4</option>" +
             "<option value='5'>5</option>" +
             "<option value='6'>6</option></select>" +
-            `<br/><input id='${ctlPrefix}PlusOneWayStreet' type='checkbox'/><label for='${ctlPrefix}PlusOneWayStreet' style='margin-left: 8px'>+1 for One-Way</label>` +
+            `<br/><input id='${ctlPrefix}PlusOneWayStreet' type='checkbox' class='wal-check'/><label for='${ctlPrefix}PlusOneWayStreet' class='wal-label'>+1 for One-Way</label>` +
             "</td></tr>";
         html += `<tr><td>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet))}</td><td><select id='${ctlPrefix}PrimaryStreet'>` +
             "<option value='1'>1</option>" +
@@ -89,7 +91,7 @@ var WMEWAL_Locks;
             "<option value='4'>4</option>" +
             "<option value='5'>5</option>" +
             "<option value='6'>6</option></select>" +
-            `<br/><input id='${ctlPrefix}PlusOneWayPS' type='checkbox'/><label for='${ctlPrefix}PlusOneWayPS' style='margin-left: 8px'>+1 for One-Way</label></td></tr>`;
+            `<br/><input id='${ctlPrefix}PlusOneWayPS' type='checkbox' class='wal-check'/><label for='${ctlPrefix}PlusOneWayPS' class='wal-label'>+1 for One-Way</label></td></tr>`;
         html += `<tr><td>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MinorHighway))}</td><td><select id='${ctlPrefix}MinorHighway'>` +
             "<option value='1'>1</option>" +
             "<option value='2'>2</option>" +
@@ -97,7 +99,7 @@ var WMEWAL_Locks;
             "<option value='4'>4</option>" +
             "<option value='5'>5</option>" +
             "<option value='6'>6</option></select>" +
-            `<br/><input id='${ctlPrefix}PlusOneWayMinorH' type='checkbox'/><label for='${ctlPrefix}PlusOneWayMinorH' style='margin-left: 8px'>+1 for One-Way</label></td></tr>`;
+            `<br/><input id='${ctlPrefix}PlusOneWayMinorH' type='checkbox' class='wal-check'/><label for='${ctlPrefix}PlusOneWayMinorH' class='wal-label'>+1 for One-Way</label></td></tr>`;
         html += `<tr><td>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MajorHighway))}</td><td><select id='${ctlPrefix}MajorHighway'>` +
             "<option value='1'>1</option>" +
             "<option value='2'>2</option>" +
@@ -105,7 +107,7 @@ var WMEWAL_Locks;
             "<option value='4' selected='selected'>4</option>" +
             "<option value='5'>5</option>" +
             "<option value='6'>6</option></select>" +
-            `<br/><input id='${ctlPrefix}PlusOneWayMajorH' type='checkbox'/><label for='${ctlPrefix}PlusOneWayMajorH' style='margin-left: 8px'>+1 for One-Way</label></td></tr>`;
+            `<br/><input id='${ctlPrefix}PlusOneWayMajorH' type='checkbox' class='wal-check'/><label for='${ctlPrefix}PlusOneWayMajorH' class='wal-label'>+1 for One-Way</label></td></tr>`;
         html += `<tr><td>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Freeway))}</td><td><select id='${ctlPrefix}Freeway'>` +
             "<option value='1'>1</option>" +
             "<option value='2'>2</option>" +
@@ -113,7 +115,7 @@ var WMEWAL_Locks;
             "<option value='4'>4</option>" +
             "<option value='5' selected='selected'>5</option>" +
             "<option value='6'>6</option></select>" +
-            `<br/><input id='${ctlPrefix}PlusOneWayFW' type='checkbox'/><label for='${ctlPrefix}PlusOneWayFW' style='margin-left: 8px'>+1 for One-Way</label></td></tr>`;
+            `<br/><input id='${ctlPrefix}PlusOneWayFW' type='checkbox' class='wal-check'/><label for='${ctlPrefix}PlusOneWayFW' class='wal-label'>+1 for One-Way</label></td></tr>`;
         html += `<tr><td>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ramp))}</td><td><select id='${ctlPrefix}Ramp'>` +
             "<option value='7' selected='selected'>Highest connection</option>" +
             "<option value='1'>1</option>" +
@@ -122,7 +124,7 @@ var WMEWAL_Locks;
             "<option value='4'>4</option>" +
             "<option value='5'>5</option>" +
             "<option value='6'>6</option></select>" +
-            `<br/><input id='${ctlPrefix}PlusOneWayRamp' type='checkbox'/><label for='${ctlPrefix}PlusOneWayRamp' style='margin-left: 8px'>+1 for One-Way</label></td></tr>`;
+            `<br/><input id='${ctlPrefix}PlusOneWayRamp' type='checkbox' class='wal-check'/><label for='${ctlPrefix}PlusOneWayRamp' class='wal-label'>+1 for One-Way</label></td></tr>`;
         html += `<tr><td>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Railroad))}</td><td><select id='${ctlPrefix}Railroad'>` +
             "<option value='1'>1</option>" +
             "<option value='2' selected='selected'>2</option>" +
@@ -134,44 +136,44 @@ var WMEWAL_Locks;
         html += "</table></td></tr>";
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Filters</b></td></tr>";
         html += "<tr><td><b>Name RegEx:</b></td></tr>";
-        html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}Name' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}IgnoreCase' type='checkbox'/>` +
-            `<label for='${ctlPrefix}IgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}Name' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}IgnoreCase' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}IgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>City RegEx:</b></td></tr>";
-        html += `<tr><td style='padding-left: 20px'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox'/>` +
-            `<label for='${ctlPrefix}CityIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}CityIgnoreCase' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}CityIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>State:</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px'>" +
+        html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}StateOp'>` +
             `<option value='${Operation.Equal}' selected='selected'>=</option>` +
             `<option value='${Operation.NotEqual}'>&lt;&gt;</option></select>` +
             `<select id='${ctlPrefix}State'/></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
-        html += "<tr><td style='padding-left: 20px'>" +
+        html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
             `<button id='${ctlPrefix}RoadTypeClear' class='btn btn-primary' title='Clear'>Clear</button><br/>` +
-            `<input type='checkbox' id='${ctlPrefix}RoadTypeStreet' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Street}'/>` +
-            `<label for='${ctlPrefix}RoadTypeStreet' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Street))}</label><br/>` +
-            `<input type='checkbox' id='${ctlPrefix}RoadTypePrimary' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrimaryStreet}'/>` +
-            `<label for='${ctlPrefix}RoadTypePrimary' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet))}</label><br/>` +
-            `<input type='checkbox' id='${ctlPrefix}RoadTypeMinorHighway' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MinorHighway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeMinorHighway' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MinorHighway))}</label><br/>` +
-            `<input type='checkbox' id='${ctlPrefix}RoadTypeMajorHighway' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MajorHighway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeMajorHighway' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MajorHighway))}</label><br/>` +
-            `<input type='checkbox' id='${ctlPrefix}RoadTypeRamp' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ramp}'/>` +
-            `<label for='${ctlPrefix}RoadTypeRamp' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ramp))}</label><br/>` +
-            `<input type='checkbox' checked='checked' id='${ctlPrefix}RoadTypeFreeway' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Freeway}'/>` +
-            `<label for='${ctlPrefix}RoadTypeFreeway' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Freeway))}</label><br/>` +
-            `<input type='checkbox' checked='checked' id='${ctlPrefix}RoadTypeRailroad' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Railroad}'/>` +
-            `<label for='${ctlPrefix}RoadTypeRailroad' style='margin-left: 8px'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Railroad))}</label>` +
+            `<input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeStreet' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Street}'/>` +
+            `<label for='${ctlPrefix}RoadTypeStreet' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Street))}</label><br/>` +
+            `<input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypePrimary' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.PrimaryStreet}'/>` +
+            `<label for='${ctlPrefix}RoadTypePrimary' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.PrimaryStreet))}</label><br/>` +
+            `<input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeMinorHighway' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MinorHighway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeMinorHighway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MinorHighway))}</label><br/>` +
+            `<input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeMajorHighway' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.MajorHighway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeMajorHighway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.MajorHighway))}</label><br/>` +
+            `<input type='checkbox' class='wal-check' id='${ctlPrefix}RoadTypeRamp' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Ramp}'/>` +
+            `<label for='${ctlPrefix}RoadTypeRamp' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Ramp))}</label><br/>` +
+            `<input type='checkbox' class='wal-check' checked='checked' id='${ctlPrefix}RoadTypeFreeway' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Freeway}'/>` +
+            `<label for='${ctlPrefix}RoadTypeFreeway' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Freeway))}</label><br/>` +
+            `<input type='checkbox' class='wal-check' checked='checked' id='${ctlPrefix}RoadTypeRailroad' name='${ctlPrefix}RoadType' value='${WMEWAL.RoadType.Railroad}'/>` +
+            `<label for='${ctlPrefix}RoadTypeRailroad' class='wal-label'>${WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(WMEWAL.RoadType.Railroad))}</label>` +
             "</td></tr>";
-        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox'/>` +
-            `<label for='${ctlPrefix}Editable' style='margin-left: 8px'>Editable by me</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}ExcludeRoundabouts' type='checkbox'/>` +
-            `<label for='${ctlPrefix}ExcludeRoundabouts' style='margin-left: 8px'>Exclude Roundabouts</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}ExcludeJunctionBoxes' type='checkbox' checked='checked'/>` +
-            `<label for='${ctlPrefix}ExcludeJunctionBoxes' style='margin-left: 8px'>Exclude Junction Boxes</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}Editable' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}ExcludeRoundabouts' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}ExcludeRoundabouts' class='wal-label'>Exclude Roundabouts</label></td></tr>`;
+        html += `<tr><td><input id='${ctlPrefix}ExcludeJunctionBoxes' type='checkbox' class='wal-check' checked='checked'/>` +
+            `<label for='${ctlPrefix}ExcludeJunctionBoxes' class='wal-label'>Exclude Junction Boxes</label></td></tr>`;
         html += "</tbody></table>";
         return html;
     }
@@ -711,6 +713,7 @@ var WMEWAL_Locks;
             });
             let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
             let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            let addBOM = WMEWAL.addBOM ?? false;
             let lineArray;
             let columnArray;
             let w;
@@ -867,8 +870,12 @@ var WMEWAL_Locks;
             }
             if (isCSV) {
                 let csvContent = lineArray.join("\n");
-                //var encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-                let blob = new Blob([csvContent], { type: "data:text/csv;charset=utf-8;" });
+                let blobContent = [];
+                if (addBOM) {
+                    blobContent.push('\uFEFF');
+                }
+                blobContent.push(csvContent);
+                let blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
                 let link = document.createElement("a");
                 let url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
