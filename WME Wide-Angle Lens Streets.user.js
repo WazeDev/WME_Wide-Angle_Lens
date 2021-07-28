@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.6
+// @version             1.7.7
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -30,7 +30,7 @@ var WMEWAL_Streets;
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
-    const minimumWALVersionRequired = "1.5.10";
+    const minimumWALVersionRequired = "1.5.3";
     let Direction;
     (function (Direction) {
         Direction[Direction["OneWay"] = 1] = "OneWay";
