@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.7
+// @version             1.7.8
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Create CSV files with appropriate encoding</li>';
+        '<li>Fixed issue with detecting segments with/missing lane guidance</li>';
     '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -140,7 +140,7 @@ var WMEWAL_Streets;
         html += "<tbody>";
         html += "<tr><td class='wal-heading'>Saved Filters</td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
-            `<select id='${ctlPrefix}SavedSettings'/><br/>` +
+            `<select id='${ctlPrefix}SavedSettings'></select><br/>` +
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
@@ -180,7 +180,7 @@ var WMEWAL_Streets;
             `<select id='${ctlPrefix}StateOp'>` +
             `<option value='${Operation.Equal}' selected='selected'>=</option>` +
             `<option value='${Operation.NotEqual}'>&lt;&gt;</option></select>` +
-            `<select id='${ctlPrefix}State'/></td></tr>`;
+            `<select id='${ctlPrefix}State'></select></td></tr>`;
         html += "<tr><td><b>Direction:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}Direction'>` +
@@ -190,7 +190,7 @@ var WMEWAL_Streets;
             `<option value='${Direction.Unknown}'>Unknown</option></select></td></tr>`;
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}CreatedBy'/></td></tr>`;
+            `<select id='${ctlPrefix}CreatedBy'></select></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}Created' type='checkbox' class='wal-check'/>` +
             `<label for=${ctlPrefix}Created' class='wal-label'>Date Created:</label> ` +
             `<select id='${ctlPrefix}CreatedOp'>` +
@@ -203,7 +203,7 @@ var WMEWAL_Streets;
             `<input id='${ctlPrefix}CreatedDate' type='date'/> <input id='${ctlPrefix}CreatedTime' type='time'/></td></tr>`;
         html += "<tr><td><b>Last Updated By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}LastModifiedBy'/></td></tr>`;
+            `<select id='${ctlPrefix}LastModifiedBy'></select></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}Updated' type='checkbox' class='wal-check'/>` +
             `<label for=${ctlPrefix}Updated' class='wal-label'>Date Updated:</label> ` +
             `<select id='${ctlPrefix}UpdatedOp'>` +
@@ -831,7 +831,7 @@ var WMEWAL_Streets;
             Beacons: $(`#${ctlPrefix}Beacons`).prop("checked"),
             CreatedBy: null,
             LaneGuidance: $(`#${ctlPrefix}LaneGuidance`).prop("checked"),
-            LaneGuidanceOperation: $(`#${ctlPrefix}LaneGuidanceOp`).val(),
+            LaneGuidanceOperation: parseInt($(`#${ctlPrefix}LaneGuidanceOp`).val()),
             Created: $(`#${ctlPrefix}Created`).prop("checked"),
             CreatedOperation: parseInt($(`#${ctlPrefix}CreatedOp`).val()),
             CreatedDate: null,
@@ -1201,7 +1201,7 @@ var WMEWAL_Streets;
                     (!settings.NearHOV || attr.nearbyHOV) &&
                     (!settings.Beacons || attr.beacons) &&
                     (!settings.Toll || segment.isTollRoad()) &&
-                    (!settings.LaneGuidance || (settings.LaneGuidanceOperation === 0 && segment.isLanesEnabled()) || (settings.LaneGuidanceOperation === 1 && !segment.isLanesEnabled())) &&
+                    (!settings.LaneGuidance || (settings.LaneGuidanceOperation === 0 && (segment.isLanesEnabled(0) || segment.isLanesEnabled(1))) || (settings.LaneGuidanceOperation === 1 && !segment.isLanesEnabled(0) && !segment.isLanesEnabled(1))) &&
                     (!settings.Created ||
                         (settings.CreatedOperation === Operation.LessThan && segment.attributes.createdOn < settings.CreatedDate) ||
                         (settings.CreatedOperation === Operation.LessThanOrEqual && segment.attributes.createdOn <= settings.CreatedDate) ||
@@ -1221,13 +1221,13 @@ var WMEWAL_Streets;
                         (segment.getCreatedBy() === settings.CreatedBy)) &&
                     ((settings.LastModifiedBy === null) ||
                         ((segment.getUpdatedBy() ?? segment.getCreatedBy()) === settings.LastModifiedBy))) {
+                    let newSegment = false;
                     let primaryStreet = null;
                     let primaryStreetID = segment.attributes.primaryStreetID;
                     if (primaryStreetID !== null) {
                         primaryStreet = W.model.streets.getObjectById(primaryStreetID);
                     }
                     let issues = 0;
-                    let newSegment = false;
                     let address = segment.getAddress();
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
