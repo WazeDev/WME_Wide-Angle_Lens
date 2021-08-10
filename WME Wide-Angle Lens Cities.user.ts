@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.3
+// @version             1.2.4
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ namespace WMEWAL_Cities {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Support for adding byte order mark for unicode output</li>' +
+        '<li>Fixed ability to save/load filters</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -130,7 +130,7 @@ namespace WMEWAL_Cities {
         html += "<tbody>";
         html += "<tr><td class='wal-heading'><b>Saved Filters</b></td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
-            `<select id='${ctlPrefix}SavedSettings'/><br/>` +
+            `<select id='${ctlPrefix}SavedSettings'></select><br/>` +
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
@@ -142,7 +142,7 @@ namespace WMEWAL_Cities {
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px;'><b>Settings</b></td></tr>";
         html += "<tr><td><b>Polygon Layer:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}Layer'/>` +
+            `<select id='${ctlPrefix}Layer'></select>` +
             "</td></tr>";
         html += `<tr><td><input id='${ctlPrefix}IgnoreAlt' type='checkbox' class='wal-check' checked='checked'/>` +
         `<label for='${ctlPrefix}IgnoreAlt' class='wal-label'>Only check primary name</label></td></tr>`;
@@ -157,7 +157,7 @@ namespace WMEWAL_Cities {
             `<select id='${ctlPrefix}StateOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
             "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option></select>" +
-            `<select id='${ctlPrefix}State'/></td></tr>`;
+            `<select id='${ctlPrefix}State'></select></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +

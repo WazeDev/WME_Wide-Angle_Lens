@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.0.1
+// @version             1.0.2
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ namespace WMEWAL_MapComments {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Support for adding byte order mark for unicode output</li>' +
+        '<li>Fixed ability to save/load filters</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40644';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -119,7 +119,7 @@ namespace WMEWAL_MapComments {
         //     "<option value='both'>Both CSV File and Browser Tab</option></select></td></tr>";
         html += "<tr><td class='wal-heading'>Saved Filters</td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
-            `<select id='${ctlPrefix}SavedSettings'/><br/>` +
+            `<select id='${ctlPrefix}SavedSettings'></select><br/>` +
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
@@ -147,10 +147,10 @@ namespace WMEWAL_MapComments {
             `<label for='${ctlPrefix}CommentsIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}CreatedBy'/></td></tr>`;
+            `<select id='${ctlPrefix}CreatedBy'></select></td></tr>`;
         html += "<tr><td><b>Last Updated By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}LastModifiedBy'/></td></tr>`;
+            `<select id='${ctlPrefix}LastModifiedBy'></select></td></tr>`;
         html += "<tr><td><b>Geometry Type:</b></td></tr>" +
             `<tr><td class='wal-indent'><select id='${ctlPrefix}GeometryType'>` +
             "<option value=''></option>" +

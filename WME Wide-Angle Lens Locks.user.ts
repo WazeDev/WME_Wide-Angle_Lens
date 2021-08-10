@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.2
+// @version             1.3.3
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,7 +26,7 @@ namespace WMEWAL_Locks {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Support for adding byte order mark for unicode output</li>' +
+        '<li>Fixed ability to save/load filters</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -128,7 +128,7 @@ namespace WMEWAL_Locks {
         html += "<tbody>";
         html += "<tr><td class='wal-heading'>Saved Filters</td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
-            `<select id='${ctlPrefix}SavedSettings'/><br/>` +
+            `<select id='${ctlPrefix}SavedSettings'></select><br/>` +
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
@@ -218,7 +218,7 @@ namespace WMEWAL_Locks {
             `<select id='${ctlPrefix}StateOp'>` +
             `<option value='${Operation.Equal}' selected='selected'>=</option>` +
             `<option value='${Operation.NotEqual}'>&lt;&gt;</option></select>` +
-            `<select id='${ctlPrefix}State'/></td></tr>`;
+            `<select id='${ctlPrefix}State'></select></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +

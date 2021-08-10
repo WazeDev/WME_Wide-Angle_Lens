@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.6
+// @version             1.4.7
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,8 +27,7 @@ namespace WMEWAL_Places {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Support for adding byte order mark for unicode output</li>' +
-        '<li>Fixed issue with filtering on created or last modified by</li>'
+        '<li>Fixed ability to save/load filters</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -175,7 +174,7 @@ namespace WMEWAL_Places {
     let createdByName: string;
     let initCount = 0;
     let detectIssues = false;
-    let savedVenues: Array<string>;
+    let savedVenues: Array<string>
 
     export function GetTab(): string {
         let rpp = "RESIDENCE_HOME";
@@ -184,7 +183,7 @@ namespace WMEWAL_Places {
         html += "<tbody>";
         html += "<tr><td class='wal-heading'><b>Saved Filters</b></td></tr>";
         html += "<tr><td class='wal-indent' style='padding-bottom: 8px'>" +
-            `<select id='${ctlPrefix}SavedSettings'/><br/>` +
+            `<select id='${ctlPrefix}SavedSettings'></select><br/>` +
             `<button class='btn btn-primary' id='${ctlPrefix}LoadSetting' title='Load'>Load</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}SaveSetting' title='Save'>Save</button>` +
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
@@ -253,7 +252,7 @@ namespace WMEWAL_Places {
             `<select id='${ctlPrefix}StateOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
             "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option></select>" +
-            `<select id='${ctlPrefix}State'/>`;
+            `<select id='${ctlPrefix}State'></select>`;
         html += "<tr><td><b>Type:</b></td></tr>" +
             `<tr><td class='wal-indent'><select id='${ctlPrefix}Type'>` +
             "<option value=''></option>" +
@@ -262,7 +261,7 @@ namespace WMEWAL_Places {
             "</select></td></tr>";
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}CreatedBy'/></td></tr>`;
+            `<select id='${ctlPrefix}CreatedBy'></select></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}Created' class='wal-check' type='checkbox' />` +
             `<label for=${ctlPrefix}Created' class='wal-label'>Date Created:</label> ` +
             `<select id='${ctlPrefix}CreatedOp'>` +
@@ -275,7 +274,7 @@ namespace WMEWAL_Places {
             `<input id='${ctlPrefix}CreatedDate' type='date'/> <input id='${ctlPrefix}CreatedTime' type='time'/></td></tr>`;
         html += "<tr><td><b>Last Updated By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}LastModifiedBy'/></td></tr>`;
+            `<select id='${ctlPrefix}LastModifiedBy'></select></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}Updated' class='wal-check' type='checkbox' />` +
             `<label for=${ctlPrefix}Updated' class='wal-label'>Date Updated:</label> ` +
             `<select id='${ctlPrefix}UpdatedOp'>` +
