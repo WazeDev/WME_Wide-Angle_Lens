@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.10
+// @version             1.5.11
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,8 +25,8 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Ability to add Byte Order Mark to CSV output to better support unicode.</li>' +
-        '</ul>';
+        '<li>Fix layer issue</li>';
+    '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const debug = true;
@@ -463,13 +463,12 @@ var WMEWAL;
     WMEWAL.IsMapCommentInArea = IsMapCommentInArea;
     function updateLayer() {
         let features = [];
-        let maLayer = W.map.getLayerByUniqueName(layerName);
+        let maLayer = W.map.getLayerByName(layerName);
         if (maLayer === null || typeof maLayer === "undefined") {
-            maLayer = new OpenLayers.Layer.Vector("Wide-Angle Lens Areas", {
-                uniqueName: layerName
-            });
+            maLayer = new OpenLayers.Layer.Vector(layerName, {});
             I18n.translations[I18n.currentLocale()].layers.name[layerName] = "Wide-Angle Lens Areas";
-            W.map.addUniqueLayer(maLayer);
+            W.map.addLayer(maLayer);
+            // W.map.addUniqueLayer(maLayer);
             maLayer.setVisibility(settings.showLayer);
         }
         maLayer.removeAllFeatures({
@@ -608,12 +607,14 @@ var WMEWAL;
                 let br = $("<br/>");
                 e.appendChild(br[0]);
             }
-            let ix = 999;
-            let id = `wmewalScanArea_${eIx}_${ix}`;
-            let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
-            e.appendChild(input[0]);
-            let label = $("<label/>").attr("for", id).addClass('wal-label').text('Current window');
-            e.appendChild(label[0]);
+            if (e.id != '_wmewalAreasSavedAreas') {
+                let ix = 999;
+                let id = `wmewalScanArea_${eIx}_${ix}`;
+                let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
+                e.appendChild(input[0]);
+                let label = $("<label/>").attr("for", id).addClass('wal-label').text('Current window');
+                e.appendChild(label[0]);
+            }
         });
         updateSettings();
         updateLayer();
