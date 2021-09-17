@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.12
+// @version             1.5.13
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,6 +27,7 @@ var WMEWAL;
     const updateText = '<ul>' +
         '<li>Fix zoom level on PLs</li>';
     '</ul>';
+    const SHOW_UPDATE = false;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const debug = true;
@@ -259,7 +260,9 @@ var WMEWAL;
                 };
             }
         }
-        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
+        if (SHOW_UPDATE) {
+            WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
+        }
         let style = document.createElement("style");
         style.type = "text/css";
         let css = ".wal-heading { font-size: 1.2em; font-weight: bold }";
@@ -1385,8 +1388,9 @@ var WMEWAL;
     }
     WMEWAL.TranslateRoadType = TranslateRoadType;
     function GenerateBasePL(lat, lon, zoom) {
-        if (zoom >= 12)
+        if (zoom >= 12) {
             zoom -= 12;
+        }
         return "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
