@@ -5,7 +5,7 @@
 /// <reference path="../typescript-typings/wazewrap.d.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens Beta
+// @name                WME Wide-Angle Lens
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
@@ -25,7 +25,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fix layer issue</li>';
+        '<li>Fix zoom level on PLs</li>';
     '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
