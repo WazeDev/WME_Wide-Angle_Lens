@@ -5,13 +5,13 @@
 /// <reference path="../typescript-typings/wazewrap.d.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens
+// @name                WME Wide-Angle Lens Beta
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.11
+// @version             1.5.12
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -1385,6 +1385,8 @@ var WMEWAL;
     }
     WMEWAL.TranslateRoadType = TranslateRoadType;
     function GenerateBasePL(lat, lon, zoom) {
+        if (zoom >= 12)
+            zoom -= 12;
         return "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
