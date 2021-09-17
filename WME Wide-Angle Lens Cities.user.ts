@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.4
+// @version             1.2.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ namespace WMEWAL_Cities {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed ability to save/load filters</li>' +
+        '<li>Updated zoom levels to match latest WME update</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -109,7 +109,7 @@ namespace WMEWAL_Cities {
     let pluginName = "WMEWAL-Cities";
 
     export let Title: string = "Cities";
-    export let MinimumZoomLevel = 2;
+    export let MinimumZoomLevel = 14;
     export let SupportsSegments = true;
     export let SupportsVenues = false;
 
@@ -543,11 +543,11 @@ namespace WMEWAL_Cities {
                 cityRegex = (settings.CityRegexIgnoreCase ? new RegExp(settings.CityRegex, "i") : new RegExp(settings.CityRegex));
             }
 
-            if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet)) {
-                MinimumZoomLevel = 4;
+            if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet | WMEWAL.RoadType.Ramp)) {
+                MinimumZoomLevel = 16;
 
             } else {
-                MinimumZoomLevel = 2;
+                MinimumZoomLevel = 14;
             }
 
             updateSettings();

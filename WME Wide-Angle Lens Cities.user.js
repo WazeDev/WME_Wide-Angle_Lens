@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.4
+// @version             1.2.5
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -24,7 +24,7 @@ var WMEWAL_Cities;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed ability to save/load filters</li>' +
+        '<li>Updated zoom levels to match latest WME update</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -37,7 +37,7 @@ var WMEWAL_Cities;
     })(Operation || (Operation = {}));
     let pluginName = "WMEWAL-Cities";
     WMEWAL_Cities.Title = "Cities";
-    WMEWAL_Cities.MinimumZoomLevel = 2;
+    WMEWAL_Cities.MinimumZoomLevel = 14;
     WMEWAL_Cities.SupportsSegments = true;
     WMEWAL_Cities.SupportsVenues = false;
     let settingsKey = "WMEWALCitiesSettings";
@@ -421,11 +421,11 @@ var WMEWAL_Cities;
             if (settings.CityRegex !== null) {
                 cityRegex = (settings.CityRegexIgnoreCase ? new RegExp(settings.CityRegex, "i") : new RegExp(settings.CityRegex));
             }
-            if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet)) {
-                WMEWAL_Cities.MinimumZoomLevel = 4;
+            if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet | WMEWAL.RoadType.Ramp)) {
+                WMEWAL_Cities.MinimumZoomLevel = 16;
             }
             else {
-                WMEWAL_Cities.MinimumZoomLevel = 2;
+                WMEWAL_Cities.MinimumZoomLevel = 14;
             }
             updateSettings();
         }

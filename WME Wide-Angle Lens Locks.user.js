@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.3
+// @version             1.3.4
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -24,7 +24,7 @@ var WMEWAL_Locks;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed ability to save/load filters</li>' +
+        '<li>Updated zoom levels to match latest WME update</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -42,7 +42,7 @@ var WMEWAL_Locks;
     })(Operation || (Operation = {}));
     let pluginName = "WMEWAL-Locks";
     WMEWAL_Locks.Title = "Locks";
-    WMEWAL_Locks.MinimumZoomLevel = 2;
+    WMEWAL_Locks.MinimumZoomLevel = 14;
     WMEWAL_Locks.SupportsSegments = true;
     WMEWAL_Locks.SupportsVenues = false;
     let settingsKey = "WMEWALLocksSettings";
@@ -449,10 +449,10 @@ var WMEWAL_Locks;
                 cityRegex = null;
             }
             if (settings.RoadTypeMask & 1 || settings.RoadTypeMask & 4096) {
-                WMEWAL_Locks.MinimumZoomLevel = 4;
+                WMEWAL_Locks.MinimumZoomLevel = 16;
             }
             else {
-                WMEWAL_Locks.MinimumZoomLevel = 2;
+                WMEWAL_Locks.MinimumZoomLevel = 14;
             }
             updateSettings();
         }

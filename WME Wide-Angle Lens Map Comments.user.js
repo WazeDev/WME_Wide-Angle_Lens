@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.0.2
+// @version             1.0.3
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL_MapComments;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed ability to save/load filters</li>' +
+        '<li>Updated zoom levels to match latest WME update</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40644';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -42,7 +42,7 @@ var WMEWAL_MapComments;
     })(Operation || (Operation = {}));
     let pluginName = "WMEWAL-MapComments";
     WMEWAL_MapComments.Title = "Map Comments";
-    WMEWAL_MapComments.MinimumZoomLevel = 0;
+    WMEWAL_MapComments.MinimumZoomLevel = 12;
     WMEWAL_MapComments.SupportsSegments = false;
     WMEWAL_MapComments.SupportsVenues = false;
     let settingsKey = "WMEWALMapCommentsSettings";

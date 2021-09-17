@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.8
+// @version             1.7.9
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,8 +25,8 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with detecting segments with/missing lane guidance</li>';
-    '</ul>';
+        '<li>Updated zoom levels to match latest WME update</li>' +
+        '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
@@ -106,7 +106,7 @@ var WMEWAL_Streets;
     })(TIO || (TIO = {}));
     let pluginName = "WMEWAL-Streets";
     WMEWAL_Streets.Title = "Streets";
-    WMEWAL_Streets.MinimumZoomLevel = 2;
+    WMEWAL_Streets.MinimumZoomLevel = 14;
     WMEWAL_Streets.SupportsSegments = true;
     WMEWAL_Streets.SupportsVenues = false;
     let settingsKey = "WMEWALStreetsSettings";
@@ -1011,11 +1011,11 @@ var WMEWAL_Streets;
             else {
                 cityRegex = null;
             }
-            if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet)) {
-                WMEWAL_Streets.MinimumZoomLevel = 4;
+            if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet | WMEWAL.RoadType.Ramp)) {
+                WMEWAL_Streets.MinimumZoomLevel = 16;
             }
             else {
-                WMEWAL_Streets.MinimumZoomLevel = 2;
+                WMEWAL_Streets.MinimumZoomLevel = 14;
             }
             segmentLengthFilterMultipier = settings.SegmentLengthFilter ? (settings.SegmentLengthFilterUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
             segmentLengthMultiplier = settings.SegmentLength ? (settings.SegmentLengthUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
