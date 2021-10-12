@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.9
+// @version             1.7.10
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Updated zoom levels to match latest WME update</li>' +
+        '<li>Include shield issues for alt streets if "Include Alt Names" option is enabled</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -1453,7 +1453,7 @@ namespace WMEWAL_Streets {
                     let issues = 0;
                     let address = segment.getAddress();
                     if (state != null) {
-                        if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
+                        if (!(address?.attributes?.isEmpty ?? true) && address.attributes.state != null) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
                                 settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
                                     continue;
@@ -1464,14 +1464,94 @@ namespace WMEWAL_Streets {
                         }
                     }
 
-                    if (shieldTextRegex != null &&
-                        (primaryStreet == null || primaryStreet.signText == null || !shieldTextRegex.test(primaryStreet.signText))) {
-                        continue;
+                    let primaryAddrMatches = true;
+                    let altAddrMatches: boolean[] = [];
+
+                    if (nameRegex != null || cityRegex != null) {
+                        let anyNameMatched = true;
+
+                        if (nameRegex != null) {
+                            anyNameMatched = !(address?.attributes?.isEmpty ?? true) && !(address.attributes.street?.isEmpty ?? true) && nameRegex.test(address.attributes.street.name);
+                        }
+                        if (cityRegex != null) {
+                            anyNameMatched = anyNameMatched && (address.attributes.city?.hasName() ?? false) && cityRegex.test(address.attributes.city.attributes.name);
+                        }
+                        primaryAddrMatches = anyNameMatched;
+
+                        if (settings.IncludeAltNames && (segment.attributes.streetIDs?.length ?? 0) > 0) {
+                            for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length; streetIx++) {
+                                let altMatched = true;
+                                if (segment.attributes.streetIDs[streetIx] != null) {
+                                    let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                    if (!(street?.isEmpty ?? true)) {
+                                        if (nameRegex != null) {
+                                            altMatched = nameRegex.test(street.name);
+                                        }
+                                        if (cityRegex != null) {
+                                            if (street.cityID != null) {
+                                                let city = W.model.cities.getObjectById(street.cityID);
+                                                altMatched = altMatched && (city?.hasName() ?? false) && cityRegex.test(city.attributes.name);
+                                            } else {
+                                                altMatched = false;
+                                            }
+                                        }
+                                    } else {
+                                        altMatched = false;
+                                    }
+                                } else {
+                                    altMatched = false;
+                                }
+                                altAddrMatches.push(altMatched);
+                                anyNameMatched = anyNameMatched || altMatched;
+                            }
+                        }
+
+                        if (!anyNameMatched) {
+                            continue;
+                        }
+                    } else if (settings.IncludeAltNames && (segment.attributes.streetIDs?.length ?? 0) > 0) {
+                        altAddrMatches = new Array(segment.attributes.streetIDs.length).fill(true);
                     }
 
-                    if (shieldDirectionRegex != null &&
-                        (primaryStreet == null || primaryStreet.direction == null || !shieldDirectionRegex.test(primaryStreet.direction))) {
-                        continue;
+                    let primaryShieldMatches = true;
+                    let altShieldMatches: boolean[] = [];
+
+                    if (shieldTextRegex != null || shieldDirectionRegex != null) {
+                        let anyShieldMatches = true;
+
+                        if (shieldTextRegex != null) {
+                            anyShieldMatches = primaryStreet?.signText != null && shieldTextRegex.test(primaryStreet.signText);
+                        }
+                        if (shieldDirectionRegex != null) {
+                            anyShieldMatches = anyShieldMatches && primaryStreet?.direction != null && shieldDirectionRegex.test(primaryStreet.direction);
+                        }
+
+                        primaryShieldMatches = anyShieldMatches;
+
+                        if (settings.IncludeAltNames && (segment.attributes.streetIDs?.length ?? 0) > 0) {
+                            for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length; streetIx++) {
+                                let altMatched = true;
+                                if (segment.attributes.streetIDs[streetIx] != null) {
+                                    let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                    if (shieldTextRegex != null) {
+                                        altMatched = street?.signText != null && shieldTextRegex.test(street.signText);
+                                    }
+                                    if (shieldDirectionRegex != null) {
+                                        altMatched = altMatched && street?.direction != null && shieldDirectionRegex.test(street.direction);
+                                    }
+                                } else {
+                                    altMatched = false;
+                                }
+                                altShieldMatches.push(altMatched);
+                                anyShieldMatches = anyShieldMatches || altMatched;
+                            }
+                        }
+
+                        if (!anyShieldMatches) {
+                            continue;
+                        }
+                    } else if (settings.IncludeAltNames && (segment.attributes.streetIDs?.length ?? 0) > 0) {
+                        altShieldMatches = new Array(segment.attributes.streetIDs.length).fill(true);
                     }
 
                     if (viRegex !== null || towardsRegex !== null) {
@@ -1786,67 +1866,77 @@ namespace WMEWAL_Streets {
                     }
 
                     if (settings.Shield) {
-                        if (settings.ShieldOperation === HasOrMissing.Missing &&
-                            (primaryStreet == null ||
-                             primaryStreet.signType == null ||
-                             primaryStreet.signText == null)) {
-                            issues |= Issue.Shield;
-                        } else if (settings.ShieldOperation === HasOrMissing.Has &&
-                            primaryStreet != null &&
-                            primaryStreet.signType != null &&
-                            primaryStreet.signText != null) {
-                            issues |= Issue.Shield;
+                        if (settings.ShieldOperation === HasOrMissing.Missing) {
+                            let missingShield = primaryAddrMatches &&
+                                (primaryStreet?.signType == null ||
+                                 nullif(primaryStreet?.signText, '') == null);
+                            if (settings.IncludeAltNames) {
+                                for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !missingShield; streetIx++) {
+                                    if (altAddrMatches[streetIx] && segment.attributes.streetIDs[streetIx] != null) {
+                                        let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                        missingShield = street?.signType == null || nullif(street?.signText , '') == null;
+                                    }
+                                }
+                            }
+
+                            if (missingShield) {
+                                issues |= Issue.Shield;
+                            }
+                        } else if (settings.ShieldOperation === HasOrMissing.Has) {
+                            let hasShield = primaryAddrMatches && primaryShieldMatches && primaryStreet?.signType != null && nullif(primaryStreet?.signText, '') != null;
+
+                            if (settings.IncludeAltNames) {
+                                for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !hasShield; streetIx++) {
+                                    if (altAddrMatches[streetIx] && altShieldMatches[streetIx] && segment.attributes.streetIDs[streetIx] != null) {
+                                        let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                        hasShield = street?.signType != null &&
+                                            nullif(street?.signText, '') != null;
+                                    }
+                                }
+                            }
+
+                            if (hasShield) {
+                                issues |= Issue.Shield;
+                            }
                         }
                     }
 
                     if (settings.ShieldDirection) {
-                        if (settings.ShieldDirectionOperation === HasOrMissing.Missing &&
-                            (primaryStreet == null ||
-                             primaryStreet.direction == null)) {
-                            issues |= Issue.ShieldDirection;
-                        } else if (settings.ShieldDirectionOperation === HasOrMissing.Has &&
-                            primaryStreet != null &&
-                            primaryStreet.direction != null) {
-                            issues |= Issue.ShieldDirection;
+                        if (settings.ShieldDirectionOperation === HasOrMissing.Missing) {
+                            let missingDirection = primaryAddrMatches && primaryStreet?.signType != null && nullif(primaryStreet?.direction, '') == null;
+
+                            if (settings.IncludeAltNames) {
+                                for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !missingDirection; streetIx++) {
+                                    if (altAddrMatches[streetIx] && segment.attributes.streetIDs[streetIx] != null) {
+                                        let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                        missingDirection = street?.signType != null && nullif(street?.direction, '') == null;
+                                    }
+                                }
+                            }
+                            if (missingDirection) {
+                                issues |= Issue.ShieldDirection;
+                            }
+                        } else if (settings.ShieldDirectionOperation === HasOrMissing.Has) {
+                            let hasDirection = nullif(primaryStreet?.direction, '') != null;
+
+                            if (settings.IncludeAltNames) {
+                                for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !hasDirection; streetIx++) {
+                                    if (altAddrMatches[streetIx] && altShieldMatches[streetIx] && segment.attributes.streetIDs[streetIx] != null) {
+                                        let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                        hasDirection = nullif(street?.direction, '') != null;
+                                    }
+                                }
+                            }
+
+                            if (hasDirection) {
+                                issues |= Issue.ShieldDirection;
+                            }
                         }
                     }
 
                     if (detectIssues && issues === 0) {
                         // If at least one issue was chosen and this segment doesn't have any issues, then skip it
                         continue;
-                    }
-
-                    if (nameRegex != null || cityRegex != null) {
-                        let nameMatched = false;
-                        if (address != null && address.attributes != null && !address.attributes.isEmpty) {
-                            if (nameRegex != null && address.attributes.street != null && !address.attributes.street.isEmpty) {
-                                nameMatched = nameRegex.test(address.attributes.street.name);
-                            }
-                            if (!nameMatched && cityRegex != null && address.attributes.city != null && address.attributes.city.hasName()) {
-                                nameMatched = cityRegex.test(address.attributes.city.attributes.name);
-                            }
-                            if (!nameMatched && segment.attributes.streetIDs != null && segment.attributes.streetIDs.length > 0 && settings.IncludeAltNames) {
-                                for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
-                                    if (segment.attributes.streetIDs[streetIx] != null) {
-                                        let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
-                                        if (street != null) {
-                                            if (nameRegex != null) {
-                                                nameMatched = nameRegex.test(street.name);
-                                            }
-                                            if (!nameMatched && cityRegex != null && street.cityID != null) {
-                                                let city = W.model.cities.getObjectById(street.cityID);
-                                                if (city != null && city.hasName()) {
-                                                    nameMatched = cityRegex.test(city.attributes.name);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (!nameMatched) {
-                            continue;
-                        }
                     }
 
                     if (!WMEWAL.IsSegmentInArea(segment)) {
