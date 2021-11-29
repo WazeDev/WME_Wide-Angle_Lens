@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.10
+// @version             1.7.11
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Include shield issues for alt streets if "Include Alt Names" option is enabled</li>' +
+        '<li>Fixed issue with zoom levels and how they impact turn data</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -106,7 +106,7 @@ var WMEWAL_Streets;
     })(TIO || (TIO = {}));
     let pluginName = "WMEWAL-Streets";
     WMEWAL_Streets.Title = "Streets";
-    WMEWAL_Streets.MinimumZoomLevel = 14;
+    WMEWAL_Streets.MinimumZoomLevel = 16;
     WMEWAL_Streets.SupportsSegments = true;
     WMEWAL_Streets.SupportsVenues = false;
     let settingsKey = "WMEWALStreetsSettings";
@@ -1011,12 +1011,11 @@ var WMEWAL_Streets;
             else {
                 cityRegex = null;
             }
-            if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet | WMEWAL.RoadType.Ramp)) {
-                WMEWAL_Streets.MinimumZoomLevel = 16;
-            }
-            else {
-                WMEWAL_Streets.MinimumZoomLevel = 14;
-            }
+            // if (settings.RoadTypeMask & ~(WMEWAL.RoadType.Freeway | WMEWAL.RoadType.MajorHighway | WMEWAL.RoadType.MinorHighway | WMEWAL.RoadType.PrimaryStreet | WMEWAL.RoadType.Ramp)) {
+            //     MinimumZoomLevel = 16;
+            // } else {
+            //     MinimumZoomLevel = 14;
+            // }
             segmentLengthFilterMultipier = settings.SegmentLengthFilter ? (settings.SegmentLengthFilterUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
             segmentLengthMultiplier = settings.SegmentLength ? (settings.SegmentLengthUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
             if (settings.ShieldTextRegex !== null) {
@@ -1338,8 +1337,7 @@ var WMEWAL_Streets;
                             let node = segment.getNodeByDirection(directions[ixDir]);
                             let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
                             for (let ixSeg = 0; ixSeg < connectedSegments.length && !instructionMatches; ixSeg++) {
-                                let connectedSegment = connectedSegments[ixSeg];
-                                if (settings.EditableByMe && !connectedSegment.arePropertiesEditable()) {
+                                if (settings.EditableByMe && !connectedSegments[ixSeg].arePropertiesEditable()) {
                                     continue;
                                 }
                                 let turn = graph.getTurnThroughNode(node, segment, connectedSegments[ixSeg]).getTurnData();
