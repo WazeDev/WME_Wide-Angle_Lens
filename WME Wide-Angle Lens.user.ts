@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.13
+// @version             1.5.14
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,7 +26,7 @@ namespace WMEWAL {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fix zoom level on PLs</li>'
+        '<li>Change zoom to zoomLevel on PLs</li>'
         '</ul>';
     const SHOW_UPDATE = false;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -1595,7 +1595,7 @@ namespace WMEWAL {
         if (zoom >= 12) {
             zoom -= 12;
         }
-        return "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + lon + "&lat=" + lat + "&zoom=" + zoom;
+        return "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + lon + "&lat=" + lat + "&zoomLevel=" + zoom;
     }
 
     export function CompareVersions(v1: string, v2: string) : number {

@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.11
+// @version             1.7.12
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with zoom levels and how they impact turn data</li>' +
+        '<li>Add support for unicode in regular expressions. Use \\u{####} to match a unicode value.</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -855,7 +855,7 @@ namespace WMEWAL_Streets {
         let r: RegExp;
         if (nullif(s.Regex, "") !== null) {
             try {
-                r = (s.RegexIgnoreCase ? new RegExp(s.Regex, "i") : new RegExp(s.Regex));
+                r = new RegExp(s.Regex , 'u');
             } catch (error) {
                 addMessage("Name RegEx is invalid");
             }
@@ -863,7 +863,7 @@ namespace WMEWAL_Streets {
 
         if (nullif(s.CityRegex, "")) {
             try {
-                r = (s.CityRegexIgnoreCase ? new RegExp(s.CityRegex, "i") : new RegExp(s.CityRegex));
+                r = new RegExp(s.CityRegex, 'u');
             } catch (error) {
                 addMessage("City RegEx is invalid");
             }
@@ -899,7 +899,7 @@ namespace WMEWAL_Streets {
 
         if (nullif(s.ShieldTextRegex, "")) {
             try {
-                r = (s.ShieldTextRegexIgnoreCase ? new RegExp(s.ShieldTextRegex, "i") : new RegExp(s.ShieldTextRegex));
+                r = new RegExp(s.ShieldTextRegex, 'u');
             } catch (error) {
                 addMessage("Shield Text RegEx is invalid");
             }
@@ -907,7 +907,7 @@ namespace WMEWAL_Streets {
 
         if (nullif(s.ShieldDirectionRegex, "")) {
             try {
-                r = (s.ShieldDirectionRegexIgnoreCase ? new RegExp(s.ShieldDirectionRegex, "i") : new RegExp(s.ShieldDirectionRegex));
+                r = new RegExp(s.ShieldDirectionRegex, 'u');
             } catch (error) {
                 addMessage("Shield Direction RegEx is invalid");
             }
@@ -915,7 +915,7 @@ namespace WMEWAL_Streets {
 
         if (nullif(s.VIRegex, '')) {
             try {
-                r = (s.VIRegexIgnoreCase ? new RegExp(s.VIRegex, 'i') : new RegExp(s.VIRegex));
+                r = new RegExp(s.VIRegex, 'u');
             } catch (error) {
                 addMessage('Visual Instruction RegEx is invalid');
             }
@@ -923,7 +923,7 @@ namespace WMEWAL_Streets {
 
         if (nullif(s.TowardsRegex, '')) {
             try {
-                r = (s.TowardsRegexIgnoreCase ? new RegExp(s.TowardsRegex, 'i') : new RegExp(s.TowardsRegex));
+                r = new RegExp(s.TowardsRegex, 'u');
             } catch (error) {
                 addMessage('Towards RegEx is invalid');
             }
@@ -1207,13 +1207,13 @@ namespace WMEWAL_Streets {
             }
 
             if (settings.Regex !== null) {
-                nameRegex = (settings.RegexIgnoreCase ? new RegExp(settings.Regex, "i") : new RegExp(settings.Regex));
+                nameRegex = (settings.RegexIgnoreCase ? new RegExp(settings.Regex, 'iu') : new RegExp(settings.Regex, 'u'));
             } else {
                 nameRegex = null;
             }
 
             if (settings.CityRegex !== null) {
-                cityRegex = (settings.CityRegexIgnoreCase ? new RegExp(settings.CityRegex, "i") : new RegExp(settings.CityRegex));
+                cityRegex = (settings.CityRegexIgnoreCase ? new RegExp(settings.CityRegex, 'iu') : new RegExp(settings.CityRegex, 'u'));
             } else {
                 cityRegex = null;
             }
@@ -1228,13 +1228,13 @@ namespace WMEWAL_Streets {
             segmentLengthMultiplier = settings.SegmentLength ? (settings.SegmentLengthUnit == Unit.Metric ? 1.0 : mToFt) : 0.0;
 
             if (settings.ShieldTextRegex !== null) {
-                shieldTextRegex = (settings.ShieldTextRegexIgnoreCase ? new RegExp(settings.ShieldTextRegex, "i") : new RegExp(settings.ShieldTextRegex));
+                shieldTextRegex = (settings.ShieldTextRegexIgnoreCase ? new RegExp(settings.ShieldTextRegex, 'iu') : new RegExp(settings.ShieldTextRegex, 'u'));
             } else {
                 shieldTextRegex = null;
             }
 
             if (settings.ShieldDirectionRegex !== null) {
-                shieldDirectionRegex = (settings.ShieldDirectionRegexIgnoreCase ? new RegExp(settings.ShieldDirectionRegex, "i") : new RegExp(settings.ShieldDirectionRegex));
+                shieldDirectionRegex = (settings.ShieldDirectionRegexIgnoreCase ? new RegExp(settings.ShieldDirectionRegex, 'iu') : new RegExp(settings.ShieldDirectionRegex, 'u'));
             } else {
                 shieldDirectionRegex = null;
             }
@@ -1246,13 +1246,13 @@ namespace WMEWAL_Streets {
             }
 
             if (settings.VIRegex !== null) {
-                viRegex = (settings.VIRegexIgnoreCase ? new RegExp(settings.VIRegex, 'i') : new RegExp(settings.VIRegex));
+                viRegex = (settings.VIRegexIgnoreCase ? new RegExp(settings.VIRegex, 'iu') : new RegExp(settings.VIRegex, 'u'));
             } else {
                 viRegex = null;
             }
 
             if (settings.TowardsRegex !== null) {
-                towardsRegex = (settings.TowardsRegexIgnoreCase ? new RegExp(settings.TowardsRegex, 'i') : new RegExp(settings.TowardsRegex));
+                towardsRegex = (settings.TowardsRegexIgnoreCase ? new RegExp(settings.TowardsRegex, 'iu') : new RegExp(settings.TowardsRegex, 'u'));
             } else {
                 towardsRegex = null;
             }
@@ -1441,6 +1441,10 @@ namespace WMEWAL_Streets {
                         (segment.getCreatedBy() === settings.CreatedBy)) &&
                     ((settings.LastModifiedBy === null) ||
                         ((segment.getUpdatedBy() ?? segment.getCreatedBy()) === settings.LastModifiedBy))) {
+
+                    if (!WMEWAL.IsSegmentInArea(segment)) {
+                        continue;
+                    }
 
                     let newSegment = false;
 
@@ -1935,10 +1939,6 @@ namespace WMEWAL_Streets {
 
                     if (detectIssues && issues === 0) {
                         // If at least one issue was chosen and this segment doesn't have any issues, then skip it
-                        continue;
-                    }
-
-                    if (!WMEWAL.IsSegmentInArea(segment)) {
                         continue;
                     }
 
