@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.14
+// @version             1.5.15
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Change zoom to zoomLevel on PLs</li>';
+        '<li>Fix zoom level on PLs</li>';
     '</ul>';
     const SHOW_UPDATE = false;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -1388,8 +1388,8 @@ var WMEWAL;
     }
     WMEWAL.TranslateRoadType = TranslateRoadType;
     function GenerateBasePL(lat, lon, zoom) {
-        if (zoom >= 12) {
-            zoom -= 12;
+        if (zoom < 12) {
+            zoom += 12;
         }
         return "https://www.waze.com/editor/?env=" + W.app.getAppRegionCode() + "&lon=" + lon + "&lat=" + lat + "&zoomLevel=" + zoom;
     }
