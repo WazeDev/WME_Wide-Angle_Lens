@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.15
+// @version             1.5.16
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ var WMEWAL;
     const updateText = '<ul>' +
         '<li>Fix zoom level on PLs</li>';
     '</ul>';
-    const SHOW_UPDATE = false;
+    const SHOW_UPDATE = true;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const debug = true;
