@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.16
+// @version             1.5.17
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fix zoom level on PLs</li>';
+        '<li>Fixed issue with latest version of WME</li>';
     '</ul>';
     const SHOW_UPDATE = true;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -117,6 +117,20 @@ var WMEWAL;
     let layerCheckboxAdded = false;
     let WALMap;
     async function WideAngleLens() {
+        function CheckObject(objToCheck) {
+            let path = objToCheck.split(".");
+            let object = window;
+            let ok = true;
+            for (let j = 0; j < path.length; j++) {
+                object = object[path[j]];
+                if (typeof object === "undefined" || object == null) {
+                    console.warn(objToCheck + " NOT OK");
+                    ok = false;
+                    break;
+                }
+            }
+            return ok;
+        }
         console.group("WMEWAL: Initializing");
         initCount++;
         let allOK = true;
@@ -126,24 +140,26 @@ var WMEWAL;
             "W.model.states",
             "W.model.events",
             "OpenLayers",
-            "W.vent",
+            ["W.vent", "W.app.layout.model"],
             "W.controller",
             "W.model.actionManager",
             "WazeWrap.Ready"];
         for (let i = 0; i < objectToCheck.length; i++) {
-            let path = objectToCheck[i].split(".");
-            let object = window;
-            let ok = true;
-            for (let j = 0; j < path.length; j++) {
-                object = object[path[j]];
-                if (typeof object === "undefined" || object == null) {
-                    console.warn(objectToCheck[i] + " NOT OK");
-                    ok = false;
-                    break;
+            var ok;
+            var objName;
+            if (typeof objectToCheck[i] === 'string') {
+                objName = objectToCheck[i];
+                ok = CheckObject(objectToCheck[i]);
+            }
+            else {
+                ok = false;
+                for (let k = 0; k < objectToCheck[i].length && !ok; k++) {
+                    objName = objectToCheck[i][k];
+                    ok = ok || CheckObject(objectToCheck[i][k]);
                 }
             }
             if (ok) {
-                console.log(objectToCheck[i] + " OK");
+                console.log(objName + " OK");
             }
             else {
                 allOK = false;
@@ -723,11 +739,20 @@ var WMEWAL;
             W.model.events.register("mergeend", null, mergeend);
         });
         let mapPromise = new Promise(resolve => {
-            let operationDone = function () {
-                resolve();
-                W.vent.off("operationDone", operationDone);
-            };
-            W.vent.on("operationDone", operationDone);
+            if (W.hasOwnProperty('vent')) {
+                let operationDone = function () {
+                    resolve();
+                    W.vent.off("operationDone", operationDone);
+                };
+                W.vent.on("operationDone", operationDone);
+            }
+            else {
+                let operationDone = function () {
+                    resolve();
+                    W.app.layout.model.off('operationDone', operationDone);
+                };
+                W.app.layout.model.on('operationDone', operationDone);
+            }
         });
         if (now && WazeWrap.Util.mapReady() && WazeWrap.Util.modelReady()) {
             return Promise.resolve();
