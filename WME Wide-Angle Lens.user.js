@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.17
+// @version             1.6.1
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Fixed issue with latest version of WME</li>';
+        '<li>Display result count while scanning</li>';
     '</ul>';
     const SHOW_UPDATE = true;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -33,16 +33,25 @@ var WMEWAL;
     const debug = true;
     class ProgressBar {
         constructor(id) {
-            this.div = $(id);
+            this.root = $(id);
+            this.div = this.root.children('#wal-progressBar');
+            this.information = this.root.children("#wal-info");
+            this.counts = this.root.children("#wal-counts");
+            this.streets = null;
+            this.places = null;
+            this.mapComments = null;
+            this.div.children().hide();
+            this.root.children().hide();
         }
         isShown() {
-            return this.div.is(":visible");
+            return this.root.is(":visible");
         }
         show() {
-            this.div.show();
+            this.root.show();
         }
         hide() {
-            this.div.hide();
+            this.root.hide();
+            this.root.children().hide();
         }
         update(value) {
             log("debug", "Percent complete = " + value.toString());
@@ -50,12 +59,79 @@ var WMEWAL;
                 value = 100;
             }
             if (value === -1) {
+                this.div.hide();
                 this.div.children().hide();
                 return;
             }
-            this.div.children().show();
             this.div.children(".wal-progressBarBG").css("width", value.toString() + "%");
             this.div.children(".wal-progressBarFG").text(value.toString() + "%");
+            this.div.children().show();
+            this.div.show();
+        }
+        setCount(streets, places, mapComments) {
+            if (streets != null) {
+                this.streets = streets;
+            }
+            if (places != null) {
+                this.places = places;
+            }
+            if (mapComments != null) {
+                this.mapComments = mapComments;
+            }
+            this.updateCounts();
+        }
+        addCount(streets, places, mapComments) {
+            if (streets != null) {
+                if (this.streets != null) {
+                    this.streets += streets;
+                }
+                else {
+                    this.streets = streets;
+                }
+            }
+            if (places != null) {
+                if (this.places != null) {
+                    this.places += places;
+                }
+                else {
+                    this.places = places;
+                }
+            }
+            if (mapComments != null) {
+                if (this.mapComments != null) {
+                    this.mapComments += mapComments;
+                }
+                else {
+                    this.mapComments = mapComments;
+                }
+            }
+            this.updateCounts();
+        }
+        showInfo(show) {
+            if (show) {
+                this.information.show();
+            }
+            else {
+                this.information.hide();
+            }
+        }
+        info(text) {
+            text = (typeof text !== "undefined" ? text : "");
+            this.information.text(text);
+        }
+        updateCounts() {
+            let outputText = "";
+            if (this.streets != null) {
+                outputText += `S: ${this.streets.toLocaleString()}`;
+            }
+            if (this.places != null) {
+                outputText += (outputText.length > 0 ? ' ' : '') + `P: ${this.places.toLocaleString()}`;
+            }
+            if (this.mapComments != null) {
+                outputText += (outputText.length > 0 ? ' ' : '') + `MC: ${this.mapComments.toLocaleString()}`;
+            }
+            this.counts.text(outputText);
+            this.counts.show();
         }
     }
     let RoadType;
@@ -289,7 +365,9 @@ var WMEWAL;
         css += ".wal-progressBarBG { margin-top: 2px; margin-bottom: 2px; margin-left: 2px; margin-right: 2px; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; padding-right: 0px; width: 33%; background-color: #93c4d3; border: 3px rgb(147, 196, 211); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; height: 22px;}";
         css += ".wal-progressBarFG { float: left; position: relative; bottom: 22px; height: 0px; text-align: center; width: 100% }";
         css += ".wal-textbox { width: 100% }";
-        css += "#sidepanel-wme-wal hr { border: 1px inset; margin-top: 10px; margin-bottom: 10px ";
+        css += '#wal-info { text-align: center }';
+        css += '#wal-counts { text-align: center }';
+        css += "#sidepanel-wme-wal hr { border: 1px inset; margin-top: 10px; margin-bottom: 10px } ";
         style.innerHTML = css;
         document.body.appendChild(style);
         console.log("Initialized");
@@ -324,6 +402,7 @@ var WMEWAL;
         pb$.append($("<div/>").addClass("wal-progressBarBG"));
         pb$.append($("<span/>").addClass("wal-progressBarFG").text("100%"));
         pbi.append("<div id='wal-info'/>");
+        pbi.append("<div id='wal-counts'/>");
         let addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(addon);
         addonTabs.append("<li class='active'><a data-toggle='tab' href='#sidepanel-wmewal-scan'>Scan</a></li>");
         addonTabs.append("<li><a data-toggle='tab' href='#sidepanel-wmewal-areas'>Areas</a></li>");
@@ -800,8 +879,8 @@ var WMEWAL;
     }
     function resetState() {
         pb.hide();
-        showPBInfo(false);
-        info("");
+        pb.showInfo(false);
+        pb.info("");
         WMEWAL.areaToScan = null;
         // Return to previous state
         if (layerToggle != null) {
@@ -952,23 +1031,22 @@ var WMEWAL;
         // segments = [];
         // venues = [];
         let allOk = true;
-        pb = new ProgressBar("#wal-progressBar");
+        pb = new ProgressBar("#wal-progressBarInfo");
         pb.update(0);
         pb.show();
-        showPBInfo(true);
+        pb.showInfo(true);
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
-                info("Initializing plugin " + plugins[ix].Title);
+                pb.info("Initializing plugin " + plugins[ix].Title);
                 allOk = allOk && plugins[ix].ScanStarted();
             }
         }
-        info("");
+        pb.info("");
         if (!allOk) {
             pb.hide();
-            showPBInfo(false);
             return;
         }
-        info("Please don't touch anything during the scan");
+        pb.info("Please don't touch anything during the scan");
         $("#_wmewalCancel").removeAttr("disabled");
         // Alert user if they try to leave the page before scan is finished
         window.addEventListener('beforeunload', alertBeforeClose);
@@ -1258,6 +1336,12 @@ var WMEWAL;
                 if (pluginResults[ix].status === "rejected") {
                     log("error", pluginResults[ix].reason);
                     anyErrors = true;
+                }
+                else {
+                    let results = pluginResults[ix].value;
+                    if (results != null) {
+                        pb.setCount(results.Streets, results.Places, results.MapComments);
+                    }
                 }
             }
             if (anyErrors) {
