@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.5
+// @version             1.3.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -24,7 +24,7 @@ var WMEWAL_Cities;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Updated zoom levels to match latest WME update</li>' +
+        '<li>Return count of streets found</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -436,13 +436,13 @@ var WMEWAL_Cities;
         log("debug", "ScanExtent: started.");
         return new Promise(resolve => {
             setTimeout(function () {
-                scan(segments, venues);
-                resolve();
+                let count = scan(segments);
+                resolve({ Streets: count, Places: null, MapComments: null });
             }, 0);
         });
     }
     WMEWAL_Cities.ScanExtent = ScanExtent;
-    function scan(segments, venues) {
+    function scan(segments) {
         log("debug", "scan: started.");
         let extentStreets = [];
         let segment;
@@ -662,6 +662,7 @@ var WMEWAL_Cities;
             streets.push(extentStreets[ix]);
         }
         log("debug", "scan: done");
+        return streets.length;
     }
     function ScanComplete() {
         log("debug", "ScanComplete: started.");

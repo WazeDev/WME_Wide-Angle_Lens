@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.8
+// @version             1.5.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ namespace WMEWAL_Places {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Updated zoom levels to match latest WME update</li>' +
+        '<li>Return count of places found</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -848,16 +848,16 @@ namespace WMEWAL_Places {
         return allOk;
     }
 
-    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<void> {
+    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResults> {
         return new Promise(resolve => {
             setTimeout(function () {
-                scan(segments, venues);
-                resolve();
+                let count = scan(segments, venues);
+                resolve({Streets: null, Places: count, MapComments: null});
             });
         });
     }
 
-    function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): void {
+    function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): number {
         function checkCategory(categories: string[], category: string, operation: Operation): boolean {
             let match = categories.find(function (e) {
                 return e.localeCompare(category) === 0;
@@ -1067,6 +1067,8 @@ namespace WMEWAL_Places {
                 }
             }
         }
+
+        return places.length;
     }
 
     export function ScanComplete(): void {

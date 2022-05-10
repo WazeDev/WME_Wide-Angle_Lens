@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.12
+// @version             1.8.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,8 @@ namespace WMEWAL_Streets {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Add support for unicode in regular expressions. Use \\u{####} to match a unicode value.</li>' +
+        '<li>Added ability to filter based on name of intersecting segment.</li>' +
+        '<li>Return count of streets found.</li>'
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -232,6 +233,8 @@ namespace WMEWAL_Streets {
         VIRegexIgnoreCase: boolean;
         TowardsRegex: string;
         TowardsRegexIgnoreCase: boolean;
+        IntersectingNameRegex: string;
+        IntersectingNameRegexIgnoreCase: boolean;
     }
 
     interface ISettings extends ISaveableSettings {
@@ -264,6 +267,7 @@ namespace WMEWAL_Streets {
     let shieldDirectionRegex: RegExp = null;
     let viRegex: RegExp = null;
     let towardsRegex: RegExp = null;
+    let intersectingNameRegex: RegExp = null;
     let roundabouts: Array<number> = null;
     let detectIssues = false;
     let initCount = 0;
@@ -375,6 +379,10 @@ namespace WMEWAL_Streets {
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}TowardsRegex' class='wal-textbox'/><br/>` +
             `<input id='${ctlPrefix}TowardsIgnoreCase' type='checkbox' class='wal-check'/>` +
             `<label for='${ctlPrefix}TowardsIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
+        html += "<tr><td><b>Intersecting Name RegEx:</b></td></tr>";
+        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}IntersectingNameRegex' class='wal-textbox'/><br/>` +
+            `<input id='${ctlPrefix}IntersectingNameIgnoreCase' type='checkbox' class='wal-check'/>` +
+            `<label for='${ctlPrefix}IntersectingNameIgnoreCase' class='wal-label'>Ignore case</label></td></tr>`;
         html += "<tr><td><b>Road Type:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}RoadTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
@@ -805,6 +813,8 @@ namespace WMEWAL_Streets {
         $(`#${ctlPrefix}VIIgnoreCase`).prop('checked', settings.VIRegexIgnoreCase);
         $(`#${ctlPrefix}TowardsRegex`).val(settings.TowardsRegex ?? '');
         $(`#${ctlPrefix}TowardsIgnoreCase`).prop('checked', settings.TowardsRegexIgnoreCase);
+        $(`#${ctlPrefix}IntersectingNameRegex`).val(settings.IntersectingNameRegex ?? '');
+        $(`#${ctlPrefix}IntersectingNameIgnoreCase`).prop('checked', settings.IntersectingNameRegexIgnoreCase);
     }
 
     function loadSetting(): void {
@@ -926,6 +936,14 @@ namespace WMEWAL_Streets {
                 r = new RegExp(s.TowardsRegex, 'u');
             } catch (error) {
                 addMessage('Towards RegEx is invalid');
+            }
+        }
+
+        if (nullif(s.IntersectingNameRegex, '')) {
+            try {
+                r = new RegExp(s.IntersectingNameRegex, 'u');
+            } catch (error) {
+                addMessage('Intersecting Name RegEx is invalid');
             }
         }
 
@@ -1054,7 +1072,9 @@ namespace WMEWAL_Streets {
             VIRegex: null,
             VIRegexIgnoreCase: $(`#${ctlPrefix}VIIgnoreCase`).prop('checked'),
             TowardsRegex: null,
-            TowardsRegexIgnoreCase: $(`#${ctlPrefix}TowardsIgnoreCase`).prop('checked')
+            TowardsRegexIgnoreCase: $(`#${ctlPrefix}TowardsIgnoreCase`).prop('checked'),
+            IntersectingNameRegex: null,
+            IntersectingNameRegexIgnoreCase: $(`#${ctlPrefix}IntersectingNameIgnoreCase`).prop('checked')
         };
 
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
@@ -1157,6 +1177,11 @@ namespace WMEWAL_Streets {
             s.TowardsRegex = pattern;
         }
 
+        pattern = $(`#${ctlPrefix}IntersectingNameRegex`).val();
+        if (nullif(pattern, '') !== null) {
+            s.IntersectingNameRegex = pattern;
+        }
+
         return s;
     }
 
@@ -1257,6 +1282,12 @@ namespace WMEWAL_Streets {
                 towardsRegex = null;
             }
 
+            if (settings.IntersectingNameRegex !== null) {
+                intersectingNameRegex = (settings.IntersectingNameRegex ? new RegExp(settings.IntersectingNameRegex, 'iu') : new RegExp(settings.IntersectingNameRegex, 'u'));
+            } else {
+                intersectingNameRegex = null;
+            }
+
             detectIssues = settings.NoSpeedLimit
                 || settings.HasTimeBasedRestrictions
                 || settings.HasTimeBasedTurnRestrictions
@@ -1290,18 +1321,19 @@ namespace WMEWAL_Streets {
         return allOk;
     }
 
-    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<void> {
+    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResults> {
         return new Promise(resolve => {
             setTimeout(function () {
-                scan(segments, venues);
-                resolve();
+                let streets = scan(segments, venues);
+                resolve({Streets: streets, Places: null, MapComments: null});
             }, 0);
         });
     }
 
-    function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): void {
+    function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): number {
         let extentStreets: Array<IStreet> = [];
         let segment: WazeNS.Model.Object.Segment;
+        let directions: string[];
 
         function determineDirection(s: WazeNS.Model.Object.Segment): Direction {
             return (s.attributes.fwdDirection ? (s.attributes.revDirection ? Direction.TwoWay : Direction.OneWay) : (s.attributes.revDirection ? Direction.OneWay : Direction.Unknown));
@@ -1517,6 +1549,49 @@ namespace WMEWAL_Streets {
                         altAddrMatches = new Array(segment.attributes.streetIDs.length).fill(true);
                     }
 
+                    if (intersectingNameRegex !== null) {
+                        directions = [];
+                        if (segment.attributes.fwdDirection) {
+                            directions.push('to');
+                        }
+                        if (segment.attributes.revDirection) {
+                            directions.push('from');
+                        }
+                        let anyConnectedNameMatched = false;
+                        for (let ixDir = 0; ixDir < directions.length && !anyConnectedNameMatched; ixDir++) {
+                            let connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
+                            for (let ixSeg = 0; ixSeg < connectedSegments.length && !anyConnectedNameMatched; ixSeg++) {
+                                // Don't look at segments that have the same primary street ID
+                                if (connectedSegments[ixSeg].attributes.primaryStreetID != primaryStreetID) {
+                                    let connectedSegment = W.model.segments.getObjectById(connectedSegments[ixSeg].attributes.id);
+                                    let connectedAddress = connectedSegment?.getAddress();
+                                    anyConnectedNameMatched = anyConnectedNameMatched || !(connectedAddress?.attributes?.isEmpty ?? true) && !(connectedAddress.attributes.street?.isEmpty ?? true) && intersectingNameRegex.test(connectedAddress.attributes.street.name);
+
+                                    if (settings.IncludeAltNames && (connectedSegment.attributes.streetIDs?.length ?? 0) > 0) {
+                                        for (let streetIx = 0; streetIx < connectedSegment.attributes.streetIDs.length && !anyConnectedNameMatched; streetIx++) {
+                                            let altMatched = true;
+                                            if (connectedSegment.attributes.streetIDs[streetIx] != null) {
+                                                let street = W.model.streets.getObjectById(connectedSegment.attributes.streetIDs[streetIx]);
+                                                if (!(street?.isEmpty ?? true)) {
+                                                    altMatched = intersectingNameRegex.test(street.name);
+                                                } else {
+                                                    altMatched = false;
+                                                }
+                                            } else {
+                                                altMatched = false;
+                                            }
+
+                                            anyConnectedNameMatched = anyConnectedNameMatched || altMatched;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (!anyConnectedNameMatched) {
+                            continue;
+                        }
+                    }
+
                     let primaryShieldMatches = true;
                     let altShieldMatches: boolean[] = [];
 
@@ -1560,7 +1635,7 @@ namespace WMEWAL_Streets {
 
                     if (viRegex !== null || towardsRegex !== null) {
                         let instructionMatches = false;
-                        let directions: string[] = [];
+                        directions = [];
                         if (segment.attributes.fwdDirection) {
                             directions.push('to');
                         }
@@ -1659,7 +1734,7 @@ namespace WMEWAL_Streets {
 
                     if (settings.HasUTurn
                         || settings.HasSoftTurns) {
-                        var directions = ["from", "to"];
+                        directions = ["from", "to"];
                         var hasUTurn = false;
                         var hasSoftTurns = false;
                         // let hasUnnecessaryJunctionNode = false;
@@ -1961,6 +2036,8 @@ namespace WMEWAL_Streets {
             delete extentStreets[ix].geometries;
             streets.push(extentStreets[ix]);
         }
+
+        return streets.length;
     }
 
     function translateDirection(d: Direction): string {
@@ -2233,6 +2310,13 @@ namespace WMEWAL_Streets {
                 if (towardsRegex !== null) {
                     w.document.write(`<div>Towards matches ${towardsRegex.source}`);
                     if (settings.TowardsRegexIgnoreCase) {
+                        w.document.write(' (ignoring case)');
+                    }
+                    w.document.write('</div>');
+                }
+                if (intersectingNameRegex !== null) {
+                    w.document.write(`<div>Intersecting Name matches ${intersectingNameRegex.source}`);
+                    if (settings.IntersectingNameRegexIgnoreCase) {
                         w.document.write(' (ignoring case)');
                     }
                     w.document.write('</div>');
@@ -2855,7 +2939,9 @@ namespace WMEWAL_Streets {
             VIRegex: null,
             VIRegexIgnoreCase: true,
             TowardsRegex: null,
-            TowardsRegexIgnoreCase: true
+            TowardsRegexIgnoreCase: true,
+            IntersectingNameRegex: null,
+            IntersectingNameRegexIgnoreCase: true
         };
     }
 
@@ -3163,6 +3249,17 @@ namespace WMEWAL_Streets {
 
             if (!settings.hasOwnProperty('TowardsRegexIgnoreCase')) {
                 settings.TowardsRegexIgnoreCase = true;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty("IntersectingNameRegex")) {
+                settings.IntersectingNameRegex = null;
+                settings.IntersectingNameRegexIgnoreCase = true;
+                upd = true;
+            }
+
+            if (!settings.hasOwnProperty('IntersectingNameRegexIgnoreCase')) {
+                settings.IntersectingNameRegexIgnoreCase = true;
                 upd = true;
             }
 

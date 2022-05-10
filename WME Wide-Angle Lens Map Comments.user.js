@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.0.3
+// @version             1.1.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ var WMEWAL_MapComments;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Updated zoom levels to match latest WME update</li>' +
+        '<li>Return count of map comments found</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40644';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -398,8 +398,8 @@ var WMEWAL_MapComments;
     function ScanExtent(segments, venues) {
         return new Promise(resolve => {
             setTimeout(function () {
-                scan(segments, venues);
-                resolve();
+                let count = scan(segments, venues);
+                resolve({ Streets: null, Places: null, MapComments: count });
             }, 0);
         });
     }
@@ -505,6 +505,7 @@ var WMEWAL_MapComments;
                 }
             }
         }
+        return mapComments.length;
     }
     function ScanComplete() {
         if (mapComments.length === 0) {

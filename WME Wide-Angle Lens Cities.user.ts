@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.5
+// @version             1.3.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -25,7 +25,7 @@ namespace WMEWAL_Cities {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Updated zoom levels to match latest WME update</li>' +
+        '<li>Return count of streets found</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -555,18 +555,18 @@ namespace WMEWAL_Cities {
         return allOk;
     }
 
-    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<void> {
+    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResults> {
         log("debug", "ScanExtent: started.");
 
         return new Promise(resolve => {
             setTimeout(function () {
-                scan(segments, venues);
-                resolve();
+                let count = scan(segments);
+                resolve({Streets: count, Places: null, MapComments: null});
             }, 0);
         });
     }
 
-    function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): void {
+    function scan(segments: Array<WazeNS.Model.Object.Segment>): number {
         log("debug", "scan: started.");
 
         let extentStreets: Array<IStreet> = [];
@@ -803,6 +803,8 @@ namespace WMEWAL_Cities {
         }
 
         log("debug", "scan: done");
+
+        return streets.length;
     }
 
     export function ScanComplete(): void {

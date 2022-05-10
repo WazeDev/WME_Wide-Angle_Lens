@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.4
+// @version             1.4.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,7 +26,7 @@ namespace WMEWAL_Locks {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Updated zoom levels to match latest WME update</li>' +
+        '<li>Return count of streets found</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -573,16 +573,16 @@ namespace WMEWAL_Locks {
         return segment.attributes.fwdDirection !== segment.attributes.revDirection && (segment.attributes.fwdDirection || segment.attributes.revDirection);
     }
 
-    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<void> {
+    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResults> {
         return new Promise(resolve => {
             setTimeout(function () {
-                scan(segments, venues);
-                resolve();
+                let count = scan(segments);
+                resolve({Streets: count, Places: null, MapComments: null});
             });
         });
     }
 
-    function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): void {
+    function scan(segments: Array<WazeNS.Model.Object.Segment>): number {
         let extentStreets: Array<IStreet> = [];
 
         function addSegment(s: WazeNS.Model.Object.Segment, rId: number): void {
@@ -806,6 +806,8 @@ namespace WMEWAL_Locks {
             delete extentStreets[ix].geometries;
             streets.push(extentStreets[ix]);
         }
+
+        return streets.length;
     }
 
     export function ScanComplete(): void {
