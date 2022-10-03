@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.3.0
+// @version             1.4.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -18,13 +18,15 @@
 // @updateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
 // ==/UserScript==
+// @updateURL           https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.user.js
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers */
 var WMEWAL_Cities;
 (function (WMEWAL_Cities) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Return count of streets found</li>' +
+        '<li>Support variable output fields</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -40,8 +42,8 @@ var WMEWAL_Cities;
     WMEWAL_Cities.MinimumZoomLevel = 14;
     WMEWAL_Cities.SupportsSegments = true;
     WMEWAL_Cities.SupportsVenues = false;
-    let settingsKey = "WMEWALCitiesSettings";
-    let savedSettingsKey = "WMEWALCitiesSavedSettings";
+    const settingsKey = "WMEWALCitiesSettings";
+    const savedSettingsKey = "WMEWALCitiesSavedSettings";
     let settings = null;
     let savedSettings = [];
     let streets = null;
@@ -145,15 +147,15 @@ var WMEWAL_Cities;
     }
     WMEWAL_Cities.TabLoaded = TabLoaded;
     function updateStates() {
-        let selectState = $(`#${ctlPrefix}State`);
+        const selectState = $(`#${ctlPrefix}State`);
         // Preserve current selection
-        let currentId = parseInt(selectState.val());
+        const currentId = parseInt(selectState.val());
         selectState.empty();
-        let stateObjs = [];
+        const stateObjs = [];
         stateObjs.push({ id: null, name: "" });
         for (let s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
-                let st = W.model.states.getObjectById(parseInt(s));
+                const st = W.model.states.getObjectById(parseInt(s));
                 if (st.id !== 1 && st.name.length > 0) {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -168,8 +170,8 @@ var WMEWAL_Cities;
             }
         });
         for (let ix = 0; ix < stateObjs.length; ix++) {
-            let so = stateObjs[ix];
-            let stateOption = $("<option/>").text(so.name).attr("value", so.id);
+            const so = stateObjs[ix];
+            const stateOption = $("<option/>").text(so.name).attr("value", so.id);
             if (currentId != null && so.id === currentId) {
                 stateOption.attr("selected", "selected");
             }
@@ -177,14 +179,14 @@ var WMEWAL_Cities;
         }
     }
     function updateLayers() {
-        let selectLayer = $(`#${ctlPrefix}Layer`);
-        let currentLayer = selectLayer.val();
+        const selectLayer = $(`#${ctlPrefix}Layer`);
+        const currentLayer = selectLayer.val();
         selectLayer.empty();
-        let layers = [];
+        const layers = [];
         for (let ixLayer = 0; ixLayer < W.map.layers.length; ixLayer++) {
-            let layer = W.map.layers[ixLayer];
+            const layer = W.map.layers[ixLayer];
             if (layer.CLASS_NAME === "OL.Layer.Vector" || layer.CLASS_NAME === "OpenLayers.Layer.Vector") {
-                let vectorLayer = layer;
+                const vectorLayer = layer;
                 if (vectorLayer.features && vectorLayer.features.length > 0) {
                     layers.push({
                         uniqueName: vectorLayer.uniqueName,
@@ -197,8 +199,8 @@ var WMEWAL_Cities;
             return a.name.localeCompare(b.name);
         });
         for (let ix = 0; ix < layers.length; ix++) {
-            let l = layers[ix];
-            let layerOption = $("<option/>").text(l.name).attr("value", l.uniqueName);
+            const l = layers[ix];
+            const layerOption = $("<option/>").text(l.name).attr("value", l.uniqueName);
             if (currentLayer != null && currentLayer === l.uniqueName) {
                 layerOption.attr("selected", "selected");
             }
@@ -206,10 +208,10 @@ var WMEWAL_Cities;
         }
     }
     function updateSavedSettingsList() {
-        let s = $(`#${ctlPrefix}SavedSettings`);
+        const s = $(`#${ctlPrefix}SavedSettings`);
         s.empty();
         for (let ixSaved = 0; ixSaved < savedSettings.length; ixSaved++) {
-            let opt = $("<option/>").attr("value", ixSaved).text(savedSettings[ixSaved].Name);
+            const opt = $("<option/>").attr("value", ixSaved).text(savedSettings[ixSaved].Name);
             s.append(opt);
         }
     }
@@ -241,11 +243,11 @@ var WMEWAL_Cities;
         $(`#${ctlPrefix}IncludeAlt`).prop("checked", settings.IncludeAltNames);
     }
     function loadSetting() {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        let savedSetting = savedSettings[selectedSetting].Setting;
+        const savedSetting = savedSettings[selectedSetting].Setting;
         for (let name in savedSetting) {
             if (settings.hasOwnProperty(name)) {
                 settings[name] = savedSetting[name];
@@ -258,7 +260,7 @@ var WMEWAL_Cities;
             message += ((message.length > 0 ? "\n" : "") + error);
         }
         let message = "";
-        let s = getSettings();
+        const s = getSettings();
         let mask = 0;
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             mask = mask | parseInt(e.value);
@@ -266,7 +268,7 @@ var WMEWAL_Cities;
         if (mask === 0) {
             addMessage("Please select at least one road type");
         }
-        let selectedState = $(`#${ctlPrefix}State`).val();
+        const selectedState = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null && s.State === null) {
             addMessage("Invalid state selection");
         }
@@ -280,7 +282,7 @@ var WMEWAL_Cities;
                 r == null;
             }
         }
-        let layerUniqueName = $(`#${ctlPrefix}Layer`).val();
+        const layerUniqueName = $(`#${ctlPrefix}Layer`).val();
         if (nullif(layerUniqueName, "") !== null) {
             let layers = W.map.getLayersBy("uniqueName", layerUniqueName);
             if (layers.length === 0) {
@@ -292,7 +294,7 @@ var WMEWAL_Cities;
             else if (checkArea) {
                 cityPolygons = [];
                 for (let ixFeature = 0; ixFeature < layers[0].features.length; ixFeature++) {
-                    let feature = layers[0].features[ixFeature];
+                    const feature = layers[0].features[ixFeature];
                     let featureName = null;
                     if (feature.style && nullif(feature.style.label, "") !== null) {
                         featureName = feature.style.label;
@@ -338,8 +340,8 @@ var WMEWAL_Cities;
     }
     function saveSetting() {
         if (validateSettings(false)) {
-            let s = getSettings();
-            let sName = prompt("Enter a name for this setting");
+            const s = getSettings();
+            const sName = prompt("Enter a name for this setting");
             if (sName == null) {
                 return;
             }
@@ -356,7 +358,7 @@ var WMEWAL_Cities;
                     return;
                 }
             }
-            let savedSetting = {
+            const savedSetting = {
                 Name: sName,
                 Setting: s
             };
@@ -365,7 +367,7 @@ var WMEWAL_Cities;
         }
     }
     function getSettings() {
-        let s = {
+        const s = {
             RoadTypeMask: 0,
             State: null,
             StateOperation: parseInt($(`#${ctlPrefix}StateOp`).val()),
@@ -380,21 +382,21 @@ var WMEWAL_Cities;
         $(`input[data-group=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             s.RoadTypeMask = s.RoadTypeMask | parseInt(e.value);
         });
-        let selectedState = $(`#${ctlPrefix}State`).val();
+        const selectedState = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null) {
-            let state = W.model.states.getObjectById(selectedState);
+            const state = W.model.states.getObjectById(selectedState);
             if (state !== null) {
                 s.State = state.id;
             }
         }
-        let pattern = $(`#${ctlPrefix}City`).val();
+        const pattern = $(`#${ctlPrefix}City`).val();
         if (nullif(pattern, "") !== null) {
             s.CityRegex = pattern;
         }
         return s;
     }
     function deleteSetting() {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
@@ -436,7 +438,7 @@ var WMEWAL_Cities;
         log("debug", "ScanExtent: started.");
         return new Promise(resolve => {
             setTimeout(function () {
-                let count = scan(segments);
+                const count = scan(segments);
                 resolve({ Streets: count, Places: null, MapComments: null });
             }, 0);
         });
@@ -444,18 +446,23 @@ var WMEWAL_Cities;
     WMEWAL_Cities.ScanExtent = ScanExtent;
     function scan(segments) {
         log("debug", "scan: started.");
-        let extentStreets = [];
+        const extentStreets = [];
         let segment;
-        let spaceRegex = /\s/g;
+        const spaceRegex = /\s/g;
+        const outputFields = WMEWAL.outputFields ?? ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
+        const includeLockLevel = outputFields.indexOf('LockLevel') > -1;
         function addSegment(s, incorrectCity, cityShouldBe, rId) {
             if (savedSegments.indexOf(s.getID()) === -1) {
                 savedSegments.push(s.getID());
-                let sid = s.attributes.primaryStreetID;
-                let address = s.getAddress();
+                const sid = s.attributes.primaryStreetID;
+                const address = s.getAddress();
                 let thisStreet = null;
                 if (sid != null) {
                     thisStreet = extentStreets.find(function (e) {
-                        let matches = (e.id === sid && (e.lockLevel === (s.attributes.lockRank | 0) + 1) && e.roundaboutId === rId && e.roadType === s.attributes.roadType);
+                        let matches = (e.id === sid && e.roundaboutId === rId && e.roadType === s.attributes.roadType);
+                        if (includeLockLevel) {
+                            matches && (matches = e.lockLevel === (s.attributes.lockRank | 0) + 1);
+                        }
                         if (matches) {
                             // Test for alt names
                             for (let ixAlt = 0; ixAlt < e.altStreets.length && matches; ixAlt++) {
@@ -489,11 +496,11 @@ var WMEWAL_Cities;
                         if (s.attributes.streetIDs != null) {
                             for (let ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
                                 if (s.attributes.streetIDs[ixAlt] != null) {
-                                    let altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
+                                    const altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
                                     if (altStreet != null) {
                                         let altCityName = null;
                                         if (altStreet.cityID != null) {
-                                            let altCity = W.model.cities.getObjectById(altStreet.cityID);
+                                            const altCity = W.model.cities.getObjectById(altStreet.cityID);
                                             if (altCity != null) {
                                                 altCityName = altCity.hasName() ? altCity.attributes.name : "No city";
                                             }
@@ -524,7 +531,7 @@ var WMEWAL_Cities;
                 if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) & settings.RoadTypeMask) &&
                     (!settings.EditableByMe || segment.arePropertiesEditable()) &&
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
-                    let address = segment.getAddress();
+                    const address = segment.getAddress();
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
@@ -536,15 +543,15 @@ var WMEWAL_Cities;
                             continue;
                         }
                     }
-                    let altCityNames = [];
+                    const altCityNames = [];
                     if (!settings.IgnoreAlt) {
                         if (segment.attributes.streetIDs != null) {
                             for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length; streetIx++) {
                                 if (segment.attributes.streetIDs[streetIx] != null) {
-                                    let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                    const street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
                                     if (street != null) {
                                         if (street.cityID != null) {
-                                            let city = W.model.cities.getObjectById(street.cityID);
+                                            const city = W.model.cities.getObjectById(street.cityID);
                                             if (city != null) {
                                                 altCityNames.push({
                                                     hasName: city.hasName(),
@@ -580,7 +587,7 @@ var WMEWAL_Cities;
                         continue;
                     }
                     let cityMatches = true;
-                    let cityNames = [];
+                    const cityNames = [];
                     let cityShouldBe = "";
                     let incorrectCity = "";
                     let anyBlankCity = false;
@@ -648,7 +655,7 @@ var WMEWAL_Cities;
                         addSegment(segment, incorrectCity, cityShouldBe, null);
                     }
                     else {
-                        let r = segment.getRoundabout().attributes;
+                        const r = segment.getRoundabout().attributes;
                         for (let rIx = 0; rIx < r.segIDs.length; rIx++) {
                             addSegment(W.model.segments.getObjectById(r.segIDs[rIx]), incorrectCity, cityShouldBe, r.id);
                         }
@@ -688,9 +695,13 @@ var WMEWAL_Cities;
                 }
                 return 0;
             });
-            let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
-            let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
-            let addBOM = WMEWAL.addBOM ?? false;
+            const isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
+            const isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            const addBOM = WMEWAL.addBOM ?? false;
+            const outputFields = WMEWAL.outputFields ?? ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
+            const includeLockLevel = outputFields.indexOf('LockLevel') > -1;
+            const includeLat = outputFields.indexOf('Lat') > -1;
+            const includeLon = outputFields.indexOf('Lon') > -1;
             let lineArray;
             let columnArray;
             let w;
@@ -701,13 +712,17 @@ var WMEWAL_Cities;
                 if (settings.IncludeAltNames) {
                     columnArray.push("Alt Names");
                 }
-                columnArray.push("State");
-                columnArray.push("Road Type");
-                columnArray.push("Lock Level");
-                columnArray.push("Incorrect City");
-                columnArray.push("City Should Be");
-                columnArray.push("Latitude");
-                columnArray.push("Longitude");
+                columnArray.push("State", "Road Type");
+                if (includeLockLevel) {
+                    columnArray.push("Lock Level");
+                }
+                columnArray.push("Incorrect City", "City Should Be");
+                if (includeLat) {
+                    columnArray.push("Latitude");
+                }
+                if (includeLon) {
+                    columnArray.push("Longitude");
+                }
                 columnArray.push("Permalink");
                 lineArray.push(columnArray);
                 fileName = "Cities_" + WMEWAL.areaName + ".csv";
@@ -737,31 +752,44 @@ var WMEWAL_Cities;
                     w.document.write("<th>Alt Names</th>");
                 }
                 w.document.write("<th>State</th>");
-                w.document.write("<th>Road Type</th><th>Lock Level</th>");
+                w.document.write("<th>Road Type</th>");
+                if (includeLockLevel) {
+                    w.document.write('<th>Lock Level</th>');
+                }
                 w.document.write("<th>Incorrect City</th><th>City Should Be</th>");
-                w.document.write("<th>Latitude</th><th>Longitude</th><th>Permalink</th></tr>");
+                if (includeLat) {
+                    w.document.write("<th>Latitude</th>");
+                }
+                if (includeLon) {
+                    w.document.write("<th>Longitude</th>");
+                }
+                w.document.write("<th>Permalink</th></tr>");
             }
             for (let ixStreet = 0; ixStreet < streets.length; ixStreet++) {
-                let street = streets[ixStreet];
-                let roadTypeText = WMEWAL.TranslateRoadType(street.roadType);
+                const street = streets[ixStreet];
+                const roadTypeText = WMEWAL.TranslateRoadType(street.roadType);
                 if (street.name == null && street.roundaboutId == null) {
                     for (let ixSeg = 0; ixSeg < street.segments.length; ixSeg++) {
-                        let segment = street.segments[ixSeg];
-                        let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
-                        let plSeg = getSegmentPL(segment);
+                        const segment = street.segments[ixSeg];
+                        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
+                        const plSeg = getSegmentPL(segment);
                         if (isCSV) {
                             columnArray = [getStreetName(street)];
                             if (settings.IncludeAltNames) {
                                 columnArray.push("");
                             }
-                            columnArray.push("\"" + street.state + "\"");
-                            columnArray.push("\"" + roadTypeText + "\"");
-                            columnArray.push(street.lockLevel.toString());
-                            columnArray.push("\"" + street.incorrectCity + "\"");
-                            columnArray.push("\"" + street.cityShouldBe + "\"");
-                            columnArray.push(latlon.lat.toString());
-                            columnArray.push(latlon.lon.toString());
-                            columnArray.push("\"" + plSeg + "\"");
+                            columnArray.push(`"${street.state}"`, `"${roadTypeText}"`);
+                            if (includeLockLevel) {
+                                columnArray.push(street.lockLevel.toString());
+                            }
+                            columnArray.push(`"${street.incorrectCity}"`, `"${street.cityShouldBe}"`);
+                            if (includeLat) {
+                                columnArray.push(latlon.lat.toString());
+                            }
+                            if (includeLon) {
+                                columnArray.push(latlon.lon.toString());
+                            }
+                            columnArray.push(`"${plSeg}"`);
                             lineArray.push(columnArray);
                         }
                         if (isTab) {
@@ -769,17 +797,25 @@ var WMEWAL_Cities;
                             if (settings.IncludeAltNames) {
                                 w.document.write("<td>&nbsp;</td>");
                             }
-                            w.document.write("<td>" + street.state + "</td>");
-                            w.document.write("<td>" + roadTypeText + "</td><td>" + street.lockLevel + "</td>");
-                            w.document.write("<td>" + street.incorrectCity + "</td><td>" + street.cityShouldBe + "</td>");
-                            w.document.write("<td>" + latlon.lat.toString() + "</td><td>" + latlon.lon.toString() + "</td>" +
-                                "<td><a href=\'" + plSeg + "\' target=\'_blank\'>Permalink</a></td></tr>");
+                            w.document.write(`<td>${street.state}</td>`);
+                            w.document.write(`<td>${roadTypeText}</td>`);
+                            if (includeLockLevel) {
+                                w.document.write(`<td>${street.lockLevel}</td>`);
+                            }
+                            w.document.write(`<td>${street.incorrectCity}</td><td>${street.cityShouldBe}</td>`);
+                            if (includeLat) {
+                                w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                            }
+                            if (includeLon) {
+                                w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                            }
+                            w.document.write(`<td><a href='${plSeg}' target='_blank'>Permalink</a></td></tr>`);
                         }
                     }
                 }
                 else {
-                    let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
-                    let plStreet = getStreetPL(street);
+                    const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
+                    const plStreet = getStreetPL(street);
                     let altNames = "";
                     for (let ixAlt = 0; ixAlt < street.altStreets.length; ixAlt++) {
                         if (ixAlt > 0) {
@@ -791,46 +827,60 @@ var WMEWAL_Cities;
                         }
                     }
                     if (isCSV) {
-                        columnArray = ["\"" + getStreetName(street) + "\""];
+                        columnArray = [`"${getStreetName(street)}"`];
                         if (settings.IncludeAltNames) {
-                            columnArray.push("\"" + altNames + "\"");
+                            columnArray.push(`"${altNames}"`);
                         }
-                        columnArray.push("\"" + street.state + "\"");
-                        columnArray.push("\"" + roadTypeText + "\"");
-                        columnArray.push(street.lockLevel.toString());
-                        columnArray.push("\"" + street.incorrectCity + "\"");
-                        columnArray.push("\"" + street.cityShouldBe + "\"");
-                        columnArray.push(latlon.lat.toString());
-                        columnArray.push(latlon.lon.toString());
-                        columnArray.push("\"" + plStreet + "\"");
+                        columnArray.push(`"${street.state}"`);
+                        columnArray.push(`"${roadTypeText}"`);
+                        if (includeLockLevel) {
+                            columnArray.push(street.lockLevel.toString());
+                        }
+                        columnArray.push(`"${street.incorrectCity}"`);
+                        columnArray.push(`"${street.cityShouldBe}"`);
+                        if (includeLat) {
+                            columnArray.push(latlon.lat.toString());
+                        }
+                        if (includeLon) {
+                            columnArray.push(latlon.lon.toString());
+                        }
+                        columnArray.push(`"${plStreet}"`);
                         lineArray.push(columnArray);
                     }
                     if (isTab) {
-                        w.document.write("<tr><td>" + getStreetName(street) + "</td>");
+                        w.document.write(`<tr><td>${getStreetName(street)}</td>`);
                         if (settings.IncludeAltNames) {
-                            w.document.write("<td>" + altNames + "</td>");
+                            w.document.write(`<td>${altNames}</td>`);
                         }
-                        w.document.write("<td>" + street.state + "</td>");
-                        w.document.write("<td>" + roadTypeText + "</td><td>" + street.lockLevel + "</td>");
-                        w.document.write("<td>" + street.incorrectCity + "</td><td>" + street.cityShouldBe + "</td>");
-                        w.document.write("<td>" + latlon.lat.toString() + "</td><td>" + latlon.lon.toString() + "</td>" +
-                            "<td><a href=\'" + plStreet + "\' target=\'_blank\'>Permalink</a></td></tr>");
+                        w.document.write(`<td>${street.state}</td>`);
+                        w.document.write(`<td>${roadTypeText}</td>`);
+                        if (includeLockLevel) {
+                            w.document.write(`<td>${street.lockLevel}</td>`);
+                        }
+                        w.document.write(`<td>${street.incorrectCity}</td><td>${street.cityShouldBe}</td>`);
+                        if (includeLat) {
+                            w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                        }
+                        if (includeLon) {
+                            w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                        }
+                        w.document.write(`<td><a href='${plStreet}' target='_blank'>Permalink</a></td></tr>`);
                     }
                 }
             }
             if (isCSV) {
-                let csvContent = lineArray.join("\n");
-                let blobContent = [];
+                const csvContent = lineArray.join("\n");
+                const blobContent = [];
                 if (addBOM) {
                     blobContent.push('\uFEFF');
                 }
                 blobContent.push(csvContent);
-                let blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
-                let link = document.createElement("a");
-                let url = URL.createObjectURL(blob);
+                const blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
                 link.setAttribute("download", fileName);
-                let node = document.body.appendChild(link);
+                const node = document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(node);
             }
@@ -850,7 +900,7 @@ var WMEWAL_Cities;
     }
     WMEWAL_Cities.ScanCancelled = ScanCancelled;
     function getStreetPL(street) {
-        let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
+        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
         let url = WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, WMEWAL.zoomLevel) + "&segments=";
         for (let ix = 0; ix < street.segments.length; ix++) {
             if (ix > 0) {
@@ -861,7 +911,7 @@ var WMEWAL_Cities;
         return url;
     }
     function getSegmentPL(segment) {
-        let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
+        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
         return WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, 5) + "&segments=" + segment.id;
     }
     function getStreetName(street) {
@@ -871,7 +921,7 @@ var WMEWAL_Cities;
         console.group(pluginName + ": Initializing");
         initCount++;
         let allOK = true;
-        let objectToCheck = [
+        const objectToCheck = [
             "W.app",
             "W.model.states",
             "OpenLayers",
@@ -879,7 +929,7 @@ var WMEWAL_Cities;
             "WazeWrap.Ready"
         ];
         for (let i = 0; i < objectToCheck.length; i++) {
-            let path = objectToCheck[i].split(".");
+            const path = objectToCheck[i].split(".");
             let object = window;
             let ok = true;
             for (let j = 0; j < path.length; j++) {
@@ -997,7 +1047,7 @@ var WMEWAL_Cities;
         }
     }
     function log(level, message) {
-        let t = new Date();
+        const t = new Date();
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":

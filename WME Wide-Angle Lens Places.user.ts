@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.0
+// @version             1.6.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,6 +19,8 @@
 // @updateURL           https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
 // ==/UserScript==
+// @updateURL           https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.user.js
 
 /*global W, OL, I18n, $, WazeWrap, WMEWAL, OpenLayers */
 
@@ -27,7 +29,7 @@ namespace WMEWAL_Places {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Return count of places found</li>' +
+        '<li>Support variable output fields</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -150,15 +152,15 @@ namespace WMEWAL_Places {
         Setting: ISaveableSettings;
     }
 
-    let pluginName = "WMEWAL-Places";
+    const pluginName = "WMEWAL-Places";
 
-    export let Title = "Places";
-    export let MinimumZoomLevel = 17;
-    export let SupportsSegments = false;
-    export let SupportsVenues = true;
+    export const Title = "Places";
+    export const MinimumZoomLevel = 17;
+    export const SupportsSegments = false;
+    export const SupportsVenues = true;
 
-    let settingsKey = "WMEWALPlacesSettings";
-    let savedSettingsKey = "WMEWALPlacesSavedSettings";
+    const settingsKey = "WMEWALPlacesSettings";
+    const savedSettingsKey = "WMEWALPlacesSavedSettings";
     let settings: ISettings = null;
     let savedSettings: Array<ISavedSetting> = [];
     let places: Array<IPlace>;
@@ -177,7 +179,7 @@ namespace WMEWAL_Places {
     let savedVenues: Array<string>
 
     export function GetTab(): string {
-        let rpp = "RESIDENCE_HOME";
+        const rpp = "RESIDENCE_HOME";
         let html = "<table style='border-collapse:separate;border-spacing:0px 1px;'>";
 
         html += "<tbody>";
@@ -202,12 +204,12 @@ namespace WMEWAL_Places {
         html += `<select id='${ctlPrefix}Category'>` +
             "<option value=''></option>";
 
-        for (var topIx = 0; topIx < W.Config.venues.categories.length; topIx++) {
-            var topCategory = W.Config.venues.categories[topIx];
+        for (let topIx = 0; topIx < W.Config.venues.categories.length; topIx++) {
+            const topCategory = W.Config.venues.categories[topIx];
             html += ("<option value='" + topCategory + "'>" + I18n.t("venues.categories." + topCategory) + "</option>");
-            var subCategories = W.Config.venues.subcategories[topCategory];
-            for (var subIx = 0; subIx < subCategories.length; subIx++) {
-                var subCategory = W.Config.venues.subcategories[topCategory][subIx];
+            const subCategories = W.Config.venues.subcategories[topCategory];
+            for (let subIx = 0; subIx < subCategories.length; subIx++) {
+                const subCategory = W.Config.venues.subcategories[topCategory][subIx];
                 html += ("<option value='" + subCategory + "'>--" + I18n.t("venues.categories." + subCategory) + "</option>");
             }
         }
@@ -357,19 +359,19 @@ namespace WMEWAL_Places {
     }
 
     function updateStates(): void {
-        let selectState = $(`#${ctlPrefix}State`);
+        const selectState = $(`#${ctlPrefix}State`);
 
         // Preserve current selection
-        let currentId: number = parseInt(selectState.val());
+        const currentId: number = parseInt(selectState.val());
 
         selectState.empty();
 
-        let stateObjs: Array<IState> = [];
+        const stateObjs: Array<IState> = [];
         stateObjs.push({id: null, name: "" });
 
         for (let s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
-                let st = W.model.states.getObjectById(parseInt(s));
+                const st = W.model.states.getObjectById(parseInt(s));
                 if (st.id !== 1 && st.name.length !== 0) {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -385,8 +387,8 @@ namespace WMEWAL_Places {
         });
 
         for (let ix = 0; ix < stateObjs.length; ix++) {
-            let so = stateObjs[ix];
-            let stateOption = $("<option/>").text(so.name).attr("value", so.id ?? "");
+            const so = stateObjs[ix];
+            const stateOption = $("<option/>").text(so.name).attr("value", so.id ?? "");
 
             if (currentId != null && so.id === currentId) {
                 stateOption.attr("selected", "selected");
@@ -397,16 +399,16 @@ namespace WMEWAL_Places {
 
     function updateUsers(selectUsernameList: JQuery): void {
         // Preserve current selection
-        var currentId = parseInt(selectUsernameList.val());
+        const currentId = parseInt(selectUsernameList.val());
 
         selectUsernameList.empty();
 
-        let userObjs: Array<IUser> = [];
+        const userObjs: Array<IUser> = [];
         userObjs.push({id: null, name: "" });
 
         for (let uo in W.model.users.objects) {
             if (W.model.users.objects.hasOwnProperty(uo)) {
-                let u = W.model.users.getObjectById(parseInt(uo));
+                const u = W.model.users.getObjectById(parseInt(uo));
                 if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
                     userObjs.push({ id: u.id, name: u.userName });
                 }
@@ -422,8 +424,8 @@ namespace WMEWAL_Places {
         });
 
         for (let ix = 0; ix < userObjs.length; ix++) {
-            let o = userObjs[ix];
-            let userOption = $("<option/>").text(o.name).attr("value", o.id);
+            const o = userObjs[ix];
+            const userOption = $("<option/>").text(o.name).attr("value", o.id);
 
             if (currentId != null && o.id == null) {
                 userOption.attr("selected", "selected");
@@ -433,7 +435,7 @@ namespace WMEWAL_Places {
     }
 
     function updateSavedSettingsList(): void {
-        let s = $(`#${ctlPrefix}SavedSettings`);
+        const s = $(`#${ctlPrefix}SavedSettings`);
 
         s.empty();
 
@@ -480,7 +482,7 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}Created`).prop("checked", settings.Created);
         $(`#${ctlPrefix}CreatedOp`).val(settings.CreatedOperation);
         if (settings.CreatedDate != null) {
-            let createdDateTime = new Date(settings.CreatedDate);
+            const createdDateTime = new Date(settings.CreatedDate);
             $(`#${ctlPrefix}CreatedDate`).val(createdDateTime.getFullYear().toString().padStart(4, "0") + "-" +
                 (createdDateTime.getMonth() + 1).toString().padStart(2, "0") + "-" + createdDateTime.getDate().toString().padStart(2, "0"));
             $(`#${ctlPrefix}CreatedTime`).val(createdDateTime.getHours().toString().padStart(2, "0") + ":" +
@@ -492,7 +494,7 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}Updated`).prop("checked", settings.Updated);
         $(`#${ctlPrefix}UpdatedOp`).val(settings.UpdatedOperation);
         if (settings.UpdatedDate != null) {
-            let updatedDateTime = new Date(settings.UpdatedDate);
+            const updatedDateTime = new Date(settings.UpdatedDate);
             $(`#${ctlPrefix}UpdatedDate`).val(updatedDateTime.getFullYear().toString().padStart(4, "0") + "-" +
                 (updatedDateTime.getMonth() + 1).toString().padStart(2, "0") + "-" + updatedDateTime.getDate().toString().padStart(2, "0"));
             $(`#${ctlPrefix}UpdatedTime`).val(updatedDateTime.getHours().toString().padStart(2, "0") + ":" +
@@ -508,13 +510,13 @@ namespace WMEWAL_Places {
     }
 
     function loadSetting(): void {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
 
         initSettings();
-        let savedSetting = savedSettings[selectedSetting].Setting;
+        const savedSetting = savedSettings[selectedSetting].Setting;
 
         for (let name in savedSetting) {
             if (settings.hasOwnProperty(name)) {
@@ -532,9 +534,9 @@ namespace WMEWAL_Places {
 
         let message = "";
 
-        let s = getSettings();
+        const s = getSettings();
 
-        let cat = $(`#${ctlPrefix}Category`).val();
+        const cat = $(`#${ctlPrefix}Category`).val();
 
         let r: RegExp;
         if (nullif(s.Regex, "") !== null) {
@@ -569,17 +571,17 @@ namespace WMEWAL_Places {
             }
         }
 
-        let selectedState = $(`#${ctlPrefix}State`).val();
+        const selectedState = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null && s.State === null) {
             addMessage("Invalid state selection");
         }
 
-        let selectedModifiedUser = $(`#${ctlPrefix}LastModifiedBy`).val();
+        const selectedModifiedUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedModifiedUser, "") !== null && s.LastModifiedBy === null) {
             addMessage("Invalid last modified user");
         }
 
-        let selectedCreatedUser = $(`#${ctlPrefix}CreatedBy`).val();
+        const selectedCreatedUser = $(`#${ctlPrefix}CreatedBy`).val();
         if (nullif(selectedCreatedUser, "") !== null && s.CreatedBy === null) {
             addMessage("Invalid created user");
         }
@@ -615,9 +617,9 @@ namespace WMEWAL_Places {
 
     function saveSetting(): void {
         if (validateSettings()) {
-            let s = getSettings();
+            const s = getSettings();
 
-            let sName = prompt("Enter a name for this setting");
+            const sName = prompt("Enter a name for this setting");
             if (sName == null) {
                 return;
             }
@@ -635,7 +637,7 @@ namespace WMEWAL_Places {
                 }
             }
 
-            let savedSetting: ISavedSetting = {
+            const savedSetting: ISavedSetting = {
                 Name: sName,
                 Setting: s
             };
@@ -645,7 +647,7 @@ namespace WMEWAL_Places {
     }
 
     function getSettings(): ISaveableSettings {
-        let s: ISaveableSettings = {
+        const s: ISaveableSettings = {
             NoName: $(`#${ctlPrefix}NoName`).prop("checked"),
             Regex: null,
             RegexIgnoreCase: $(`#${ctlPrefix}IgnoreCase`).prop("checked"),
@@ -698,31 +700,31 @@ namespace WMEWAL_Places {
 
         s.StreetRegex = nullif($(`#${ctlPrefix}Street`).val(), "");
 
-        let selectedState: string = $(`#${ctlPrefix}State`).val();
+        const selectedState: string = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null) {
-            let state = W.model.states.getObjectById(parseInt(selectedState));
+            const state = W.model.states.getObjectById(parseInt(selectedState));
             if (state !== null) {
                 s.State = state.id;
             }
         }
 
-        let selectedModifiedUser = $(`#${ctlPrefix}LastModifiedBy`).val();
+        const selectedModifiedUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedModifiedUser, "") !== null) {
-            let u = W.model.users.getObjectById(selectedModifiedUser);
+            const u = W.model.users.getObjectById(selectedModifiedUser);
             if (u !== null) {
                 s.LastModifiedBy = u.id;
             }
         }
 
-        let selectedCreatedUser = $(`#${ctlPrefix}CreatedBy`).val();
+        const selectedCreatedUser = $(`#${ctlPrefix}CreatedBy`).val();
         if (nullif(selectedCreatedUser, "") !== null) {
-            let u = W.model.users.getObjectById(selectedCreatedUser);
+            const u = W.model.users.getObjectById(selectedCreatedUser);
             if (u !== null) {
                 s.CreatedBy = u.id;
             }
         }
 
-        let selectedLockLevel = $(`#${ctlPrefix}LockLevel`).val();
+        const selectedLockLevel = $(`#${ctlPrefix}LockLevel`).val();
         if (selectedLockLevel != null && selectedLockLevel.length > 0) {
             s.LockLevel = parseInt(selectedLockLevel);
         }
@@ -733,7 +735,7 @@ namespace WMEWAL_Places {
 
         let createdDate: string = $(`#${ctlPrefix}CreatedDate`).val();
         if (createdDate && createdDate.length > 0) {
-            let createdTime: string = $(`#${ctlPrefix}CreatedTime`).val();
+            const createdTime: string = $(`#${ctlPrefix}CreatedTime`).val();
             if (createdTime && createdTime.length > 0) {
                 createdDate += ` ${createdTime}`;
             } else {
@@ -744,7 +746,7 @@ namespace WMEWAL_Places {
 
         let updatedDate: string = $(`#${ctlPrefix}UpdatedDate`).val();
         if (updatedDate && updatedDate.length > 0) {
-            let updatedTime: string = $(`#${ctlPrefix}UpdatedTime`).val();
+            const updatedTime: string = $(`#${ctlPrefix}UpdatedTime`).val();
             if (updatedTime && updatedTime.length > 0) {
                 updatedDate += ` ${updatedTime}`;
             } else {
@@ -758,7 +760,7 @@ namespace WMEWAL_Places {
     }
 
     function deleteSetting(): void {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
@@ -851,7 +853,7 @@ namespace WMEWAL_Places {
     export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResults> {
         return new Promise(resolve => {
             setTimeout(function () {
-                let count = scan(segments, venues);
+                const count = scan(segments, venues);
                 resolve({Streets: null, Places: count, MapComments: null});
             });
         });
@@ -859,7 +861,7 @@ namespace WMEWAL_Places {
 
     function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): number {
         function checkCategory(categories: string[], category: string, operation: Operation): boolean {
-            let match = categories.find(function (e) {
+            const match = categories.find(function (e) {
                 return e.localeCompare(category) === 0;
             });
             if (typeof match === "undefined" || match == null || match.length === 0) {
@@ -868,13 +870,13 @@ namespace WMEWAL_Places {
             return operation === Operation.Equal;
         }
 
-        let validPhoneRegex = new RegExp("\\(\\d\\d\\d\\) \\d\\d\\d-\\d\\d\\d\\d");
+        const validPhoneRegex = new RegExp("\\(\\d\\d\\d\\) \\d\\d\\d-\\d\\d\\d\\d");
 
         for (let ix = 0; ix < venues.length; ix++) {
-            let venue = venues[ix];
+            const venue = venues[ix];
             if (venue != null) {
-                var categories = venue.attributes.categories;
-                let address = venue.getAddress();
+                const categories = venue.attributes.categories;
+                const address = venue.getAddress();
                 if ((settings.LockLevel == null ||
                     (settings.LockLevelOperation === Operation.Equal && (venue.attributes.lockRank || 0) + 1 === settings.LockLevel) ||
                     (settings.LockLevelOperation === Operation.NotEqual && (venue.attributes.lockRank || 0) + 1 !== settings.LockLevel)) &&
@@ -1034,11 +1036,11 @@ namespace WMEWAL_Places {
                     // Don't add it if we've already done so
                     if (savedVenues.indexOf(venue.getID()) === -1) {
                         savedVenues.push(venue.getID());
-                        let lastEditorID = venue.getUpdatedBy() ?? venue.getCreatedBy();
-                        var lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found'};
-                        var createdByID = venue.getCreatedBy();
-                        var createdBy = W.model.users.getObjectById(createdByID) ?? { userName : 'Not found'};
-                        let place: IPlace = {
+                        const lastEditorID = venue.getUpdatedBy() ?? venue.getCreatedBy();
+                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found'};
+                        const createdByID = venue.getCreatedBy();
+                        const createdBy = W.model.users.getObjectById(createdByID) ?? { userName : 'Not found'};
+                        const place: IPlace = {
                             id: venue.attributes.id,
                             mainCategory: venue.getMainCategory(),
                             name: venue.attributes.name,
@@ -1079,9 +1081,15 @@ namespace WMEWAL_Places {
                 return a.name.localeCompare(b.name);
             });
 
-            let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
-            let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
-            let addBOM = WMEWAL.addBOM ?? false;
+            const isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
+            const isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            const addBOM = WMEWAL.addBOM ?? false;
+            const outputFields = WMEWAL.outputFields ?? ['CreatedEditor','LastEditor','LockLevel','Lat','Lon'];
+            const includeCreatedBy = outputFields.indexOf('CreatedEditor') > -1 || settings.CreatedBy !== null;
+            const includeLastUpdatedBy = outputFields.indexOf('LastEditor') > -1 || settings.LastModifiedBy !== null;
+            const includeLockLevel = outputFields.indexOf('LockLevel') > -1 || settings.LockLevel !== null;
+            const includeLat = outputFields.indexOf('Lat') > -1;
+            const includeLon = outputFields.indexOf('Lon') > -1;
 
             let lineArray: Array<Array<string>>;
             let columnArray: Array<string>;
@@ -1094,11 +1102,28 @@ namespace WMEWAL_Places {
                 if (settings.IncludeAlt) {
                     columnArray.push("Alt Names");
                 }
-                columnArray.push("Categories","City","State","Lock Level","Type","Street","House Number");
+                columnArray.push("Categories","City","State");
+                if (includeLockLevel) {
+                    columnArray.push("Lock Level");
+                }
+                columnArray.push("Type","Street","House Number");
                 if (detectIssues) {
                     columnArray.push("Issues");
                 }
-                columnArray.push("Website","Phone Number","Parking Lot Type","Created By","Last Updated By","Latitude","Longitude","Permalink");
+                columnArray.push("Website","Phone Number","Parking Lot Type");
+                if (includeCreatedBy) {
+                    columnArray.push("Created By");
+                }
+                if (includeLastUpdatedBy) {
+                    columnArray.push("Last Updated By");
+                }
+                if (includeLat) {
+                    columnArray.push("Latitude");
+                }
+                if (includeLon) {
+                    columnArray.push("Longitude");
+                }
+                columnArray.push("Permalink");
                 lineArray.push(columnArray);
                 fileName = "Places_" + WMEWAL.areaName;
                 fileName += ".csv";
@@ -1253,17 +1278,33 @@ namespace WMEWAL_Places {
                     w.document.write("<th>Alt Names</th>");
                 }
                 w.document.write("<th>Categories</th><th>City</th><th>State</th>");
-                w.document.write("<th>Lock Level</th><th>Type</th><th>Street</th><th>House Number</th>");
+                if (includeLockLevel) {
+                    w.document.write("<th>Lock Level</th>");
+                }
+                w.document.write("<th>Type</th><th>Street</th><th>House Number</th>");
                 if (detectIssues) {
                     w.document.write("<th>Issues</th>");
                 }
-                w.document.write("<th>Website</th><th>Phone Number</th><th>Parking Lot Type</th><th>Created By</th><th>Last Updated By</th><th>Latitude</th><th>Longitude</th><th>Permalink</th></tr><thead><tbody>");
+                w.document.write("<th>Website</th><th>Phone Number</th><th>Parking Lot Type</th>");
+                if (includeCreatedBy) {
+                    w.document.write("<th>Created By</th>");
+                }
+                if (includeLastUpdatedBy) {
+                    w.document.write("<th>Last Updated By</th>");
+                }
+                if (includeLat) {
+                    w.document.write("<th>Latitude</th>");
+                }
+                if (includeLon) {
+                    w.document.write("<th>Longitude</th>");
+                }
+                w.document.write("<th>Permalink</th></tr><thead><tbody>");
             }
 
             for (let ixPlace = 0; ixPlace < places.length; ixPlace++) {
-                let place = places[ixPlace];
-                let plPlace = getPlacePL(place);
-                let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
+                const place = places[ixPlace];
+                const plPlace = getPlacePL(place);
+                const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
                 let categories: String = "";
                 for (let ixCategory = 0; ixCategory < place.categories.length; ixCategory++) {
                     if (ixCategory > 0) {
@@ -1282,13 +1323,28 @@ namespace WMEWAL_Places {
                         columnArray.push(`"${place.altNames.join(',')}"`);
                     }
 
-                    columnArray.push(`"${categories}"`, `"${place.city}"`, `"${place.state}"`, place.lockLevel.toString(),
-                        place.placeType, `"${place.streetName}"`, `"${place.houseNumber}"`);
+                    columnArray.push(`"${categories}"`, `"${place.city}"`, `"${place.state}"`);
+                    if (includeLockLevel) {
+                        columnArray.push(place.lockLevel.toString());
+                    }
+                    columnArray.push(place.placeType, `"${place.streetName}"`, `"${place.houseNumber}"`);
                     if (detectIssues) {
                         columnArray.push(`"${getIssues(place.issues)}"`);
                     }
-                    columnArray.push(`"${place.url}"`, `"${place.phone}"`, `"${place.parkingLotType}"`,
-                        `"${place.createdBy}"`, `"${place.lastEditor}"`, latlon.lat.toString(), latlon.lon.toString(), `"${plPlace}"`);
+                    columnArray.push(`"${place.url}"`, `"${place.phone}"`, `"${place.parkingLotType}"`);
+                    if (includeCreatedBy) {
+                        columnArray.push(`"${place.createdBy}"`);
+                    }
+                    if (includeLastUpdatedBy) {
+                        columnArray.push(`"${place.lastEditor}"`);
+                    }
+                    if (includeLat) {
+                        columnArray.push(latlon.lat.toString());
+                    }
+                    if (includeLon) {
+                        columnArray.push(latlon.lon.toString());
+                    }
+                    columnArray.push(`"${plPlace}"`);
                     lineArray.push(columnArray);
                 }
                 if (isTab) {
@@ -1299,7 +1355,9 @@ namespace WMEWAL_Places {
                     w.document.write(`<td>${categories}</td>`);
                     w.document.write(`<td>${place.city}</td>`);
                     w.document.write(`<td>${place.state}</td>`);
-                    w.document.write(`<td>${place.lockLevel.toString()}</td>`);
+                    if (includeLockLevel) {
+                        w.document.write(`<td>${place.lockLevel.toString()}</td>`);
+                    }
                     w.document.write(`<td>${place.placeType}</td>`);
                     w.document.write(`<td>${place.streetName}</td>`);
                     w.document.write(`<td>${place.houseNumber}</td>`);
@@ -1312,26 +1370,34 @@ namespace WMEWAL_Places {
                     w.document.write(`<td>${place.url === "" ? place.url : `<a href="${/^http/.test(place.url) ? '' : 'http://'}${place.url}">${place.url}</a>`}</td>`);
                     w.document.write(`<td>${place.phone}</td>`)
                     w.document.write(`<td>${place.parkingLotType}</td>`)
-                    w.document.write(`<td>${place.createdBy}</td>`);
-                    w.document.write(`<td>${place.lastEditor}</td>`);
-                    w.document.write(`<td>${latlon.lat.toString()}</td>`);
-                    w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                    if (includeCreatedBy) {
+                        w.document.write(`<td>${place.createdBy}</td>`);
+                    }
+                    if (includeLastUpdatedBy) {
+                        w.document.write(`<td>${place.lastEditor}</td>`);
+                    }
+                    if (includeLat) {
+                        w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                    }
+                    if (includeLon) {
+                        w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                    }
                     w.document.write(`<td><a href='${plPlace}' target='_blank'>Permalink</a></td></tr>`);
                 }
             }
             if (isCSV) {
-                let csvContent = lineArray.join("\n");
-                let blobContent: BlobPart[] = [];
+                const csvContent = lineArray.join("\n");
+                const blobContent: BlobPart[] = [];
                 if (addBOM) {
                     blobContent.push('\uFEFF');
                 }
                 blobContent.push(csvContent);
-                var blob = new Blob(blobContent, {type: "data:text/csv;charset=utf-8"});
-                let link = document.createElement("a");
-                let url = URL.createObjectURL(blob);
+                const blob = new Blob(blobContent, {type: "data:text/csv;charset=utf-8"});
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
                 link.setAttribute("download", fileName);
-                let node = document.body.appendChild(link);
+                const node = document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(node);
             }
@@ -1356,13 +1422,13 @@ namespace WMEWAL_Places {
         initCount++;
 
         let allOK = true;
-        let objectToCheck: Array<string> = ["OpenLayers",
+        const objectToCheck: Array<string> = ["OpenLayers",
             "W.app",
             "W.Config.venues",
             "WMEWAL.RegisterPlugIn",
             "WazeWrap.Ready"];
         for (let i: number = 0; i < objectToCheck.length; i++) {
-            let path = objectToCheck[i].split(".");
+            const path = objectToCheck[i].split(".");
             let object: Window = window;
             let ok = true;
             for (let j: number = 0; j < path.length; j++) {
@@ -1624,12 +1690,12 @@ namespace WMEWAL_Places {
     }
 
     function getPlacePL(place: IPlace): string {
-        let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
+        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
         return WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, 5) + "&mode=0&venues=" + place.id;
     }
 
     function getIssues(issues: number): string {
-        let issuesList = [];
+        const issuesList = [];
         if (issues & Issue.NoName) {
             issuesList.push("No name");
         }
@@ -1698,7 +1764,7 @@ namespace WMEWAL_Places {
     }
 
     function log(level: string, message: any): void {
-        let t = new Date();
+        const t = new Date();
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":

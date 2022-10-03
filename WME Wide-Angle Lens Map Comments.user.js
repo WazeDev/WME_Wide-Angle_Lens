@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.1.0
+// @version             1.2.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,13 +19,15 @@
 // @updateURL           https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
 // ==/UserScript==
+// @updateURL           https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers, I18n */
 var WMEWAL_MapComments;
 (function (WMEWAL_MapComments) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Return count of map comments found</li>' +
+        '<li>Support variable output fields</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40644';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -40,13 +42,13 @@ var WMEWAL_MapComments;
         Operation[Operation["GreaterThan"] = 5] = "GreaterThan";
         Operation[Operation["GreaterThanOrEqual"] = 6] = "GreaterThanOrEqual";
     })(Operation || (Operation = {}));
-    let pluginName = "WMEWAL-MapComments";
+    const pluginName = "WMEWAL-MapComments";
     WMEWAL_MapComments.Title = "Map Comments";
     WMEWAL_MapComments.MinimumZoomLevel = 12;
     WMEWAL_MapComments.SupportsSegments = false;
     WMEWAL_MapComments.SupportsVenues = false;
-    let settingsKey = "WMEWALMapCommentsSettings";
-    let savedSettingsKey = "WMEWALMapCommentsSavedSettings";
+    const settingsKey = "WMEWALMapCommentsSettings";
+    const savedSettingsKey = "WMEWALMapCommentsSavedSettings";
     let settings = null;
     let savedSettings = [];
     let mapComments;
@@ -139,13 +141,13 @@ var WMEWAL_MapComments;
     WMEWAL_MapComments.TabLoaded = TabLoaded;
     function updateUsers(selectUsernameList) {
         // Preserve current selection
-        let currentId = parseInt(selectUsernameList.val());
+        const currentId = parseInt(selectUsernameList.val());
         selectUsernameList.empty();
-        let userObjs = [];
+        const userObjs = [];
         userObjs.push({ id: null, name: "" });
         for (let uo in W.model.users.objects) {
             if (W.model.users.objects.hasOwnProperty(uo)) {
-                let u = W.model.users.getObjectById(parseInt(uo));
+                const u = W.model.users.getObjectById(parseInt(uo));
                 if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
                     userObjs.push({ id: u.id, name: u.userName });
                 }
@@ -160,8 +162,8 @@ var WMEWAL_MapComments;
             }
         });
         for (let ix = 0; ix < userObjs.length; ix++) {
-            let o = userObjs[ix];
-            let userOption = $("<option/>").text(o.name).attr("value", o.id);
+            const o = userObjs[ix];
+            const userOption = $("<option/>").text(o.name).attr("value", o.id);
             if (currentId != null && o.id == null) {
                 userOption.attr("selected", "selected");
             }
@@ -169,10 +171,10 @@ var WMEWAL_MapComments;
         }
     }
     function updateSavedSettingsList() {
-        let s = $(`#${ctlPrefix}SavedSettings`);
+        const s = $(`#${ctlPrefix}SavedSettings`);
         s.empty();
         for (let ixSaved = 0; ixSaved < savedSettings.length; ixSaved++) {
-            let opt = $("<option/>").attr("value", ixSaved).text(savedSettings[ixSaved].Name);
+            const opt = $("<option/>").attr("value", ixSaved).text(savedSettings[ixSaved].Name);
             s.append(opt);
         }
     }
@@ -190,7 +192,7 @@ var WMEWAL_MapComments;
         $(`#${ctlPrefix}Expiration`).prop("checked", settings.Expiration);
         $(`#${ctlPrefix}ExpirationOp`).val(settings.ExpirationOperation);
         if (settings.ExpirationDate != null) {
-            let expirationDate = new Date(settings.ExpirationDate);
+            const expirationDate = new Date(settings.ExpirationDate);
             $(`#${ctlPrefix}ExpirationDate`).val(expirationDate.getFullYear().toString().padStart(4, "0") + "-" +
                 (expirationDate.getMonth() + 1).toString().padStart(2, "0") + "-" + expirationDate.getDate().toString().padStart(2, "0"));
         }
@@ -200,11 +202,11 @@ var WMEWAL_MapComments;
         $(`#${ctlPrefix}GeometryType`).val(settings.GeometryType);
     }
     function loadSetting() {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        let savedSetting = savedSettings[selectedSetting].Setting;
+        const savedSetting = savedSettings[selectedSetting].Setting;
         for (let name in savedSetting) {
             if (settings.hasOwnProperty(name)) {
                 settings[name] = savedSetting[name];
@@ -217,12 +219,12 @@ var WMEWAL_MapComments;
             message += ((message.length > 0 ? "\n" : "") + error);
         }
         let message = "";
-        let s = getSettings();
-        let selectedUpdateUser = $(`#${ctlPrefix}LastModifiedBy`).val();
+        const s = getSettings();
+        const selectedUpdateUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedUpdateUser, "") !== null && s.LastModifiedBy === null) {
             addMessage("Invalid last updated user");
         }
-        let selectedCreateUser = $(`#${ctlPrefix}CreatedBy`).val();
+        const selectedCreateUser = $(`#${ctlPrefix}CreatedBy`).val();
         if (nullif(selectedCreateUser, "") !== null && s.CreatedBy === null) {
             addMessage("Invalid created by user");
         }
@@ -254,8 +256,8 @@ var WMEWAL_MapComments;
     }
     function saveSetting() {
         if (validateSettings()) {
-            let s = getSettings();
-            let sName = prompt("Enter a name for this setting");
+            const s = getSettings();
+            const sName = prompt("Enter a name for this setting");
             if (sName == null) {
                 return;
             }
@@ -272,7 +274,7 @@ var WMEWAL_MapComments;
                     return;
                 }
             }
-            let savedSetting = {
+            const savedSetting = {
                 Name: sName,
                 Setting: s
             };
@@ -281,7 +283,7 @@ var WMEWAL_MapComments;
         }
     }
     function getSettings() {
-        let s = {
+        const s = {
             LockLevel: null,
             LockLevelOperation: parseInt($(`#${ctlPrefix}LockLevelOp`).val()),
             TitleRegex: null,
@@ -296,11 +298,11 @@ var WMEWAL_MapComments;
             ExpirationDate: null,
             CreatedBy: null
         };
-        let selectedUpdateUser = $(`#${ctlPrefix}LastModifiedBy`).val();
+        const selectedUpdateUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedUpdateUser, "") !== null) {
             s.LastModifiedBy = W.model.users.getObjectById(selectedUpdateUser).id;
         }
-        let selectedCreateUser = $(`#${ctlPrefix}CreatedBy`).val();
+        const selectedCreateUser = $(`#${ctlPrefix}CreatedBy`).val();
         if (nullif(selectedCreateUser, "") !== null) {
             s.CreatedBy = W.model.users.getObjectById(selectedCreateUser).id;
         }
@@ -312,7 +314,7 @@ var WMEWAL_MapComments;
         if (nullif(pattern, "") !== null) {
             s.CommentRegex = pattern;
         }
-        let selectedLockLevel = $(`#${ctlPrefix}LockLevel`).val();
+        const selectedLockLevel = $(`#${ctlPrefix}LockLevel`).val();
         if (nullif(selectedLockLevel, "") !== null) {
             s.LockLevel = parseInt(selectedLockLevel);
         }
@@ -333,7 +335,7 @@ var WMEWAL_MapComments;
         return s;
     }
     function deleteSetting() {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
@@ -407,7 +409,7 @@ var WMEWAL_MapComments;
     function scan(segments, venues) {
         for (let c in W.model.mapComments.objects) {
             if (mc.indexOf(c) === -1) {
-                let mapComment = W.model.mapComments.getObjectById(c);
+                const mapComment = W.model.mapComments.getObjectById(c);
                 if (mapComment != null) {
                     mc.push(c);
                     if ((settings.LockLevel == null ||
@@ -429,7 +431,7 @@ var WMEWAL_MapComments;
                                 }
                             }
                             else {
-                                let endDateNumber = Date.parse(mapComment.attributes.endDate);
+                                const endDateNumber = Date.parse(mapComment.attributes.endDate);
                                 if (isNaN(endDateNumber)) {
                                     continue;
                                 }
@@ -466,9 +468,8 @@ var WMEWAL_MapComments;
                         //     }
                         // }
                         if (settings.CommentRegex != null) {
-                            let match = false;
-                            match = commentRegex.test(mapComment.attributes.body);
-                            let comments = mapComment.getComments();
+                            let match = commentRegex.test(mapComment.attributes.body);
+                            const comments = mapComment.getComments();
                             for (let ixComment = 0; ixComment < comments.length; ixComment++ && !match) {
                                 match = commentRegex.test(comments.models[ixComment].attributes.text);
                             }
@@ -479,17 +480,17 @@ var WMEWAL_MapComments;
                         if (!WMEWAL.IsMapCommentInArea(mapComment)) {
                             continue;
                         }
-                        let lastEditorID = mapComment.getUpdatedBy() ?? mapComment.getCreatedBy();
-                        let lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found' };
+                        const lastEditorID = mapComment.getUpdatedBy() ?? mapComment.getCreatedBy();
+                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found' };
                         let endDate = null;
-                        let expirationDate = mapComment.attributes.endDate;
+                        const expirationDate = mapComment.attributes.endDate;
                         if (expirationDate != null) {
                             endDate = Date.parse(expirationDate);
                             if (isNaN(endDate)) {
                                 endDate = null;
                             }
                         }
-                        let mComment = {
+                        const mComment = {
                             id: mapComment.attributes.id,
                             geometryType: ((mapComment.isPoint()) ? I18n.t("edit.venue.type.point") : I18n.t("edit.venue.type.area")),
                             lastEditor: (lastEditor && lastEditor.userName) || "",
@@ -515,16 +516,36 @@ var WMEWAL_MapComments;
             mapComments.sort(function (a, b) {
                 return a.title.localeCompare(b.title);
             });
-            let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
-            let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
-            let addBOM = WMEWAL.addBOM ?? false;
+            const isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
+            const isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            const addBOM = WMEWAL.addBOM ?? false;
+            const outputFields = WMEWAL.outputFields ?? ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
+            const includeLockLevel = outputFields.indexOf('LockLevel') > -1 || settings.LockLevel !== null;
+            const includeLastEditor = outputFields.indexOf('Last Editor') > -1 || settings.LastModifiedBy !== null;
+            const includeLat = outputFields.indexOf('Lat') > -1;
+            const includeLon = outputFields.indexOf('Lon') > -1;
             let lineArray;
             let columnArray;
             let w;
             let fileName;
             if (isCSV) {
                 lineArray = [];
-                columnArray = ["Title,Lock Level,Geometry Type,Expiration Date,Last Editor,Created On,Updated On,Latitude,Longitude,Permalink"];
+                columnArray = ["Title"];
+                if (includeLockLevel) {
+                    columnArray.push('Lock Level');
+                }
+                columnArray.push("Geometry Type", 'Expiration Date');
+                if (includeLastEditor) {
+                    columnArray.push('Last Editor');
+                }
+                columnArray.push('Created On', 'Updated On');
+                if (includeLat) {
+                    columnArray.push('Latitude');
+                }
+                if (includeLon) {
+                    columnArray.push('Longitude');
+                }
+                columnArray.push('Permalink');
                 lineArray.push(columnArray);
                 fileName = "MapComments" + WMEWAL.areaName;
                 fileName += ".csv";
@@ -579,49 +600,84 @@ var WMEWAL_MapComments;
                 if (settings.EditableByMe) {
                     w.document.write("<br/>Editable by me");
                 }
-                w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><thead><tr><th>Title</th><th>Lock Level</th><th>Geometry Type</th><th>Expiration Date</th>");
-                w.document.write("<th>Last Editor</th><th>Created On</th><th>Updated On</th><th>Latitude</th><th>Longitude</th><th>Permalink</th></tr><thead><tbody>");
+                w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><thead><tr><th>Title</th>");
+                if (includeLockLevel) {
+                    w.document.write("<th>Lock Level</th>");
+                }
+                w.document.write("<th>Geometry Type</th><th>Expiration Date</th>");
+                if (includeLastEditor) {
+                    w.document.write("<th>Last Editor</th>");
+                }
+                w.document.write("<th>Created On</th><th>Updated On</th>");
+                if (includeLat) {
+                    w.document.write("<th>Latitude</th>");
+                }
+                if (includeLon) {
+                    w.document.write("<th>Longitude</th>");
+                }
+                w.document.write("<th>Permalink</th></tr><thead><tbody>");
             }
             for (let ixmc = 0; ixmc < mapComments.length; ixmc++) {
-                let mapComment = mapComments[ixmc];
-                let lonlat = OpenLayers.Layer.SphericalMercator.inverseMercator(mapComment.center.x, mapComment.center.y);
-                let pl = getPL(mapComment, lonlat);
+                const mapComment = mapComments[ixmc];
+                const lonlat = OpenLayers.Layer.SphericalMercator.inverseMercator(mapComment.center.x, mapComment.center.y);
+                const pl = getPL(mapComment, lonlat);
                 let expirationDate = "";
                 if (mapComment.expirationDate != null) {
                     expirationDate = new Date(mapComment.expirationDate).toLocaleString();
                 }
                 if (isCSV) {
-                    columnArray = ["\"" + mapComment.title + "\"", mapComment.lockLevel.toString(), mapComment.geometryType, "\"" + expirationDate + "\"", "\"" + mapComment.lastEditor + "\"",
-                        mapComment.createdOn ? new Date(mapComment.createdOn).toLocaleString() : "",
-                        mapComment.updatedOn ? new Date(mapComment.updatedOn).toLocaleString() : "",
-                        lonlat.lat.toString(), lonlat.lon.toString(), "\"" + pl + "\""];
+                    columnArray = [`"${mapComment.title}"`];
+                    if (includeLockLevel) {
+                        columnArray.push(mapComment.lockLevel.toString());
+                    }
+                    columnArray.push(mapComment.geometryType, `"${expirationDate}"`);
+                    if (includeLastEditor) {
+                        columnArray.push(`"${mapComment.lastEditor}"`);
+                    }
+                    columnArray.push(mapComment.createdOn ? new Date(mapComment.createdOn).toLocaleString() : "", mapComment.updatedOn ? new Date(mapComment.updatedOn).toLocaleString() : "");
+                    if (includeLat) {
+                        columnArray.push(lonlat.lat.toString());
+                    }
+                    if (includeLon) {
+                        columnArray.push(lonlat.lon.toString());
+                    }
+                    columnArray.push(`"${pl}"`);
                     lineArray.push(columnArray);
                 }
                 if (isTab) {
-                    w.document.write("<tr><td>" + mapComment.title + "</td><td>" + mapComment.lockLevel.toString() + "</td>");
+                    w.document.write(`<tr><td>${mapComment.title}</td>`);
+                    if (includeLockLevel) {
+                        w.document.write(`<td>${mapComment.lockLevel.toString()}</td>`);
+                    }
                     w.document.write("<td>" + mapComment.geometryType + "</td>");
                     w.document.write("<td>" + expirationDate + "</td>");
-                    w.document.write("<td>" + mapComment.lastEditor + "</td>");
+                    if (includeLastEditor) {
+                        w.document.write("<td>" + mapComment.lastEditor + "</td>");
+                    }
                     w.document.write("<td>" + (mapComment.createdOn ? new Date(mapComment.createdOn).toLocaleString() : "&nbsp;") + "</td>");
                     w.document.write("<td>" + (mapComment.updatedOn ? new Date(mapComment.updatedOn).toLocaleString() : "&nbsp;") + "</td>");
-                    w.document.write("<td>" + lonlat.lat.toString() + "</td>");
-                    w.document.write("<td>" + lonlat.lon.toString() + "</td>");
+                    if (includeLat) {
+                        w.document.write("<td>" + lonlat.lat.toString() + "</td>");
+                    }
+                    if (includeLon) {
+                        w.document.write("<td>" + lonlat.lon.toString() + "</td>");
+                    }
                     w.document.write("<td><a href=\'" + pl + "\' target=\'_blank\'>Permalink</a></td></tr>");
                 }
             }
             if (isCSV) {
-                let csvContent = lineArray.join("\n");
-                let blobContent = [];
+                const csvContent = lineArray.join("\n");
+                const blobContent = [];
                 if (addBOM) {
                     blobContent.push('\uFEFF');
                 }
                 blobContent.push(csvContent);
-                var blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
-                let link = document.createElement("a");
-                let url = URL.createObjectURL(blob);
+                const blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
                 link.setAttribute("download", fileName);
-                let node = document.body.appendChild(link);
+                const node = document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(node);
             }
@@ -643,12 +699,12 @@ var WMEWAL_MapComments;
         console.group(pluginName + ": Initializing");
         initCount++;
         let allOK = true;
-        let objectToCheck = ["OpenLayers",
+        const objectToCheck = ["OpenLayers",
             "W.app",
             "WMEWAL.RegisterPlugIn",
             "WazeWrap.Ready"];
         for (let i = 0; i < objectToCheck.length; i++) {
-            let path = objectToCheck[i].split(".");
+            const path = objectToCheck[i].split(".");
             let object = window;
             let ok = true;
             for (let j = 0; j < path.length; j++) {
@@ -768,7 +824,7 @@ var WMEWAL_MapComments;
         return s;
     }
     function log(level, message) {
-        let t = new Date();
+        const t = new Date();
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":

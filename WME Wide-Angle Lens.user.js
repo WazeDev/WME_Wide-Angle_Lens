@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.1
+// @version             1.7.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -19,18 +19,20 @@
 // @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
 // ==/UserScript==
+// @updateURL           https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.user.js
 /* global W, OL, $, WazeWrap, OpenLayers, I18n */
 var WMEWAL;
 (function (WMEWAL) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Display result count while scanning</li>';
+        '<li>Allow selection of optional fields to include in output</li>';
     '</ul>';
     const SHOW_UPDATE = true;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
-    const debug = true;
+    const debug = false;
     class ProgressBar {
         constructor(id) {
             this.root = $(id);
@@ -172,6 +174,7 @@ var WMEWAL;
     // let segments: Array<string> = null;
     // let venues: Array<string> = null;
     WMEWAL.areaName = null;
+    const defaultOutputFields = ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
     let currentX;
     let currentY;
     let currentCenter = null;
@@ -186,15 +189,15 @@ var WMEWAL;
     let modelReady = false;
     let settings = null;
     let plugins = [];
-    let settingsKey = "WMEWAL_Settings";
-    let layerName = "WMEWAL_Areas";
+    const settingsKey = "WMEWAL_Settings";
+    const layerName = "WMEWAL_Areas";
     let pb = null;
     let initCount = 0;
     let layerCheckboxAdded = false;
     let WALMap;
     async function WideAngleLens() {
         function CheckObject(objToCheck) {
-            let path = objToCheck.split(".");
+            const path = objToCheck.split(".");
             let object = window;
             let ok = true;
             for (let j = 0; j < path.length; j++) {
@@ -210,7 +213,7 @@ var WMEWAL;
         console.group("WMEWAL: Initializing");
         initCount++;
         let allOK = true;
-        let objectToCheck = ["W.map",
+        const objectToCheck = ["W.map",
             "W.model.segments",
             "W.model.venues",
             "W.model.states",
@@ -221,8 +224,8 @@ var WMEWAL;
             "W.model.actionManager",
             "WazeWrap.Ready"];
         for (let i = 0; i < objectToCheck.length; i++) {
-            var ok;
-            var objName;
+            let ok;
+            let objName;
             if (typeof objectToCheck[i] === 'string') {
                 objName = objectToCheck[i];
                 ok = CheckObject(objectToCheck[i]);
@@ -287,7 +290,8 @@ var WMEWAL;
                             OutputTo: "csv",
                             Version: Version,
                             showLayer: false,
-                            AddBOM: WMEWAL.addBOM
+                            AddBOM: WMEWAL.addBOM,
+                            OutputFields: defaultOutputFields
                         };
                     }
                 }
@@ -304,6 +308,9 @@ var WMEWAL;
                 if (!Object.prototype.hasOwnProperty.call(settings, 'showLayer')) {
                     settings.showLayer = false;
                 }
+                if (!Object.prototype.hasOwnProperty.call(settings, 'OutputFields')) {
+                    settings.OutputFields = defaultOutputFields;
+                }
                 for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
                         settings.SavedAreas[ix].geometry = OpenLayers.Geometry.fromWKT(settings.SavedAreas[ix].geometryText);
@@ -318,7 +325,7 @@ var WMEWAL;
             }
             else if (localStorage["WMEMSL_areaList"]) {
                 // Import settings from old MSL script
-                let savedAreas = JSON.parse(localStorage["WMEMSL_areaList"]);
+                const savedAreas = JSON.parse(localStorage["WMEMSL_areaList"]);
                 savedAreas.sort(function (a, b) {
                     return a.name.localeCompare(b.name);
                 });
@@ -330,7 +337,8 @@ var WMEWAL;
                     OutputTo: "csv",
                     Version: Version,
                     showLayer: false,
-                    AddBOM: WMEWAL.addBOM
+                    AddBOM: WMEWAL.addBOM,
+                    OutputFields: defaultOutputFields
                 };
                 for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                     if (settings.SavedAreas[ix].geometryText) {
@@ -348,7 +356,8 @@ var WMEWAL;
                     OutputTo: "csv",
                     Version: Version,
                     showLayer: false,
-                    AddBOM: false
+                    AddBOM: false,
+                    OutputFields: defaultOutputFields
                 };
             }
         }
@@ -356,7 +365,7 @@ var WMEWAL;
             WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
         }
         let style = document.createElement("style");
-        style.type = "text/css";
+        //style.type = "text/css";
         let css = ".wal-heading { font-size: 1.2em; font-weight: bold }";
         css += ".wal-indent { padding-left: 20px }";
         css += ".wal-label { margin-left: 8px; font-weight: normal; margin-bottom: 0px }";
@@ -392,42 +401,67 @@ var WMEWAL;
         window["WMEWAL"] = WMEWAL;
     }
     function makeTab() {
-        let userTabs = $("#user-info");
-        let navTabs = $("ul.nav-tabs", userTabs).filter(":first");
-        let tabContent = $(".tab-content", userTabs).filter(":first");
+        const userTabs = $("#user-info");
+        const navTabs = $("ul.nav-tabs", userTabs).filter(":first");
+        const tabContent = $(".tab-content", userTabs).filter(":first");
         navTabs.append("<li><a href='#sidepanel-wme-wal' data-toggle='tab'>WAL</a></li>");
-        let addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens <span style='font-size:11px;'>v" + Version + "</span></h3></div>");
-        let pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(addon);
-        let pb$ = $("<div/>").attr("id", "wal-progressBar").css({ width: "100%", display: "none" }).appendTo(pbi);
+        const addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens <span style='font-size:11px;'>v" + Version + "</span></h3></div>");
+        const pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(addon);
+        const pb$ = $("<div/>").attr("id", "wal-progressBar").css({ width: "100%", display: "none" }).appendTo(pbi);
         pb$.append($("<div/>").addClass("wal-progressBarBG"));
         pb$.append($("<span/>").addClass("wal-progressBarFG").text("100%"));
         pbi.append("<div id='wal-info'/>");
         pbi.append("<div id='wal-counts'/>");
-        let addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(addon);
+        const addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(addon);
         addonTabs.append("<li class='active'><a data-toggle='tab' href='#sidepanel-wmewal-scan'>Scan</a></li>");
         addonTabs.append("<li><a data-toggle='tab' href='#sidepanel-wmewal-areas'>Areas</a></li>");
-        let addonTabContent = $("<div class='tab-content'/>").appendTo(addon);
-        let tabScan = $("<div class='tab-pane active' id='sidepanel-wmewal-scan'/>").appendTo(addonTabContent);
+        addonTabs.append("<li><a data-toggle='tab' href='#sidepanel-wmewal-output'>Output</a></li>");
+        const addonTabContent = $("<div class='tab-content'/>").appendTo(addon);
+        const tabScan = $("<div class='tab-pane active' id='sidepanel-wmewal-scan'/>").appendTo(addonTabContent);
         tabScan.append("<div><b>Output to: </b><select class='form-control' id='_wmewalScanOutputTo'><option value='csv'>CSV File</option><option value='tab'>Browser Tab</option>" +
             "<option value='both'>Both CSV File and Browser Tab</option></select></div>");
         tabScan.append("<div><input type='checkbox' id='_wmewalAddBOM'><label for='_wmewalAddBOM' class='wal-label'>Add Byte Order Mark to CSV</label></div><hr/>");
         tabScan.append("<div><b>Active Plug-Ins</b><div id='_wmewalPlugins'></div>");
         tabScan.append("<div><b>Scan</b><div id='_wmewalOptionsSavedAreas' name='_wmewalSavedAreas'/></div>");
         tabScan.append("<hr/>");
-        let divButtons = $("<div/>").appendTo(tabScan);
+        const divButtons = $("<div/>").appendTo(tabScan);
         divButtons.append("<button class='btn btn-primary' id='_wmewalScan' title='Scan' style='margin-right: 8px'>Scan</button>");
         divButtons.append("<button class='btn btn-primary' id='_wmewalCancel' title='Cancel' disabled='disabled'>Cancel</button>");
-        let tabAreas = $("<div class='tab-pane' id='sidepanel-wmewal-areas'/>").appendTo(addonTabContent);
+        const tabAreas = $("<div class='tab-pane' id='sidepanel-wmewal-areas'/>").appendTo(addonTabContent);
         tabAreas.append("<div id='_wmewalAreasSavedAreas' name='_wmewalSavedAreas'/>");
-        let divAreaButtons = $("<div/>").appendTo(tabAreas);
+        const divAreaButtons = $("<div/>").appendTo(tabAreas);
         divAreaButtons.append("<button class='btn btn-primary' id='_wmewalDeleteArea' title='Delete' style='margin-right: 4px'>Delete</button>");
         divAreaButtons.append("<button class='btn btn-primary' id='_wmewalExport' title='Export' style='margin-right: 4px'>Export</button>");
         divAreaButtons.append("<button class='btn btn-primary' id='_wmewalRenameArea' title='Rename'>Rename</button>");
         tabAreas.append("<div style='margin-top: 12px'><b>Add custom area</b>");
         tabAreas.append("<div>From an unsaved area place<div>Name area: <input type='text' id='_wmewalNewAreaName'></div><div>Then <button id='_wmewalAddNewArea' class='btn btn-primary' title='Add'>Add</button></div></div></div>");
-        let divImportArea = $("<div style='margin-top: 12px'/>").appendTo(tabAreas);
+        const divImportArea = $("<div style='margin-top: 12px'/>").appendTo(tabAreas);
         divImportArea.append("<b>Import area</b>");
         divImportArea.append("<div><input type='file' id='_wmewalImportFileName' accept='.wkt'/></div><div><button class='btn btn-primary' id='_wmewalImportFile' title='Import'>Import</input></div>");
+        const tabOutput = $("<div class='tab-pane' id='sidepanel-wmewal-output'/>").appendTo(addonTabContent);
+        tabOutput.append('<div>Select optional fields to include in the output. Fewer fields may result in fewer lines of output as segments can be combined. Note that some fields will automatically be included if they are specified in filters.</div>');
+        const divFields = $('<div/>').appendTo(tabOutput);
+        const selectFields = $("<select name='outputFields' id='_wmewalOutputFields' multiple style='width: 100%; height: 10em'/>").appendTo(divFields);
+        let outputField = $("<option value='CreatedEditor'>Created By</option>").appendTo(selectFields);
+        if (settings.OutputFields.indexOf('CreatedEditor') > -1) {
+            outputField.attr('selected', 'selected');
+        }
+        outputField = $("<option value='LastEditor'>Updated By</option>").appendTo(selectFields);
+        if (settings.OutputFields.indexOf('LastEditor') > -1) {
+            outputField.attr('selected', 'selected');
+        }
+        outputField = $("<option value='LockLevel'>Lock Level</option>").appendTo(selectFields);
+        if (settings.OutputFields.indexOf('LockLevel') > -1) {
+            outputField.attr('selected', 'selected');
+        }
+        outputField = $("<option value='Lat'>Latitude</option>").appendTo(selectFields);
+        if (settings.OutputFields.indexOf('Lat') > -1) {
+            outputField.attr('selected', 'selected');
+        }
+        outputField = $("<option value='Lon'>Longitude</option>").appendTo(selectFields);
+        if (settings.OutputFields.indexOf('Lon') > -1) {
+            outputField.attr('selected', 'selected');
+        }
         tabContent.append(addon);
         $("#_wmewalScanOutputTo").val(settings.OutputTo || "csv");
         WMEWAL.outputTo = parseOutputTo(settings.OutputTo || "csv");
@@ -443,10 +477,11 @@ var WMEWAL;
         $("#_wmewalRenameArea").on("click", renameArea);
         $("#_wmewalDeleteArea").on("click", deleteArea);
         $("#_wmewalImportFile").on("click", importFile);
+        $('#_wmewalOutputFields').on('change', updateSettings);
         $("#_wmewalPlugins").on("click", function (e) {
             $("input[name=_wmewalPlugin]").each(function (ix, item) {
-                let i = $(item);
-                let id = i.attr("data-id");
+                const i = $(item);
+                const id = i.attr("data-id");
                 for (let index = 0; index < plugins.length; index++) {
                     if (plugins[index].Id === parseInt(id)) {
                         plugins[index].Active = i.prop("checked");
@@ -484,11 +519,11 @@ var WMEWAL;
         }
     }
     function addPluginTab(plugin) {
-        let sidepanel = $("#sidepanel-wme-wal");
-        let tabs = $("#wmewal-tabs", sidepanel);
+        const sidepanel = $("#sidepanel-wme-wal");
+        const tabs = $("#wmewal-tabs", sidepanel);
         tabs.append("<li><a data-toggle='tab' href='#" + plugin.Id + "'>" + plugin.Title + "</a></li>");
-        let tabContent = $("div.tab-content", sidepanel);
-        let tab = $("<div class='tab-pane' id='" + plugin.Id + "'/>");
+        const tabContent = $("div.tab-content", sidepanel);
+        const tab = $("<div class='tab-pane' id='" + plugin.Id + "'/>");
         tab.append(plugin.GetTab());
         tabContent.append(tab);
         if (plugin.TabLoaded) {
@@ -496,14 +531,14 @@ var WMEWAL;
         }
     }
     function updatePluginList() {
-        let list = $("#_wmewalPlugins");
+        const list = $("#_wmewalPlugins");
         list.empty();
         for (let ix = 0; ix < plugins.length; ix++) {
-            let id = "_wmewalPlugin_" + plugins[ix].Id.toString();
+            const id = "_wmewalPlugin_" + plugins[ix].Id.toString();
             if (ix > 0) {
                 list.append("<br/>");
             }
-            let c = $("<input type='checkbox' name='_wmewalPlugin'/>")
+            const c = $("<input type='checkbox' name='_wmewalPlugin'/>")
                 .attr({ id: id, title: plugins[ix].Title, "data-id": plugins[ix].Id }).appendTo(list);
             if (plugins[ix].Active) {
                 c.attr("checked", "checked");
@@ -512,7 +547,7 @@ var WMEWAL;
         }
     }
     function RegisterPlugIn(plugin) {
-        let p = plugin;
+        const p = plugin;
         let found = false;
         let r;
         do {
@@ -560,7 +595,7 @@ var WMEWAL;
     }
     WMEWAL.IsMapCommentInArea = IsMapCommentInArea;
     function updateLayer() {
-        let features = [];
+        const features = [];
         let maLayer = W.map.getLayerByName(layerName);
         if (maLayer === null || typeof maLayer === "undefined") {
             maLayer = new OpenLayers.Layer.Vector(layerName, {});
@@ -573,7 +608,7 @@ var WMEWAL;
             silent: true
         });
         for (let ixA = 0; ixA < settings.SavedAreas.length; ixA++) {
-            let style = {
+            const style = {
                 strokeColor: "#FF6600",
                 strokeOpacity: 0.8,
                 strokeWidth: 3,
@@ -618,7 +653,7 @@ var WMEWAL;
             if (W.model.venues.objects.hasOwnProperty(v) === false) {
                 continue;
             }
-            let venue = W.model.venues.objects[v];
+            const venue = W.model.venues.objects[v];
             if (venue.isPoint() === true) {
                 continue;
             }
@@ -639,12 +674,12 @@ var WMEWAL;
             alert("Can't parse the geometry");
             return;
         }
-        let nameBox = $("#_wmewalNewAreaName")[0];
+        const nameBox = $("#_wmewalNewAreaName")[0];
         if (nameBox.value.trim().length === 0) {
             alert("Please provide a name for the new area.");
             return;
         }
-        let savedArea = {
+        const savedArea = {
             name: nameBox.value.trim(),
             geometry: theVenue.geometry.clone()
         };
@@ -671,27 +706,27 @@ var WMEWAL;
     function updateSavedAreasList() {
         function getCenterFunc(index) {
             return function () {
-                let center = settings.SavedAreas[index].geometry.getCentroid();
-                let lonlat = new OpenLayers.LonLat(center.x, center.y);
+                const center = settings.SavedAreas[index].geometry.getCentroid();
+                const lonlat = new OpenLayers.LonLat(center.x, center.y);
                 W.map.setCenter(lonlat);
             };
         }
         settings.SavedAreas.sort(function (a, b) {
             return a.name.localeCompare(b.name);
         });
-        let list = $("div[name=_wmewalSavedAreas]");
+        const list = $("div[name=_wmewalSavedAreas]");
         list.empty();
         list.each(function (eIx, e) {
             for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
-                let id = "_wmewalScanArea_" + eIx.toString() + "_" + ix.toString();
-                let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
+                const id = "_wmewalScanArea_" + eIx.toString() + "_" + ix.toString();
+                const input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
                 e.appendChild(input[0]);
-                let label = $("<label/>").attr("for", id).addClass('wal-label').text(settings.SavedAreas[ix].name);
+                const label = $("<label/>").attr("for", id).addClass('wal-label').text(settings.SavedAreas[ix].name);
                 e.appendChild(label[0]);
-                let center = $("<i/>").addClass("fa").addClass("fa-crosshairs").css("margin-left", "4px").on("click", getCenterFunc(ix));
+                const center = $("<i/>").addClass("fa").addClass("fa-crosshairs").css("margin-left", "4px").on("click", getCenterFunc(ix));
                 e.appendChild(center[0]);
-                // var div = document.createElement('div');
-                // var link = document.createElement('a');
+                // const div = document.createElement('div');
+                // const link = document.createElement('a');
                 // link.href = '#';
                 // link.onclick = (function (index) {
                 //     return function() {
@@ -702,15 +737,15 @@ var WMEWAL;
                 // div.appendChild(link);
                 // e.appendChild(document.createTextNode("\u00A0"));
                 // e.appendChild(delLink);
-                let br = $("<br/>");
+                const br = $("<br/>");
                 e.appendChild(br[0]);
             }
             if (e.id != '_wmewalAreasSavedAreas') {
-                let ix = 999;
-                let id = `wmewalScanArea_${eIx}_${ix}`;
-                let input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
+                const ix = 999;
+                const id = `wmewalScanArea_${eIx}_${ix}`;
+                const input = $("<input/>").attr({ type: "radio", name: "_wmewalScanArea", id: id, value: ix.toString() });
                 e.appendChild(input[0]);
-                let label = $("<label/>").attr("for", id).addClass('wal-label').text('Current window');
+                const label = $("<label/>").attr("for", id).addClass('wal-label').text('Current window');
                 e.appendChild(label[0]);
             }
         });
@@ -721,13 +756,16 @@ var WMEWAL;
         if (typeof Storage !== "undefined") {
             WMEWAL.outputTo = parseOutputTo($("#_wmewalScanOutputTo").val());
             WMEWAL.addBOM = $('#_wmewalAddBOM').prop('checked');
-            let newSettings = {
+            // Get optional fields to include in output
+            WMEWAL.outputFields = $('#_wmewalOutputFields option:selected').map(function () { return $(this).attr('value'); }).get();
+            const newSettings = {
                 SavedAreas: [],
                 ActivePlugins: settings.ActivePlugins,
                 OutputTo: $("#_wmewalScanOutputTo").val(),
                 Version: settings.Version,
                 showLayer: settings.showLayer,
-                AddBOM: WMEWAL.addBOM
+                AddBOM: WMEWAL.addBOM,
+                OutputFields: WMEWAL.outputFields
             };
             for (let ix = 0; ix < settings.SavedAreas.length; ix++) {
                 newSettings.SavedAreas.push({
@@ -739,17 +777,17 @@ var WMEWAL;
         }
     }
     function importFile() {
-        let input = $("#_wmewalImportFileName")[0];
+        const input = $("#_wmewalImportFileName")[0];
         if (input.files.length === 0) {
             alert("Select a file to import.");
             return;
         }
-        let fileName = input.files[0].name;
-        let fileExt = fileName.split(".").pop();
-        let name = fileName.replace("." + fileExt, "");
-        let reader = new FileReader();
+        const fileName = input.files[0].name;
+        const fileExt = fileName.split(".").pop();
+        const name = fileName.replace("." + fileExt, "");
+        const reader = new FileReader();
         reader.onload = function (e) {
-            let parser = new OpenLayers.Format.WKT();
+            const parser = new OpenLayers.Format.WKT();
             let features = parser.read(e.target.result);
             let feature;
             while (features instanceof Array && features.length === 1) {
@@ -763,10 +801,10 @@ var WMEWAL;
                 return;
             }
             // Assume geometry is in EPSG:4326 and reproject to Spherical Mercator
-            let fromProj = new OpenLayers.Projection("EPSG:4326");
-            let c = feature.geometry.clone();
+            const fromProj = new OpenLayers.Projection("EPSG:4326");
+            const c = feature.geometry.clone();
             c.transform(fromProj, W.map.getProjectionObject());
-            let savedArea = {
+            const savedArea = {
                 name: name,
                 geometry: c
             };
@@ -780,7 +818,7 @@ var WMEWAL;
             return;
         }
         WMEWAL.areaToScan.calculateBounds();
-        let bounds = WMEWAL.areaToScan.getBounds();
+        const bounds = WMEWAL.areaToScan.getBounds();
         topLeft = new OpenLayers.Geometry.Point(bounds.left, bounds.top);
         bottomRight = new OpenLayers.Geometry.Point(bounds.right, bounds.bottom);
     }
@@ -810,23 +848,23 @@ var WMEWAL;
         });
     }
     function onModelReady(now) {
-        let modelPromise = new Promise(resolve => {
-            let mergeend = function () {
+        const modelPromise = new Promise(resolve => {
+            const mergeend = function () {
                 resolve();
                 W.model.events.unregister("mergeend", null, mergeend);
             };
             W.model.events.register("mergeend", null, mergeend);
         });
-        let mapPromise = new Promise(resolve => {
+        const mapPromise = new Promise(resolve => {
             if (W.hasOwnProperty('vent')) {
-                let operationDone = function () {
+                const operationDone = function () {
                     resolve();
                     W.vent.off("operationDone", operationDone);
                 };
                 W.vent.on("operationDone", operationDone);
             }
             else {
-                let operationDone = function () {
+                const operationDone = function () {
                     resolve();
                     W.app.layout.model.off('operationDone', operationDone);
                 };
@@ -885,7 +923,7 @@ var WMEWAL;
         // Return to previous state
         if (layerToggle != null) {
             while (layerToggle.length > 0) {
-                let ln = layerToggle.pop();
+                const ln = layerToggle.pop();
                 $("#" + ln).trigger("click");
             }
             layerToggle = null;
@@ -907,7 +945,7 @@ var WMEWAL;
     }
     function exportArea() {
         let index = -1;
-        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
+        const nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
         for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
@@ -921,22 +959,22 @@ var WMEWAL;
         else if (index >= settings.SavedAreas.length) {
             return;
         }
-        let c = new OpenLayers.Geometry.Collection([settings.SavedAreas[index].geometry.clone()]);
+        const c = new OpenLayers.Geometry.Collection([settings.SavedAreas[index].geometry.clone()]);
         // Transform the collection to EPSG:4326
-        let toProj = new OpenLayers.Projection("EPSG:4326");
+        const toProj = new OpenLayers.Projection("EPSG:4326");
         c.transform(W.map.getProjectionObject(), toProj);
-        let geoText = c.toString();
-        let encodedUri = "data:text/plain;charset=utf-8," + encodeURIComponent(geoText);
-        let link = document.createElement("a");
+        const geoText = c.toString();
+        const encodedUri = "data:text/plain;charset=utf-8," + encodeURIComponent(geoText);
+        const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", settings.SavedAreas[index].name + ".wkt");
-        let node = document.body.appendChild(link);
+        const node = document.body.appendChild(link);
         link.click();
         document.body.removeChild(node);
     }
     function deleteArea() {
         let index = -1;
-        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
+        const nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
         for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
@@ -954,7 +992,7 @@ var WMEWAL;
     }
     function renameArea() {
         let index = -1;
-        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
+        const nodes = $("input[name=_wmewalScanArea]", "#_wmewalAreasSavedAreas");
         for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
@@ -968,7 +1006,7 @@ var WMEWAL;
         else if (index >= settings.SavedAreas.length) {
             return;
         }
-        let newName = prompt("Enter a new name");
+        const newName = prompt("Enter a new name");
         if (newName == null) {
             return;
         }
@@ -977,7 +1015,7 @@ var WMEWAL;
     }
     async function scanArea() {
         let index = -1;
-        let nodes = $("input[name=_wmewalScanArea]", "#_wmewalOptionsSavedAreas");
+        const nodes = $("input[name=_wmewalScanArea]", "#_wmewalOptionsSavedAreas");
         for (let ix = 0; ix < nodes.length; ix++) {
             if (nodes[ix].checked) {
                 index = ix;
@@ -1056,88 +1094,110 @@ var WMEWAL;
         currentCenter = W.map.getCenter();
         currentZoom = W.map.zoom;
         layerToggle = [];
-        let groups = $("div.layer-switcher li.group");
+        const groups = $("div.layer-switcher li.group");
         groups.each(function (ix, g) {
-            let groupToggle = $(g).find("wz-toggle-switch");
-            switch ($(groupToggle).attr("id")) {
-                case "layer-switcher-group_places":
-                    if (needVenues) {
-                        if (!$(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
-                        }
-                        // Loop through each child in the group
-                        $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-                            switch ($(c).attr("id")) {
-                                case "layer-switcher-item_venues":
-                                case "layer-switcher-item_residential_places":
-                                case "layer-switcher-item_parking_places":
-                                    if (!$(c).prop("checked")) {
-                                        $(c).trigger("click");
-                                        layerToggle.push($(c).attr("id"));
-                                    }
-                                    break;
-                                default:
-                                    if ($(c).prop("checked")) {
-                                        $(c).trigger("click");
-                                        layerToggle.push($(c).attr("id"));
-                                    }
-                                    break;
+            const groupToggle = $(g).find("wz-toggle-switch");
+            if (groupToggle.length > 0) {
+                switch ($(groupToggle).attr("id")) {
+                    case "layer-switcher-group_places":
+                        if (needVenues) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
                             }
-                        });
-                    }
-                    else {
+                            // Loop through each child in the group
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                switch ($(c).attr("id")) {
+                                    case "layer-switcher-item_venues":
+                                    case "layer-switcher-item_residential_places":
+                                    case "layer-switcher-item_parking_places":
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                    default:
+                                        if ($(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                }
+                            });
+                        }
+                        else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                        }
+                        break;
+                    case "layer-switcher-group_road":
                         if ($(groupToggle).prop("checked")) {
                             $(groupToggle).trigger("click");
                             layerToggle.push($(groupToggle).attr("id"));
                         }
-                    }
-                    break;
-                case "layer-switcher-group_road":
-                    if ($(groupToggle).prop("checked")) {
-                        $(groupToggle).trigger("click");
-                        layerToggle.push($(groupToggle).attr("id"));
-                    }
-                    break;
-                case "layer-switcher-group_display":
-                    if (needMapComments) {
-                        if (!$(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
-                        }
-                        // Loop through each child in the group
-                        $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-                            switch ($(c).attr("id")) {
-                                case "layer-switcher-item_map_comments":
-                                    if (!$(c).prop("checked")) {
-                                        $(c).trigger("click");
-                                        layerToggle.push($(c).attr("id"));
-                                    }
-                                    break;
-                                default:
-                                    if ($(c).prop("checked")) {
-                                        $(c).trigger("click");
-                                        layerToggle.push($(c).attr("id"));
-                                    }
-                                    break;
+                        break;
+                    case "layer-switcher-group_display":
+                        if (needMapComments) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
                             }
-                        });
-                    }
-                    else {
+                            // Loop through each child in the group
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                switch ($(c).attr("id")) {
+                                    case "layer-switcher-item_map_comments":
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                    default:
+                                        if ($(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                }
+                            });
+                        }
+                        else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                        }
+                        break;
+                    default:
                         if ($(groupToggle).prop("checked")) {
                             $(groupToggle).trigger("click");
                             layerToggle.push($(groupToggle).attr("id"));
                         }
-                    }
-                    break;
-                default:
-                    if ($(groupToggle).prop("checked")) {
-                        $(groupToggle).trigger("click");
-                        layerToggle.push($(groupToggle).attr("id"));
-                    }
-                    break;
+                        break;
+                }
             }
         });
+        // Turn off Road Shield Assistant if currently enabled
+        if ($('#rsa-enableScript').prop('checked')) {
+            $('#rsa-enableScript').trigger('click');
+            layerToggle.push('rsa-enableScript');
+        }
+        // Turn off Lane Tools if currently enabled
+        if ($('#lt-ScriptEnabled').prop('checked')) {
+            $('#lt-ScriptEnabled').trigger('click');
+            layerToggle.push('lt-ScriptEnabled');
+        }
+        // Turn off WMEPH Highlighting if currently enabled
+        if ($('#WMEPH-ColorHighlighting').prop('checked')) {
+            $('#WMEPH-ColorHighlighting').trigger('click');
+            layerToggle.push('WMEPH-ColorHighlighting');
+        }
+        // Turn off Magic if currently enabled because it doesn't respect the overall Display group toggle
+        if ($('#layer-switcher-item_magic').prop('checked')) {
+            $('#layer-switcher-item_magic').trigger('click');
+            layerToggle.push('layer-switcher-item_magic');
+        }
         // Reload road layers
         if (!W.model.actionManager.canUndo()) {
             for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
@@ -1159,13 +1219,14 @@ var WMEWAL;
             }
         }
         WMEWAL.zoomLevel = minZoomLevel;
+        log('info', `Zooming to ${WMEWAL.zoomLevel}`);
         WALMap.zoomTo(WMEWAL.zoomLevel);
-        let extent = W.map.getExtent();
+        const extent = W.map.getExtent();
         height = extent.getHeight();
         width = extent.getWidth();
         // Figure out how many horizontal and vertical viewports there are
-        let horizontalSpan = Math.floor((bottomRight.x - topLeft.x) / width) + 2;
-        let verticalSpan = Math.floor((topLeft.y - bottomRight.y) / height) + 2;
+        const horizontalSpan = Math.floor((bottomRight.x - topLeft.x) / width) + 2;
+        const verticalSpan = Math.floor((topLeft.y - bottomRight.y) / height) + 2;
         totalViewports = horizontalSpan * verticalSpan + 1;
         countViewports = 0;
         log("Debug", "Horizontal span = " + horizontalSpan.toString());
@@ -1182,7 +1243,7 @@ var WMEWAL;
                 status = await scanExtent();
             }
             if (!cancelled && status === ScanStatus.Continue) {
-                let progress = Math.floor(countViewports / totalViewports * 100);
+                const progress = Math.floor(countViewports / totalViewports * 100);
                 pb.update(progress);
             }
         } while (status === ScanStatus.Continue && !cancelled);
@@ -1217,18 +1278,18 @@ var WMEWAL;
                 if (!done) {
                     // Check to see if the new window would be within the boundaries of the original area
                     // Create a geometry object for the window boundaries
-                    let points = [];
+                    const points = [];
                     points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY + (height / 2)));
                     points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY + (height / 2)));
                     points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY - (height / 2)));
                     points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY - (height / 2)));
-                    let lr = new OpenLayers.Geometry.LinearRing(points);
-                    let poly = new OpenLayers.Geometry.Polygon([lr]);
+                    const lr = new OpenLayers.Geometry.LinearRing(points);
+                    const poly = new OpenLayers.Geometry.Polygon([lr]);
                     inGeometry = WMEWAL.areaToScan && WMEWAL.areaToScan.intersects(poly);
                 }
             }
             if (!inGeometry) {
-                let progress = Math.floor(countViewports / totalViewports * 100);
+                const progress = Math.floor(countViewports / totalViewports * 100);
                 pb.update(progress);
             }
         } while (!inGeometry && !done);
@@ -1286,8 +1347,8 @@ var WMEWAL;
     async function scanExtent() {
         let keepScanning = true;
         if (!cancelled) {
-            let extentSegments = [];
-            let extentVenues = [];
+            const extentSegments = [];
+            const extentVenues = [];
             // Check to see if the current extent is completely within the area being searched
             // let allIn = true;
             // let vertices = W.map.getExtent().toGeometry().getVertices();
@@ -1299,7 +1360,7 @@ var WMEWAL;
                 log("Debug", "scanExtent: Collecting segments");
                 for (let seg in W.model.segments.objects) {
                     // if (segments.indexOf(seg) === -1) {
-                    let segment = W.model.segments.getObjectById(parseInt(seg));
+                    const segment = W.model.segments.getObjectById(parseInt(seg));
                     if (segment != null) {
                         // segments.push(seg);
                         extentSegments.push(segment);
@@ -1312,7 +1373,7 @@ var WMEWAL;
                 log("Debug", "scanExtent: Collecting venues");
                 for (let ven in W.model.venues.objects) {
                     // if (venues.indexOf(ven) === -1) {
-                    let venue = W.model.venues.getObjectById(ven);
+                    const venue = W.model.venues.getObjectById(ven);
                     if (venue != null) {
                         // venues.push(ven);
                         extentVenues.push(venue);
@@ -1321,7 +1382,7 @@ var WMEWAL;
                 }
                 log("Debug", `scanExtent: Done collecting venues (${extentVenues.length})`);
             }
-            let promises = [];
+            const promises = [];
             for (let ix = 0; ix < plugins.length; ix++) {
                 if (plugins[ix].Active && !cancelled) {
                     log("Debug", "scanExtent: Calling plugin " + plugins[ix].Title);
@@ -1329,7 +1390,7 @@ var WMEWAL;
                 }
             }
             log("Debug", "scanExtent: Awaiting all promises");
-            let pluginResults = await Promise.allSettled(promises);
+            const pluginResults = await Promise.allSettled(promises);
             let anyErrors = false;
             for (let ix = 0; ix < pluginResults.length; ix++) {
                 log("Debug", `scanExtent: Plugin ${ix}: ${pluginResults[ix].status}`);
@@ -1338,7 +1399,7 @@ var WMEWAL;
                     anyErrors = true;
                 }
                 else {
-                    let results = pluginResults[ix].value;
+                    const results = pluginResults[ix].value;
                     if (results != null) {
                         pb.setCount(results.Streets, results.Places, results.MapComments);
                     }
@@ -1356,7 +1417,7 @@ var WMEWAL;
         }
     }
     function log(level, message) {
-        let t = new Date();
+        const t = new Date();
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":
@@ -1504,8 +1565,8 @@ var WMEWAL;
     }
     WMEWAL.GenerateBasePL = GenerateBasePL;
     function CompareVersions(v1, v2) {
-        let v1Parts = v1.split(".");
-        let v2Parts = v2.split(".");
+        const v1Parts = v1.split(".");
+        const v2Parts = v2.split(".");
         for (; v1Parts.length < v2Parts.length;) {
             v1Parts.push(".0");
         }
@@ -1513,8 +1574,8 @@ var WMEWAL;
             v2Parts.push(".0");
         }
         for (let ix = 0; ix < v1Parts.length; ix++) {
-            let v1Element = parseInt(v1Parts[ix]);
-            let v2Element = parseInt(v2Parts[ix]);
+            const v1Element = parseInt(v1Parts[ix]);
+            const v2Element = parseInt(v2Parts[ix]);
             if (v1Element < v2Element) {
                 return -1;
             }
@@ -1538,8 +1599,8 @@ var WMEWAL;
     }
     function promiseTimeout(ms, promise) {
         // Create a promise that rejects in <ms> milliseconds
-        let timeout = new Promise((resolve, reject) => {
-            let id = setTimeout(() => {
+        const timeout = new Promise((resolve, reject) => {
+            const id = setTimeout(() => {
                 clearTimeout(id);
                 reject();
             }, ms);
@@ -1562,24 +1623,24 @@ var WMEWAL;
     /* tslint:disable */
     WMEWAL.LZString = (function () {
         // private property
-        var f = String.fromCharCode;
-        var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-        var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
-        var baseReverseDic = {};
+        const f = String.fromCharCode;
+        const keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+        const keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+        const baseReverseDic = {};
         function getBaseValue(alphabet, character) {
             if (!baseReverseDic[alphabet]) {
                 baseReverseDic[alphabet] = {};
-                for (var i = 0; i < alphabet.length; i++) {
+                for (let i = 0; i < alphabet.length; i++) {
                     baseReverseDic[alphabet][alphabet.charAt(i)] = i;
                 }
             }
             return baseReverseDic[alphabet][character];
         }
-        var LZString = {
+        const LZString = {
             compressToBase64: function (input) {
                 if (input == null)
                     return "";
-                var res = LZString._compress(input, 6, function (a) { return keyStrBase64.charAt(a); });
+                let res = LZString._compress(input, 6, function (a) { return keyStrBase64.charAt(a); });
                 switch (res.length % 4) {
                     default: // When could this happen ?
                     case 0: return res;
@@ -1609,10 +1670,10 @@ var WMEWAL;
             },
             //compress into uint8array (UCS-2 big endian format)
             compressToUint8Array: function (uncompressed) {
-                var compressed = LZString.compress(uncompressed);
-                var buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
-                for (var i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
-                    var current_value = compressed.charCodeAt(i);
+                const compressed = LZString.compress(uncompressed);
+                const buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
+                for (let i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
+                    const current_value = compressed.charCodeAt(i);
                     buf[i * 2] = current_value >>> 8;
                     buf[i * 2 + 1] = current_value % 256;
                 }
@@ -1624,11 +1685,11 @@ var WMEWAL;
                     return LZString.decompress(compressed);
                 }
                 else {
-                    var buf = new Array(compressed.length / 2); // 2 bytes per character
-                    for (var i = 0, TotalLen = buf.length; i < TotalLen; i++) {
+                    const buf = new Array(compressed.length / 2); // 2 bytes per character
+                    for (let i = 0, TotalLen = buf.length; i < TotalLen; i++) {
                         buf[i] = compressed[i * 2] * 256 + compressed[i * 2 + 1];
                     }
-                    var result_1 = [];
+                    const result_1 = [];
                     buf.forEach(function (c) {
                         result_1.push(f(c));
                     });
@@ -1656,9 +1717,9 @@ var WMEWAL;
             _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
                 if (uncompressed == null)
                     return "";
-                var i, value, context_dictionary = {}, context_dictionaryToCreate = {}, context_c = "", context_wc = "", context_w = "", context_enlargeIn = 2, // Compensate for the first entry which should not count
+                let i, value, context_dictionary = {}, context_dictionaryToCreate = {}, context_c = "", context_wc = "", context_w = "", context_enlargeIn = 2, // Compensate for the first entry which should not count
                 context_dictSize = 3, context_numBits = 2, context_data = [], context_data_val = 0, context_data_position = 0, ii;
-                for (var ii_1 = 0; ii_1 < uncompressed.length; ii_1 += 1) {
+                for (let ii_1 = 0; ii_1 < uncompressed.length; ii_1 += 1) {
                     context_c = uncompressed.charAt(ii_1);
                     if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
                         context_dictionary[context_c] = context_dictSize++;
@@ -1671,7 +1732,7 @@ var WMEWAL;
                     else {
                         if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
                             if (context_w.charCodeAt(0) < 256) {
-                                for (var i_1 = 0; i_1 < context_numBits; i_1++) {
+                                for (let i_1 = 0; i_1 < context_numBits; i_1++) {
                                     context_data_val = (context_data_val << 1);
                                     if (context_data_position == bitsPerChar - 1) {
                                         context_data_position = 0;
@@ -1683,7 +1744,7 @@ var WMEWAL;
                                     }
                                 }
                                 value = context_w.charCodeAt(0);
-                                for (var i_2 = 0; i_2 < 8; i_2++) {
+                                for (let i_2 = 0; i_2 < 8; i_2++) {
                                     context_data_val = (context_data_val << 1) | (value & 1);
                                     if (context_data_position == bitsPerChar - 1) {
                                         context_data_position = 0;
@@ -1698,7 +1759,7 @@ var WMEWAL;
                             }
                             else {
                                 value = 1;
-                                for (var i_3 = 0; i_3 < context_numBits; i_3++) {
+                                for (let i_3 = 0; i_3 < context_numBits; i_3++) {
                                     context_data_val = (context_data_val << 1) | value;
                                     if (context_data_position == bitsPerChar - 1) {
                                         context_data_position = 0;
@@ -1711,7 +1772,7 @@ var WMEWAL;
                                     value = 0;
                                 }
                                 value = context_w.charCodeAt(0);
-                                for (var i_4 = 0; i_4 < 16; i_4++) {
+                                for (let i_4 = 0; i_4 < 16; i_4++) {
                                     context_data_val = (context_data_val << 1) | (value & 1);
                                     if (context_data_position == bitsPerChar - 1) {
                                         context_data_position = 0;
@@ -1733,7 +1794,7 @@ var WMEWAL;
                         }
                         else {
                             value = context_dictionary[context_w];
-                            for (var i_5 = 0; i_5 < context_numBits; i_5++) {
+                            for (let i_5 = 0; i_5 < context_numBits; i_5++) {
                                 context_data_val = (context_data_val << 1) | (value & 1);
                                 if (context_data_position == bitsPerChar - 1) {
                                     context_data_position = 0;
@@ -1760,7 +1821,7 @@ var WMEWAL;
                 if (context_w !== "") {
                     if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
                         if (context_w.charCodeAt(0) < 256) {
-                            for (var i_6 = 0; i_6 < context_numBits; i_6++) {
+                            for (let i_6 = 0; i_6 < context_numBits; i_6++) {
                                 context_data_val = (context_data_val << 1);
                                 if (context_data_position == bitsPerChar - 1) {
                                     context_data_position = 0;
@@ -1772,7 +1833,7 @@ var WMEWAL;
                                 }
                             }
                             value = context_w.charCodeAt(0);
-                            for (var i_7 = 0; i_7 < 8; i_7++) {
+                            for (let i_7 = 0; i_7 < 8; i_7++) {
                                 context_data_val = (context_data_val << 1) | (value & 1);
                                 if (context_data_position == bitsPerChar - 1) {
                                     context_data_position = 0;
@@ -1787,7 +1848,7 @@ var WMEWAL;
                         }
                         else {
                             value = 1;
-                            for (var i_8 = 0; i_8 < context_numBits; i_8++) {
+                            for (let i_8 = 0; i_8 < context_numBits; i_8++) {
                                 context_data_val = (context_data_val << 1) | value;
                                 if (context_data_position == bitsPerChar - 1) {
                                     context_data_position = 0;
@@ -1800,7 +1861,7 @@ var WMEWAL;
                                 value = 0;
                             }
                             value = context_w.charCodeAt(0);
-                            for (var i_9 = 0; i_9 < 16; i_9++) {
+                            for (let i_9 = 0; i_9 < 16; i_9++) {
                                 context_data_val = (context_data_val << 1) | (value & 1);
                                 if (context_data_position == bitsPerChar - 1) {
                                     context_data_position = 0;
@@ -1822,7 +1883,7 @@ var WMEWAL;
                     }
                     else {
                         value = context_dictionary[context_w];
-                        for (var i_10 = 0; i_10 < context_numBits; i_10++) {
+                        for (let i_10 = 0; i_10 < context_numBits; i_10++) {
                             context_data_val = (context_data_val << 1) | (value & 1);
                             if (context_data_position == bitsPerChar - 1) {
                                 context_data_position = 0;
@@ -1843,7 +1904,7 @@ var WMEWAL;
                 }
                 // Mark the end of the stream
                 value = 2;
-                for (var i_11 = 0; i_11 < context_numBits; i_11++) {
+                for (let i_11 = 0; i_11 < context_numBits; i_11++) {
                     context_data_val = (context_data_val << 1) | (value & 1);
                     if (context_data_position == bitsPerChar - 1) {
                         context_data_position = 0;
@@ -1875,8 +1936,8 @@ var WMEWAL;
                 return LZString._decompress(compressed.length, 32768, function (index) { return compressed.charCodeAt(index); });
             },
             _decompress: function (length, resetValue, getNextValue) {
-                var dictionary = [], next, enlargeIn = 4, dictSize = 4, numBits = 3, entry = "", result = [], i, w, bits, resb, maxpower, power, c, data = { val: getNextValue(0), position: resetValue, index: 1 };
-                for (var i_12 = 0; i_12 < 3; i_12 += 1) {
+                let dictionary = [], next, enlargeIn = 4, dictSize = 4, numBits = 3, entry = "", result = [], i, w, bits, resb, maxpower, power, c, data = { val: getNextValue(0), position: resetValue, index: 1 };
+                for (let i_12 = 0; i_12 < 3; i_12 += 1) {
                     dictionary[i_12] = i_12;
                 }
                 bits = 0;
