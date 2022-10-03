@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.8.1
+// @version             1.8.2
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -35,8 +35,8 @@ namespace WMEWAL_Streets {
         '<li>Find "red roads"</li>' +
         '<li>Find segments with expired restrictions</li>' +
         '<li>Fixed "newly paved" filter</li>' +
-        '<li>Allow for filtering by TTS override text</li>'
-        '<li>Only zoom to higher levels if required by road type or turn instruction filters</li>'
+        '<li>Allow for filtering by TTS override text</li>' +
+        '<li>Only zoom to higher levels if required by road type or turn instruction filters</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
