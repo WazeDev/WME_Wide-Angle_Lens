@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.0
+// @version             1.5.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -18,13 +18,15 @@
 // @updateURL           https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
 // ==/UserScript==
+// @updateURL           https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
+// @downloadURL         https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.user.js
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers */
 var WMEWAL_Locks;
 (function (WMEWAL_Locks) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Return count of streets found</li>' +
+        '<li>Support variable output fields</li>' +
         '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -40,13 +42,13 @@ var WMEWAL_Locks;
         Operation[Operation["Equal"] = 1] = "Equal";
         Operation[Operation["NotEqual"] = 2] = "NotEqual";
     })(Operation || (Operation = {}));
-    let pluginName = "WMEWAL-Locks";
+    const pluginName = "WMEWAL-Locks";
     WMEWAL_Locks.Title = "Locks";
     WMEWAL_Locks.MinimumZoomLevel = 14;
     WMEWAL_Locks.SupportsSegments = true;
     WMEWAL_Locks.SupportsVenues = false;
-    let settingsKey = "WMEWALLocksSettings";
-    let savedSettingsKey = "WMEWALLocksSavedSettings";
+    const settingsKey = "WMEWALLocksSettings";
+    const savedSettingsKey = "WMEWALLocksSavedSettings";
     let settings = null;
     let savedSettings = [];
     let streets = null;
@@ -195,15 +197,15 @@ var WMEWAL_Locks;
     }
     WMEWAL_Locks.TabLoaded = TabLoaded;
     function updateStates() {
-        let selectState = $(`#${ctlPrefix}State`);
+        const selectState = $(`#${ctlPrefix}State`);
         // Preserve current selection
-        let currentId = parseInt(selectState.val());
+        const currentId = parseInt(selectState.val());
         selectState.empty();
-        let stateObjs = [];
+        const stateObjs = [];
         stateObjs.push({ id: null, name: "" });
         for (let s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
-                let st = W.model.states.getObjectById(parseInt(s));
+                const st = W.model.states.getObjectById(parseInt(s));
                 if (st.id !== 1 && st.name.length > 0) {
                     stateObjs.push({ id: st.id, name: st.name });
                 }
@@ -218,8 +220,8 @@ var WMEWAL_Locks;
             }
         });
         for (let ix = 0; ix < stateObjs.length; ix++) {
-            let so = stateObjs[ix];
-            let stateOption = $("<option/>").text(so.name).attr("value", so.id);
+            const so = stateObjs[ix];
+            const stateOption = $("<option/>").text(so.name).attr("value", so.id);
             if (currentId != null && so.id === currentId) {
                 stateOption.attr("selected", "selected");
             }
@@ -227,10 +229,10 @@ var WMEWAL_Locks;
         }
     }
     function updateSavedSettingsList() {
-        let s = $(`#${ctlPrefix}SavedSettings`);
+        const s = $(`#${ctlPrefix}SavedSettings`);
         s.empty();
         for (let ixSaved = 0; ixSaved < savedSettings.length; ixSaved++) {
-            let opt = $("<option/>").attr("value", ixSaved).text(savedSettings[ixSaved].Name);
+            const opt = $("<option/>").attr("value", ixSaved).text(savedSettings[ixSaved].Name);
             s.append(opt);
         }
     }
@@ -269,11 +271,11 @@ var WMEWAL_Locks;
         $(`#${ctlPrefix}IncludeAlt`).prop("checked", settings.IncludeAltNames);
     }
     function loadSetting() {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
-        let savedSetting = savedSettings[selectedSetting].Setting;
+        const savedSetting = savedSettings[selectedSetting].Setting;
         // settings.OutputTo = $(`#${ctlPrefix}OutputTo`).val();
         for (let name in savedSetting) {
             if (settings.hasOwnProperty(name)) {
@@ -287,7 +289,7 @@ var WMEWAL_Locks;
             message += ((message.length > 0 ? "\n" : "") + error);
         }
         let message = "";
-        let s = getSettings();
+        const s = getSettings();
         let mask = 0;
         $(`input[name=${ctlPrefix}RoadType]:checked`).each(function (ix, e) {
             mask = mask | parseInt(e.value);
@@ -295,7 +297,7 @@ var WMEWAL_Locks;
         if (mask === 0) {
             addMessage("Please select at least one road type.");
         }
-        let selectedState = $(`#${ctlPrefix}State`).val();
+        const selectedState = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null && s.State === null) {
             addMessage("Invalid state selection");
         }
@@ -324,8 +326,8 @@ var WMEWAL_Locks;
     }
     function saveSetting() {
         if (validateSettings()) {
-            let s = getSettings();
-            let sName = prompt("Enter a name for this setting");
+            const s = getSettings();
+            const sName = prompt("Enter a name for this setting");
             if (sName == null) {
                 return;
             }
@@ -342,7 +344,7 @@ var WMEWAL_Locks;
                     return;
                 }
             }
-            let savedSetting = {
+            const savedSetting = {
                 Name: sName,
                 Setting: s
             };
@@ -351,7 +353,7 @@ var WMEWAL_Locks;
         }
     }
     function getSettings() {
-        let s = {
+        const s = {
             RoadTypeMask: null,
             State: null,
             Regex: null,
@@ -395,9 +397,9 @@ var WMEWAL_Locks;
         if ($(`#${ctlPrefix}PlusOneWayRamp`).prop("checked")) {
             s.PlusOneWayMask = s.PlusOneWayMask | WMEWAL.RoadType.Ramp;
         }
-        let selectedState = $(`#${ctlPrefix}State`).val();
+        const selectedState = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null) {
-            let state = W.model.states.getObjectById(parseInt(selectedState));
+            const state = W.model.states.getObjectById(parseInt(selectedState));
             if (state !== null) {
                 s.State = state.getID();
             }
@@ -413,7 +415,7 @@ var WMEWAL_Locks;
         return s;
     }
     function deleteSetting() {
-        let selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
+        const selectedSetting = parseInt($(`#${ctlPrefix}SavedSettings`).val());
         if (selectedSetting == null || isNaN(selectedSetting) || selectedSetting < 0 || selectedSetting > savedSettings.length) {
             return;
         }
@@ -465,19 +467,19 @@ var WMEWAL_Locks;
     function ScanExtent(segments, venues) {
         return new Promise(resolve => {
             setTimeout(function () {
-                let count = scan(segments);
+                const count = scan(segments);
                 resolve({ Streets: count, Places: null, MapComments: null });
             });
         });
     }
     WMEWAL_Locks.ScanExtent = ScanExtent;
     function scan(segments) {
-        let extentStreets = [];
+        const extentStreets = [];
         function addSegment(s, rId) {
             if (savedSegments.indexOf(s.getID()) === -1) {
                 savedSegments.push(s.getID());
-                let sid = s.attributes.primaryStreetID;
-                let address = s.getAddress();
+                const sid = s.attributes.primaryStreetID;
+                const address = s.getAddress();
                 let thisStreet = null;
                 if (sid != null) {
                     // let street = W.model.streets.getObjectById(sid);
@@ -514,11 +516,11 @@ var WMEWAL_Locks;
                         if (s.attributes.streetIDs != null) {
                             for (let ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
                                 if (s.attributes.streetIDs[ixAlt] != null) {
-                                    let altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
+                                    const altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
                                     if (altStreet != null) {
                                         let altCityName = null;
                                         if (altStreet.cityID != null) {
-                                            let altCity = W.model.cities.getObjectById(altStreet.cityID);
+                                            const altCity = W.model.cities.getObjectById(altStreet.cityID);
                                             if (altCity != null) {
                                                 altCityName = altCity.hasName() ? altCity.attributes.name : "No city";
                                             }
@@ -543,12 +545,12 @@ var WMEWAL_Locks;
             }
         }
         for (let ix = 0; ix < segments.length; ix++) {
-            let segment = segments[ix];
+            const segment = segments[ix];
             if (segment != null) {
                 if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) & settings.RoadTypeMask) &&
                     (!settings.EditableByMe || segment.arePropertiesEditable()) &&
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
-                    let address = segment.getAddress();
+                    const address = segment.getAddress();
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
@@ -560,7 +562,7 @@ var WMEWAL_Locks;
                             continue;
                         }
                     }
-                    let plusOne = (isOneWay(segment) && (WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) & settings.PlusOneWayMask)) ? 1 : 0;
+                    const plusOne = (isOneWay(segment) && (WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) & settings.PlusOneWayMask)) ? 1 : 0;
                     let incorrectLock = false;
                     let expectedLockRank = 0;
                     switch (segment.attributes.roadType) {
@@ -586,13 +588,13 @@ var WMEWAL_Locks;
                             expectedLockRank = 0;
                             if (settings.RampLockLevel === 7) {
                                 // Find lock rank of every connected segment
-                                let fromSegments = segment.getConnectedSegments("from");
+                                const fromSegments = segment.getConnectedSegments("from");
                                 for (let ix = 0; ix < fromSegments.length; ix++) {
                                     if (fromSegments[ix].attributes.id !== segment.attributes.id && (fromSegments[ix].attributes.lockRank || 0) + 1 > expectedLockRank) {
                                         expectedLockRank = (fromSegments[ix].attributes.lockRank || 0) + 1;
                                     }
                                 }
-                                let toSegments = segment.getConnectedSegments("to");
+                                const toSegments = segment.getConnectedSegments("to");
                                 for (let ix = 0; ix < toSegments.length; ix++) {
                                     if (toSegments[ix].attributes.id !== segment.attributes.id && (toSegments[ix].attributes.lockRank || 0) + 1 > expectedLockRank) {
                                         expectedLockRank = (toSegments[ix].attributes.lockRank || 0) + 1;
@@ -644,13 +646,13 @@ var WMEWAL_Locks;
                             if (!nameMatched && segment.attributes.streetIDs != null) {
                                 for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
                                     if (segment.attributes.streetIDs[streetIx] != null) {
-                                        let street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                                        const street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
                                         if (street != null) {
                                             if (nameRegex != null) {
                                                 nameMatched = nameRegex.test(street.name);
                                             }
                                             if (!nameMatched && cityRegex != null && street.cityID != null) {
-                                                let city = W.model.cities.getObjectById(street.cityID);
+                                                const city = W.model.cities.getObjectById(street.cityID);
                                                 if (city != null && city.hasName()) {
                                                     nameMatched = cityRegex.test(city.attributes.name);
                                                 }
@@ -671,7 +673,7 @@ var WMEWAL_Locks;
                         addSegment(segment, null);
                     }
                     else if (!settings.ExcludeRoundabouts) {
-                        let r = segment.getRoundabout().attributes;
+                        const r = segment.getRoundabout().attributes;
                         for (let rIx = 0; rIx < r.segIDs.length; rIx++) {
                             addSegment(W.model.segments.getObjectById(r.segIDs[rIx]), r.id);
                         }
@@ -712,9 +714,12 @@ var WMEWAL_Locks;
                 }
                 return 0;
             });
-            let isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
-            let isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
-            let addBOM = WMEWAL.addBOM ?? false;
+            const isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
+            const isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            const addBOM = WMEWAL.addBOM ?? false;
+            const outputFields = WMEWAL.outputFields ?? ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
+            const includeLat = outputFields.indexOf('Lat') > -1;
+            const includeLon = outputFields.indexOf('Lon') > -1;
             let lineArray;
             let columnArray;
             let w;
@@ -725,18 +730,19 @@ var WMEWAL_Locks;
                 if (settings.IncludeAltNames) {
                     columnArray.push("Alt Names");
                 }
-                columnArray.push("City");
-                columnArray.push("State");
-                columnArray.push("Road Type");
-                columnArray.push("Lock Level");
-                columnArray.push("Latitude");
-                columnArray.push("Longitude");
+                columnArray.push('City', 'State', 'Road Type', 'Lock Level');
+                if (includeLat) {
+                    columnArray.push("Latitude");
+                }
+                if (includeLon) {
+                    columnArray.push("Longitude");
+                }
                 columnArray.push("Permalink");
                 lineArray.push(columnArray);
                 fileName = "Locks_" + WMEWAL.areaName;
                 for (let rt in WMEWAL.RoadType) {
                     if (WMEWAL.RoadType.hasOwnProperty(rt)) {
-                        let mask = parseInt(rt);
+                        const mask = parseInt(rt);
                         if (!isNaN(mask) && settings.RoadTypeMask & mask) {
                             fileName += "_" + WMEWAL.RoadType[mask.toString()];
                         }
@@ -753,7 +759,7 @@ var WMEWAL_Locks;
                 let comma = "";
                 for (let rt in WMEWAL.RoadType) {
                     if (WMEWAL.RoadType.hasOwnProperty(rt)) {
-                        let mask = parseInt(rt);
+                        const mask = parseInt(rt);
                         if (!isNaN(mask) && settings.RoadTypeMask & mask) {
                             w.document.write(comma + WMEWAL.TranslateRoadType(WMEWAL.RoadTypeBitmaskToWazeRoadType(mask)));
                             if (settings.PlusOneWayMask & mask) {
@@ -791,47 +797,62 @@ var WMEWAL_Locks;
                 if (settings.IncludeAltNames) {
                     w.document.write("<th>Alt Names</th>");
                 }
-                w.document.write("<th>City</th><th>State</th>");
-                w.document.write("<th>Road Type</th><th>Lock Level</th><th>Latitude</th><th>Longitude</th><th>Permalink</th></tr>");
+                w.document.write("<th>City</th><th>State</th><th>Road Type</th><th>Lock Level</th>");
+                if (includeLat) {
+                    w.document.write("<th>Latitude</th>");
+                }
+                if (includeLon) {
+                    w.document.write("<th>Longitude</th>");
+                }
+                w.document.write("<th>Permalink</th></tr>");
             }
             for (let ixStreet = 0; ixStreet < streets.length; ixStreet++) {
-                let street = streets[ixStreet];
-                let roadTypeText = WMEWAL.TranslateRoadType(street.roadType);
+                const street = streets[ixStreet];
+                const roadTypeText = WMEWAL.TranslateRoadType(street.roadType);
                 if (street.name == null && street.roundaboutId == null) {
                     for (let ixSeg = 0; ixSeg < street.segments.length; ixSeg++) {
-                        let segment = street.segments[ixSeg];
-                        let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
-                        let plSeg = getSegmentPL(segment);
+                        const segment = street.segments[ixSeg];
+                        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
+                        const plSeg = getSegmentPL(segment);
                         if (isCSV) {
                             columnArray = [getStreetName(street)];
                             if (settings.IncludeAltNames) {
                                 columnArray.push("");
                             }
-                            columnArray.push("\"" + street.city + "\"");
-                            columnArray.push("\"" + street.state + "\"");
-                            columnArray.push("\"" + roadTypeText + "\"");
+                            columnArray.push(`"${street.city}"`);
+                            columnArray.push(`"${street.state}"`);
+                            columnArray.push(`"${roadTypeText}"`);
                             columnArray.push(street.lockLevel.toString());
-                            columnArray.push(latlon.lat.toString());
-                            columnArray.push(latlon.lon.toString());
-                            columnArray.push("\"" + plSeg + "\"");
+                            if (includeLat) {
+                                columnArray.push(latlon.lat.toString());
+                            }
+                            if (includeLon) {
+                                columnArray.push(latlon.lon.toString());
+                            }
+                            columnArray.push(`"${plSeg}"`);
                             lineArray.push(columnArray);
                         }
                         if (isTab) {
-                            w.document.write("<tr><td>" + getStreetName(street) + "</td>");
+                            w.document.write(`<tr><td>${getStreetName(street)}</td>`);
                             if (settings.IncludeAltNames) {
                                 w.document.write("<td>&nbsp;</td>");
                             }
-                            w.document.write("<td>" + street.city + "</td>");
-                            w.document.write("<td>" + street.state + "</td>");
-                            w.document.write("<td>" + roadTypeText + "</td><td>" + street.lockLevel + "</td>" +
-                                "<td>" + latlon.lat.toString() + "</td><td>" + latlon.lon.toString() + "</td>" +
-                                "<td><a href=\'" + plSeg + "\' target=\'_blank\'>Permalink</a></td></tr>");
+                            w.document.write(`<td>${street.city}</td>`);
+                            w.document.write(`<td>${street.state}</td>`);
+                            w.document.write(`<td>${roadTypeText}</td><td>${street.lockLevel}</td>`);
+                            if (includeLat) {
+                                w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                            }
+                            if (includeLon) {
+                                w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                            }
+                            w.document.write(`<td><a href='${plSeg}' target='_blank'>Permalink</a></td></tr>`);
                         }
                     }
                 }
                 else {
-                    let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
-                    let plStreet = getStreetPL(street);
+                    const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
+                    const plStreet = getStreetPL(street);
                     let altNames = "";
                     for (let ixAlt = 0; ixAlt < street.altStreets.length; ixAlt++) {
                         if (ixAlt > 0) {
@@ -843,45 +864,49 @@ var WMEWAL_Locks;
                         }
                     }
                     if (isCSV) {
-                        columnArray = ["\"" + getStreetName(street) + "\""];
+                        columnArray = [`"${getStreetName(street)}"`];
                         if (settings.IncludeAltNames) {
-                            columnArray.push("\"" + altNames + "\"");
+                            columnArray.push(`"${altNames}"`);
                         }
-                        columnArray.push("\"" + street.city + "\"");
-                        columnArray.push("\"" + street.state + "\"");
-                        columnArray.push("\"" + roadTypeText + "\"");
-                        columnArray.push(street.lockLevel.toString());
-                        columnArray.push(latlon.lat.toString());
-                        columnArray.push(latlon.lon.toString());
-                        columnArray.push("\"" + plStreet + "\"");
+                        columnArray.push(`"${street.city}"`, `"${street.state}"`, `"${roadTypeText}"`, street.lockLevel.toString());
+                        if (includeLat) {
+                            columnArray.push(latlon.lat.toString());
+                        }
+                        if (includeLon) {
+                            columnArray.push(latlon.lon.toString());
+                        }
+                        columnArray.push(`"${plStreet}"`);
                         lineArray.push(columnArray);
                     }
                     if (isTab) {
-                        w.document.write("<tr><td>" + getStreetName(street) + "</td>");
+                        w.document.write(`<tr><td>${getStreetName(street)}</td>`);
                         if (settings.IncludeAltNames) {
-                            w.document.write("<td>" + altNames + "</td>");
+                            w.document.write(`<td>${altNames}</td>`);
                         }
-                        w.document.write("<td>" + street.city + "</td>");
-                        w.document.write("<td>" + street.state + "</td>");
-                        w.document.write("<td>" + roadTypeText + "</td><td>" + street.lockLevel + "</td>" +
-                            "<td>" + latlon.lat.toString() + "</td><td>" + latlon.lon.toString() + "</td>" +
-                            "<td><a href=\'" + plStreet + "\' target=\'_blank\'>Permalink</a></td></tr>");
+                        w.document.write(`<td>${street.city}</td><td>${street.state}</td><td>${roadTypeText}</td><td>${street.lockLevel}</td>`);
+                        if (includeLat) {
+                            w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                        }
+                        if (includeLon) {
+                            w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                        }
+                        w.document.write(`<td><a href='${plStreet}' target='_blank'>Permalink</a></td></tr>`);
                     }
                 }
             }
             if (isCSV) {
-                let csvContent = lineArray.join("\n");
-                let blobContent = [];
+                const csvContent = lineArray.join("\n");
+                const blobContent = [];
                 if (addBOM) {
                     blobContent.push('\uFEFF');
                 }
                 blobContent.push(csvContent);
-                let blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
-                let link = document.createElement("a");
-                let url = URL.createObjectURL(blob);
+                const blob = new Blob(blobContent, { type: "data:text/csv;charset=utf-8" });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
                 link.setAttribute("download", fileName);
-                let node = document.body.appendChild(link);
+                const node = document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(node);
             }
@@ -900,7 +925,7 @@ var WMEWAL_Locks;
     }
     WMEWAL_Locks.ScanCancelled = ScanCancelled;
     function getStreetPL(street) {
-        let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
+        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
         let url = WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, WMEWAL.zoomLevel) + "&segments=";
         for (let ix = 0; ix < street.segments.length; ix++) {
             if (ix > 0) {
@@ -911,7 +936,7 @@ var WMEWAL_Locks;
         return url;
     }
     function getSegmentPL(segment) {
-        let latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
+        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
         return WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, 5) + segment.id;
     }
     function getStreetName(street) {
@@ -921,7 +946,7 @@ var WMEWAL_Locks;
         console.group(pluginName + ": Initializing");
         initCount++;
         let allOK = true;
-        let objectToCheck = [
+        const objectToCheck = [
             "W.app",
             "W.model.states",
             "OpenLayers",
@@ -929,7 +954,7 @@ var WMEWAL_Locks;
             "WazeWrap.Ready"
         ];
         for (let i = 0; i < objectToCheck.length; i++) {
-            let path = objectToCheck[i].split(".");
+            const path = objectToCheck[i].split(".");
             let object = window;
             let ok = true;
             for (let j = 0; j < path.length; j++) {
@@ -1058,7 +1083,7 @@ var WMEWAL_Locks;
         }
     }
     function log(level, message) {
-        let t = new Date();
+        const t = new Date();
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":
