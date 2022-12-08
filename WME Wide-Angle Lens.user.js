@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.7.0
+// @version             1.8.0
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,7 +27,7 @@ var WMEWAL;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>' +
-        '<li>Allow selection of optional fields to include in output</li>';
+        '<li>Support suggested segments</li>';
     '</ul>';
     const SHOW_UPDATE = true;
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -182,6 +182,7 @@ var WMEWAL;
     let layerToggle = null;
     let needSegments = false;
     let needVenues = false;
+    let needSuggestedSegments = false;
     let cancelled = false;
     let totalViewports;
     let countViewports;
@@ -1048,17 +1049,10 @@ var WMEWAL;
             return;
         }
         let anyActivePlugins = false;
-        needSegments = false;
-        needVenues = false;
-        let needMapComments = false;
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
                 anyActivePlugins = true;
-                needSegments = needSegments || plugins[ix].SupportsSegments;
-                needVenues = needVenues || plugins[ix].SupportsVenues;
-                if (plugins[ix].Title === "Map Comments") {
-                    needMapComments = true;
-                }
+                break;
             }
         }
         if (!anyActivePlugins) {
@@ -1083,6 +1077,20 @@ var WMEWAL;
         if (!allOk) {
             pb.hide();
             return;
+        }
+        needSegments = false;
+        needVenues = false;
+        needSuggestedSegments = false;
+        let needMapComments = false;
+        for (let ix = 0; ix < plugins.length; ix++) {
+            if (plugins[ix].Active) {
+                needSegments = needSegments || plugins[ix].SupportsSegments;
+                needVenues = needVenues || plugins[ix].SupportsVenues;
+                needSuggestedSegments = needSuggestedSegments || plugins[ix].SupportsSuggestedSegments;
+                if (plugins[ix].Title === "Map Comments") {
+                    needMapComments = true;
+                }
+            }
         }
         pb.info("Please don't touch anything during the scan");
         $("#_wmewalCancel").removeAttr("disabled");
@@ -1161,6 +1169,26 @@ var WMEWAL;
                                         break;
                                 }
                             });
+                        }
+                        else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                if (!$(c).prop("checked")) {
+                                    $(c).trigger("click");
+                                    layerToggle.push($(c).attr("id"));
+                                }
+                            });
+                        }
+                        break;
+                    case "layer-switcher-group_map_suggestions":
+                        if (needSuggestedSegments) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
                         }
                         else {
                             if ($(groupToggle).prop("checked")) {
@@ -1349,6 +1377,7 @@ var WMEWAL;
         if (!cancelled) {
             const extentSegments = [];
             const extentVenues = [];
+            const extentSuggestedSegments = [];
             // Check to see if the current extent is completely within the area being searched
             // let allIn = true;
             // let vertices = W.map.getExtent().toGeometry().getVertices();
@@ -1382,11 +1411,24 @@ var WMEWAL;
                 }
                 log("Debug", `scanExtent: Done collecting venues (${extentVenues.length})`);
             }
+            if (needSuggestedSegments) { // && segments != null) {
+                log("Debug", "scanExtent: Collecting suggested segments");
+                for (let seg in W.model.segmentSuggestions.objects) {
+                    // if (segments.indexOf(seg) === -1) {
+                    const segment = W.model.segmentSuggestions.getObjectById(parseInt(seg));
+                    if (segment != null) {
+                        // segments.push(seg);
+                        extentSuggestedSegments.push(segment);
+                    }
+                    // }
+                }
+                log("Debug", `scanExtent: Done collecting suggested segments (${extentSuggestedSegments.length})`);
+            }
             const promises = [];
             for (let ix = 0; ix < plugins.length; ix++) {
                 if (plugins[ix].Active && !cancelled) {
                     log("Debug", "scanExtent: Calling plugin " + plugins[ix].Title);
-                    promises.push(plugins[ix].ScanExtent(extentSegments, extentVenues));
+                    promises.push(plugins[ix].ScanExtent(extentSegments, extentVenues, extentSuggestedSegments));
                 }
             }
             log("Debug", "scanExtent: Awaiting all promises");
