@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.9.0
+// @version             2023.01.07.0001
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,9 +26,10 @@ var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
-    const updateText = '<ul>' +
-        '<li>Include filters for suggested segments</li>';
-    '</ul>';
+    const updateText = '<ul>'
+        + '<li>Fixed issue with lock rank and suggested segments</li>'
+        + '<li>Added rejection reason to output when including suggested segments</li>'
+        + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
@@ -1288,7 +1289,8 @@ var WMEWAL_Streets;
                         createdEditor: (createdEditor && createdEditor.userName) || "",
                         shieldText: ps != null ? ps.signText || '' : '',
                         shieldDirection: ps != null ? ps.direction || '' : '',
-                        type: 'segment'
+                        type: 'segment',
+                        rejectionReason: null
                     };
                     if (settings.IncludeAltNames) {
                         if (s.attributes.streetIDs != null) {
@@ -1353,7 +1355,8 @@ var WMEWAL_Streets;
                     createdEditor: (createdEditor && createdEditor.userName) || "",
                     shieldText: '',
                     shieldDirection: '',
-                    type: 'suggestedsegment'
+                    type: 'suggestedsegment',
+                    rejectionReason: s.attributes.rejectionReason
                 };
                 thisStreet.segments.push({
                     id: s.getID(),
@@ -2050,6 +2053,8 @@ var WMEWAL_Streets;
             const includeLastUpdatedBy = outputFields.indexOf('LastEditor') > -1 || settings.LastModifiedBy !== null;
             const includeLat = outputFields.indexOf('Lat') > -1;
             const includeLon = outputFields.indexOf('Lon') > -1;
+            const includeRejectionReason = settings.SuggestedSegmentsOperation != 2 &&
+                (!settings.SuggestedSegments || settings.SuggestedSegmentsStatus == 1);
             let lineArray;
             let columnArray;
             let w;
@@ -2090,6 +2095,9 @@ var WMEWAL_Streets;
                 }
                 if (includeLon) {
                     columnArray.push('Longitude');
+                }
+                if (includeRejectionReason) {
+                    columnArray.push('Rejection reason');
                 }
                 columnArray.push("Permalink");
                 lineArray.push(columnArray);
@@ -2526,13 +2534,16 @@ var WMEWAL_Streets;
                     w.document.write('<th>Created By</th>');
                 }
                 if (includeLastUpdatedBy) {
-                    w.document.write('<th>Last Udpated By</th>');
+                    w.document.write('<th>Last Updated By</th>');
                 }
                 if (includeLat) {
                     w.document.write('<th>Latitude</th>');
                 }
                 if (includeLon) {
                     w.document.write('<th>Longitude</th>');
+                }
+                if (includeRejectionReason) {
+                    w.document.write('<th>Rejection reason</th>');
                 }
                 w.document.write("<th>Permalink</th></tr>");
             }
@@ -2547,7 +2558,7 @@ var WMEWAL_Streets;
                         if (isCSV) {
                             columnArray = [getStreetName(street)];
                             if (includeAltNames) {
-                                columnArray.push("");
+                                columnArray.push('');
                             }
                             if (includeASC) {
                                 columnArray.push(street.asc);
@@ -2556,13 +2567,13 @@ var WMEWAL_Streets;
                             columnArray.push(`"${street.state}"`);
                             columnArray.push(`"${roadTypeText}"`);
                             if (includeLockLevel) {
-                                columnArray.push(street.lockLevel.toString());
+                                columnArray.push(`${street.lockLevel ?? ''}`);
                             }
                             if (includeDirection) {
                                 columnArray.push(`"${translateDirection(street.direction)}"`);
                             }
                             if (includeLength) {
-                                columnArray.push(street.length.toString());
+                                columnArray.push(`${street.length ?? ''}`);
                             }
                             if (includeShields) {
                                 columnArray.push(`"${street.shieldText}","${street.shieldDirection}"`);
@@ -2571,16 +2582,19 @@ var WMEWAL_Streets;
                                 columnArray.push(`"${getIssues(street.issues)}"`);
                             }
                             if (includeCreatedBy) {
-                                columnArray.push(`"${street.createdEditor}"`);
+                                columnArray.push(`"${street.createdEditor ?? ''}"`);
                             }
                             if (includeLastUpdatedBy) {
-                                columnArray.push(`"${street.lastEditor}"`);
+                                columnArray.push(`"${street.lastEditor ?? ''}"`);
                             }
                             if (includeLat) {
-                                columnArray.push(latlon.lat.toString());
+                                columnArray.push(`${latlon.lat}`);
                             }
                             if (includeLon) {
-                                columnArray.push(latlon.lon.toString());
+                                columnArray.push(`${latlon.lon}`);
+                            }
+                            if (includeRejectionReason) {
+                                columnArray.push(`"${translateRejectionReason(street.rejectionReason)}"`);
                             }
                             columnArray.push(`"${plSeg}"`);
                             lineArray.push(columnArray);
@@ -2597,13 +2611,13 @@ var WMEWAL_Streets;
                             w.document.write(`<td>${street.state}</td>`);
                             w.document.write(`<td>${roadTypeText}</td>`);
                             if (includeLockLevel) {
-                                w.document.write(`<td>${street.lockLevel}</td>`);
+                                w.document.write(`<td>${street.lockLevel ?? ''}</td>`);
                             }
                             if (includeDirection) {
                                 w.document.write(`<td>${translateDirection(street.direction)}</td>`);
                             }
                             if (includeLength) {
-                                w.document.write(`<td>${street.length.toString()}</td>`);
+                                w.document.write(`<td>${street.length ?? ''}</td>`);
                             }
                             if (includeShields) {
                                 w.document.write(`<td>${street.shieldText}</td><td>${street.shieldDirection}</td>`);
@@ -2612,16 +2626,19 @@ var WMEWAL_Streets;
                                 w.document.write(`<td>${getIssues(street.issues)}</td>`);
                             }
                             if (includeCreatedBy) {
-                                w.document.write(`<td>${street.createdEditor}</td>`);
+                                w.document.write(`<td>${street.createdEditor ?? ''}</td>`);
                             }
                             if (includeLastUpdatedBy) {
-                                w.document.write(`<td>${street.lastEditor}</td>`);
+                                w.document.write(`<td>${street.lastEditor ?? ''}</td>`);
                             }
                             if (includeLat) {
-                                w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                                w.document.write(`<td>${latlon.lat}</td>`);
                             }
                             if (includeLon) {
-                                w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                                w.document.write(`<td>${latlon.lon}</td>`);
+                            }
+                            if (includeRejectionReason) {
+                                w.document.write(`<td>${translateRejectionReason(street.rejectionReason)}</td>`);
                             }
                             w.document.write(`<td><a href='${plSeg}' target='_blank'>Permalink</a></td></tr>`);
                         }
@@ -2652,13 +2669,13 @@ var WMEWAL_Streets;
                         columnArray.push(`"${street.state}"`);
                         columnArray.push(`"${roadTypeText}"`);
                         if (includeLockLevel) {
-                            columnArray.push(street.lockLevel.toString());
+                            columnArray.push(`${street.lockLevel ?? ''}`);
                         }
                         if (includeDirection) {
                             columnArray.push(`"${translateDirection(street.direction)}"`);
                         }
                         if (includeLength) {
-                            columnArray.push(street.length.toString());
+                            columnArray.push(`${street.length ?? ''}`);
                         }
                         if (includeShields) {
                             columnArray.push(`"${street.shieldText}"`, `"${street.shieldDirection}"`);
@@ -2667,16 +2684,19 @@ var WMEWAL_Streets;
                             columnArray.push(`"${getIssues(street.issues)}"`);
                         }
                         if (includeCreatedBy) {
-                            columnArray.push(`"${street.createdEditor}"`);
+                            columnArray.push(`"${street.createdEditor ?? ''}"`);
                         }
                         if (includeLastUpdatedBy) {
-                            columnArray.push(`"${street.lastEditor}"`);
+                            columnArray.push(`"${street.lastEditor ?? ''}"`);
                         }
                         if (includeLat) {
-                            columnArray.push(latlon.lat.toString());
+                            columnArray.push(`${latlon.lat}`);
                         }
                         if (includeLon) {
-                            columnArray.push(latlon.lon.toString());
+                            columnArray.push(`${latlon.lon}`);
+                        }
+                        if (includeRejectionReason) {
+                            columnArray.push(`"${translateRejectionReason(street.rejectionReason)}"`);
                         }
                         columnArray.push(`"${plStreet}"`);
                         lineArray.push(columnArray);
@@ -2693,13 +2713,13 @@ var WMEWAL_Streets;
                         w.document.write(`<td>${street.state}</td>`);
                         w.document.write(`<td>${roadTypeText}</td>`);
                         if (includeLockLevel) {
-                            w.document.write(`<td>${street.lockLevel}</td>`);
+                            w.document.write(`<td>${street.lockLevel ?? ''}</td>`);
                         }
                         if (includeDirection) {
                             w.document.write(`<td>${translateDirection(street.direction)}</td>`);
                         }
                         if (includeLength) {
-                            w.document.write(`<td>${street.length.toString()}</td>`);
+                            w.document.write(`<td>${street.length ?? ''}</td>`);
                         }
                         if (includeShields) {
                             w.document.write(`<td>${street.shieldText}</td><td>${street.shieldDirection}</td>`);
@@ -2708,16 +2728,19 @@ var WMEWAL_Streets;
                             w.document.write(`<td>${getIssues(street.issues)}</td>`);
                         }
                         if (includeCreatedBy) {
-                            w.document.write(`<td>${street.createdEditor}</td>`);
+                            w.document.write(`<td>${street.createdEditor ?? ''}</td>`);
                         }
                         if (includeLastUpdatedBy) {
-                            w.document.write(`<td>${street.lastEditor}</td>`);
+                            w.document.write(`<td>${street.lastEditor ?? ''}</td>`);
                         }
                         if (includeLat) {
-                            w.document.write(`<td>${latlon.lat.toString()}</td>`);
+                            w.document.write(`<td>${latlon.lat}</td>`);
                         }
                         if (includeLon) {
-                            w.document.write(`<td>${latlon.lon.toString()}</td>`);
+                            w.document.write(`<td>${latlon.lon}</td>`);
+                        }
+                        if (includeRejectionReason) {
+                            w.document.write(`<td>${translateRejectionReason(street.rejectionReason)}</td>`);
                         }
                         w.document.write(`<td><a href='${plStreet}' target='_blank'>Permalink</a></td></tr>`);
                     }
@@ -2753,6 +2776,39 @@ var WMEWAL_Streets;
         ScanComplete();
     }
     WMEWAL_Streets.ScanCancelled = ScanCancelled;
+    function translateRejectionReason(rejectionReason) {
+        if (rejectionReason == null) {
+            return '';
+        }
+        else {
+            switch (rejectionReason) {
+                case 0:
+                    return 'Road does not exist';
+                case 1:
+                    return 'Road is permanently closed';
+                case 2:
+                    return 'Road exists but Waze does not map such (Other) roads';
+                case 3:
+                    return 'Road already exists. Suggested geometry is wrong';
+                case 4:
+                    return 'Road already exists. Suggested geometry is more accurate';
+                case 5:
+                    return 'Road is under construction or temporarily moved';
+                case 6:
+                    return 'Road already exists. Nearly identical to Waze. Looks like a bug';
+                case 7:
+                    return "Road exists but Waze doesn't map Non-Drivable roads (pedestrian path, bike lane, etc.)";
+                case 8:
+                    return "Road exists but Waze doesn't map Private/Military Base roads";
+                case 9:
+                    return "Road exists but Waze doesn't map Unpaved/4x4 roads";
+                case 10:
+                    return "Road exists but Waze doesn't map Back Alley roads";
+                default:
+                    return 'Unknown';
+            }
+        }
+    }
     function getStreetPL(street) {
         const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
         let url = WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, WMEWAL.zoomLevel) + '&' + (street.type == 'suggestedsegment' ? 'segmentSuggestions' : 'segments') + '=';
