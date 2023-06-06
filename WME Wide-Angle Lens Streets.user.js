@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             2023.01.07.0001
+// @version             2023.06.01.0001
 // @grant               none
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -27,8 +27,7 @@ var WMEWAL_Streets;
     const scrName = GM_info.script.name;
     const Version = GM_info.script.version;
     const updateText = '<ul>'
-        + '<li>Fixed issue with lock rank and suggested segments</li>'
-        + '<li>Added rejection reason to output when including suggested segments</li>'
+        + '<li>Fixed issue with Streets plugin not loading</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -2999,7 +2998,7 @@ var WMEWAL_Streets;
                 }
             }
         }
-        isImperial = W.app.layout.dataModel.isImperial;
+        isImperial = W.prefs.attributes.isImperial;
         if (settings == null) {
             initSettings();
         }
