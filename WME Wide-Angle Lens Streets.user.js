@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.002
+// @version             2023.09.25.003
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -29,6 +29,7 @@ var WMEWAL_Streets;
     const DOWNLOAD_URL = GM_info.scriptUpdateURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
+        + '<li>Fixed issue with getting last/creating editor<li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -1302,9 +1303,9 @@ var WMEWAL_Streets;
                 savedSegments.push(s.getID());
                 const sid = s.getAttribute('primaryStreetID');
                 const lastEditorID = s.getUpdatedBy() ?? s.getCreatedBy();
-                const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { attributes: { userName: 'Not found' } };
+                const lastEditor = W.model.users.getObjectById(lastEditorID);
                 const createdEditorID = s.getCreatedBy();
-                const createdEditor = W.model.users.getObjectById(createdEditorID) || { attributes: { userName: 'Not found' } };
+                const createdEditor = W.model.users.getObjectById(createdEditorID);
                 const address = s.getAddress();
                 let thisStreet = null;
                 const ps = includeShields ? W.model.streets.getObjectById(sid) : null;
@@ -1317,10 +1318,10 @@ var WMEWAL_Streets;
                             matches &&= (e.lockLevel === (s.getAttribute('lockRank') | 0) + 1);
                         }
                         if (includeLastEditor) {
-                            matches &&= e.lastEditor === lastEditor.getAttribute('userName');
+                            matches &&= e.lastEditor === (lastEditor?.getAttribute('userName') ?? 'WMEWALNotFound');
                         }
                         if (includeCreatedEditor) {
-                            matches &&= e.createdEditor === createdEditor.getAttribute('userName');
+                            matches &&= e.createdEditor === (createdEditor?.getAttribute('userName') ?? 'WMEWALNotFound');
                         }
                         if (matches && settings.IncludeAltNames) {
                             // Test for alt names
@@ -1402,9 +1403,9 @@ var WMEWAL_Streets;
                 savedSegments.push(s.getID());
                 const sid = s.getID();
                 const lastEditorID = s.getUpdatedBy() ?? s.getCreatedBy();
-                const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { attributes: { userName: 'Not found' } };
+                const lastEditor = W.model.users.getObjectById(lastEditorID);
                 const createdEditorID = s.getCreatedBy();
-                const createdEditor = W.model.users.getObjectById(createdEditorID) || { attributes: { userName: 'Not found' } };
+                const createdEditor = W.model.users.getObjectById(createdEditorID);
                 let thisStreet = null;
                 thisStreet = {
                     id: sid,
@@ -1420,9 +1421,9 @@ var WMEWAL_Streets;
                     direction: determineDirection(s),
                     issues: null,
                     length: null,
-                    lastEditor: lastEditor.getAttribute('userName'),
+                    lastEditor: lastEditor?.getAttribute('userName') ?? '',
                     asc: null,
-                    createdEditor: (createdEditor && createdEditor.getAttribute('userName')) || "",
+                    createdEditor: createdEditor?.getAttribute('userName') ?? '',
                     shieldText: '',
                     shieldDirection: '',
                     type: 'suggestedsegment',
