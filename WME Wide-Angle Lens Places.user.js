@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.002
+// @version             2023.09.25.003
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -29,6 +29,7 @@ var WMEWAL_Places;
     const DOWNLOAD_URL = GM_info.scriptUpdateURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
+        + '<li>Fixed issue with getting last/creating editor<li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -921,9 +922,9 @@ var WMEWAL_Places;
                     if (savedVenues.indexOf(venue.getID()) === -1) {
                         savedVenues.push(venue.getID());
                         const lastEditorID = venue.getUpdatedBy() ?? venue.getCreatedBy();
-                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { attributes: { userName: 'Not found' } };
+                        const lastEditor = W.model.users.getObjectById(lastEditorID);
                         const createdByID = venue.getCreatedBy();
-                        const createdBy = W.model.users.getObjectById(createdByID) ?? { attributes: { userName: 'Not found' } };
+                        const createdBy = W.model.users.getObjectById(createdByID);
                         const place = {
                             id: venue.getAttribute('id'),
                             mainCategory: venue.getMainCategory(),
@@ -939,8 +940,8 @@ var WMEWAL_Places;
                             state: ((address && !address.isEmpty() && address.attributes.state) ? address.attributes.state.getAttribute('name') : "No State"),
                             houseNumber: venue.getAttribute('houseNumber') ?? "",
                             streetName: ((address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.getAttribute('name') : "") || "",
-                            lastEditor: (lastEditor && lastEditor.getAttribute('userName')) || "",
-                            createdBy: (createdBy && createdBy.getAttribute('userName')) || "",
+                            lastEditor: lastEditor?.getAttribute('userName') ?? '',
+                            createdBy: createdBy?.getAttribute('userName') ?? '',
                             url: venue.getAttribute('url') ?? "",
                             phone: venue.getAttribute('phone') ?? "",
                             issues: issues,

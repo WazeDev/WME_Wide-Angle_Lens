@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.002
+// @version             2023.09.25.003
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -29,6 +29,7 @@ var WMEWAL_MapComments;
     const DOWNLOAD_URL = GM_info.scriptUpdateURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
+        + '<li>Fixed issue with getting last/creating editor<li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40644';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -564,7 +565,7 @@ var WMEWAL_MapComments;
                             continue;
                         }
                         const lastEditorID = mapComment.getUpdatedBy() ?? mapComment.getCreatedBy();
-                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { attributes: { userName: 'Not found' } };
+                        const lastEditor = W.model.users.getObjectById(lastEditorID);
                         let endDate = null;
                         const expirationDate = mapComment.getAttribute('endDate');
                         if (expirationDate != null) {
@@ -576,7 +577,7 @@ var WMEWAL_MapComments;
                         const mComment = {
                             id: mapComment.getAttribute('id'),
                             geometryType: ((mapComment.isPoint()) ? I18n.t("edit.venue.type.point") : I18n.t("edit.venue.type.area")),
-                            lastEditor: (lastEditor && lastEditor.getAttribute('userName')) || "",
+                            lastEditor: lastEditor?.getAttribute('userName') ?? '',
                             title: mapComment.getAttribute('subject'),
                             lockLevel: mapComment.getAttribute('lockRank') + 1,
                             expirationDate: endDate,
