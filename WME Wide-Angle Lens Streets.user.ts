@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.001
+// @version             2023.09.25.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -309,7 +309,7 @@ namespace WMEWAL_Streets {
 
     function onWmeReady() {
         initCount++;
-        if (WazeWrap && WazeWrap.Ready && WMEWAL && WMEWAL.RegisterPlugIn) {
+        if (WazeWrap && WazeWrap.Ready && typeof(WMEWAL) !== 'undefined' && WMEWAL && WMEWAL.RegisterPlugIn) {
             log('debug','WazeWrap and WMEWAL ready.');
             init();
         } else {
