@@ -12,7 +12,7 @@
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
 // @grant               GM_xmlhttpRequest
-// @version             2023.09.18.001
+// @version             2023.09.25.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -28,7 +28,7 @@ declare var unsafeWindow: Window & typeof globalThis;
 namespace WMEWAL {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.script.downloadURL;
+    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
 
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'

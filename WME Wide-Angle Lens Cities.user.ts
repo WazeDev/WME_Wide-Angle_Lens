@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.18.001
+// @version             2023.09.25.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,7 +26,7 @@
 namespace WMEWAL_Cities {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.script.downloadURL;
+    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
 
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
@@ -36,7 +36,7 @@ namespace WMEWAL_Cities {
 
     const ctlPrefix = "_wmewalCities";
 
-    const minimumWALVersionRequired = "1.5.3";
+    const minimumWALVersionRequired = "2023.09.18.001";
 
     enum Operation {
         Equal = 1,

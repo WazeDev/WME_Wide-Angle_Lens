@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.18.001
+// @version             2023.09.25.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,14 +26,14 @@ var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.script.downloadURL;
+    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalStreets";
-    const minimumWALVersionRequired = "1.8.0";
+    const minimumWALVersionRequired = "2023.09.18.001";
     let Direction;
     (function (Direction) {
         Direction[Direction["OneWay"] = 1] = "OneWay";
