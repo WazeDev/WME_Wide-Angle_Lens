@@ -8,10 +8,10 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets whose city doesn't match the boundaries of a polygon layer
 // @author              vtpearce and crazycaveman
-// @include             https://www.waze.com/editor
-// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.4.0
-// @grant               none
+// @match               *://*.waze.com/*editor*
+// @exclude             *://*.waze.com/user/editor*
+// @version             2023.09.18.001
+// @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -23,11 +23,12 @@
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers */
 var WMEWAL_Cities;
 (function (WMEWAL_Cities) {
-    const scrName = GM_info.script.name;
-    const Version = GM_info.script.version;
-    const updateText = '<ul>' +
-        '<li>Support variable output fields</li>' +
-        '</ul>';
+    const SCRIPT_NAME = GM_info.script.name;
+    const SCRIPT_VERSION = GM_info.script.version.toString();
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
+    const updateText = '<ul>'
+        + '<li>Fixes for latest WME release</li>'
+        + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalCities";
@@ -53,6 +54,85 @@ var WMEWAL_Cities;
     let cityPolygons = null;
     let initCount = 0;
     let savedSegments;
+    function onWmeReady() {
+        initCount++;
+        if (WazeWrap && WazeWrap.Ready && WMEWAL && WMEWAL.RegisterPlugIn) {
+            log('debug', 'WazeWrap and WMEWAL ready.');
+            init();
+        }
+        else {
+            if (initCount < 60) {
+                log('debug', 'WazeWrap or WMEWAL not ready. Trying again...');
+                setTimeout(onWmeReady, 1000);
+            }
+            else {
+                log('error', 'WazeWrap or WMEWAL not ready. Giving up.');
+            }
+        }
+    }
+    function bootstrap() {
+        if (W?.userscripts?.state.isReady) {
+            onWmeReady();
+        }
+        else {
+            document.addEventListener('wme-ready', onWmeReady, { once: true });
+        }
+    }
+    async function init() {
+        // Check to see if WAL is at the minimum verson needed
+        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
+            log('log', "WAL not at required minimum version.");
+            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
+                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false);
+            return;
+        }
+        if (typeof Storage !== "undefined") {
+            if (localStorage[settingsKey]) {
+                settings = JSON.parse(localStorage[settingsKey]);
+            }
+            if (localStorage[savedSettingsKey]) {
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                }
+                catch (e) { }
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0) {
+                    log('debug', "decompressFromUTF16 failed, attempting decompress");
+                    localStorage[savedSettingsKey + "Backup"] = localStorage[savedSettingsKey];
+                    try {
+                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    }
+                    catch (e) { }
+                    if (typeof savedSettings === "undefined" || savedSettings === null) {
+                        log('warn', "decompress failed, savedSetting unrecoverable. Using blank");
+                        savedSettings = [];
+                    }
+                    updateSavedSettings();
+                }
+            }
+        }
+        if (settings == null) {
+            settings = {
+                RoadTypeMask: WMEWAL.RoadType.Freeway,
+                State: null,
+                StateOperation: Operation.Equal,
+                ExcludeJunctionBoxes: true,
+                EditableByMe: true,
+                CityRegex: null,
+                CityRegexIgnoreCase: true,
+                PolygonLayerUniqueName: null,
+                IgnoreAlt: false,
+                IncludeAltNames: false
+            };
+        }
+        else {
+            if (updateProperties()) {
+                updateSettings();
+            }
+        }
+        log('log', "Initialized");
+        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, updateText, greasyForkPage, wazeForumThread);
+        WMEWAL.RegisterPlugIn(WMEWAL_Cities);
+    }
     function GetTab() {
         let html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
@@ -129,6 +209,7 @@ var WMEWAL_Cities;
     }
     WMEWAL_Cities.GetTab = GetTab;
     function TabLoaded() {
+        loadScriptUpdateMonitor();
         updateStates();
         updateLayers();
         updateUI();
@@ -156,8 +237,8 @@ var WMEWAL_Cities;
         for (let s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
                 const st = W.model.states.getObjectById(parseInt(s));
-                if (st.id !== 1 && st.name.length > 0) {
-                    stateObjs.push({ id: st.id, name: st.name });
+                if (st.getAttribute('id') !== 1 && st.getAttribute('name').length > 0) {
+                    stateObjs.push({ id: st.getAttribute('id'), name: st.getAttribute('name') });
                 }
             }
         }
@@ -309,7 +390,7 @@ var WMEWAL_Cities;
                     }
                     if (featureName !== null) {
                         if (r !== null) {
-                            log("info", "Checking to see if " + featureName + " matches the city regex.");
+                            log('info', "Checking to see if " + featureName + " matches the city regex.");
                             if (!r.test(featureName)) {
                                 continue;
                             }
@@ -386,7 +467,7 @@ var WMEWAL_Cities;
         if (nullif(selectedState, "") !== null) {
             const state = W.model.states.getObjectById(selectedState);
             if (state !== null) {
-                s.State = state.id;
+                s.State = state.getAttribute('id');
             }
         }
         const pattern = $(`#${ctlPrefix}City`).val();
@@ -414,7 +495,7 @@ var WMEWAL_Cities;
             settings = getSettings();
             if (settings.State !== null) {
                 state = W.model.states.getObjectById(settings.State);
-                stateName = state.name;
+                stateName = state.getAttribute('name');
             }
             else {
                 state = null;
@@ -454,21 +535,21 @@ var WMEWAL_Cities;
         function addSegment(s, incorrectCity, cityShouldBe, rId) {
             if (savedSegments.indexOf(s.getID()) === -1) {
                 savedSegments.push(s.getID());
-                const sid = s.attributes.primaryStreetID;
+                const sid = s.getAttribute('primaryStreetID');
                 const address = s.getAddress();
                 let thisStreet = null;
                 if (sid != null) {
                     thisStreet = extentStreets.find(function (e) {
-                        let matches = (e.id === sid && e.roundaboutId === rId && e.roadType === s.attributes.roadType);
+                        let matches = (e.id === sid && e.roundaboutId === rId && e.roadType === s.getAttribute('roadType'));
                         if (includeLockLevel) {
-                            matches && (matches = e.lockLevel === (s.attributes.lockRank | 0) + 1);
+                            matches &&= (e.lockLevel === (s.getAttribute('lockRank') | 0) + 1);
                         }
                         if (matches) {
                             // Test for alt names
                             for (let ixAlt = 0; ixAlt < e.altStreets.length && matches; ixAlt++) {
                                 matches = false;
-                                for (let ixSegAlt = 0; ixSegAlt < s.attributes.streetIDs.length && !matches; ixSegAlt++) {
-                                    if (e.altStreets[ixAlt].id === s.attributes.streetIDs[ixSegAlt]) {
+                                for (let ixSegAlt = 0; ixSegAlt < s.getAttribute('streetIDs').length && !matches; ixSegAlt++) {
+                                    if (e.altStreets[ixAlt].id === s.getAttribute('streetIDs')[ixSegAlt]) {
                                         matches = true;
                                     }
                                 }
@@ -480,34 +561,34 @@ var WMEWAL_Cities;
                 if (thisStreet == null) {
                     thisStreet = {
                         id: sid,
-                        state: ((address && !address.attributes.isEmpty) ? address.attributes.state.name : "No State"),
-                        name: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : "No street"),
+                        state: ((address && !address.attributes.isEmpty) ? address.attributes.state.getAttribute('name') : "No State"),
+                        name: ((address && !address.attributes.isEmpty && !address.attributes.street.getAttribute('isEmpty')) ? address.attributes.street.getAttribute('name') : "No street"),
                         geometries: new OpenLayers.Geometry.Collection(),
-                        lockLevel: (s.attributes.lockRank || 0) + 1,
+                        lockLevel: (s.getAttribute('lockRank') || 0) + 1,
                         segments: [],
                         roundaboutId: rId,
                         altStreets: [],
-                        roadType: s.attributes.roadType,
+                        roadType: s.getAttribute('roadType'),
                         incorrectCity: incorrectCity,
                         cityShouldBe: cityShouldBe,
                         city: null
                     };
                     if (settings.IncludeAltNames) {
-                        if (s.attributes.streetIDs != null) {
-                            for (let ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
-                                if (s.attributes.streetIDs[ixAlt] != null) {
-                                    const altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
+                        if (s.getAttribute('streetIDs') != null) {
+                            for (let ixAlt = 0; ixAlt < s.getAttribute('streetIDs').length; ixAlt++) {
+                                if (s.getAttribute('streetIDs')[ixAlt] != null) {
+                                    const altStreet = W.model.streets.getObjectById(s.getAttribute('streetIDs')[ixAlt]);
                                     if (altStreet != null) {
                                         let altCityName = null;
-                                        if (altStreet.cityID != null) {
-                                            const altCity = W.model.cities.getObjectById(altStreet.cityID);
+                                        if (altStreet.getAttribute('cityID') != null) {
+                                            const altCity = W.model.cities.getObjectById(altStreet.getAttribute('cityID'));
                                             if (altCity != null) {
-                                                altCityName = altCity.hasName() ? altCity.attributes.name : "No city";
+                                                altCityName = altCity.hasName() ? altCity.getAttribute('name') : "No city";
                                             }
                                         }
                                         thisStreet.altStreets.push({
-                                            id: s.attributes.streetIDs[ixAlt],
-                                            name: altStreet.name,
+                                            id: s.getAttribute('streetIDs')[ixAlt],
+                                            name: altStreet.getAttribute('name'),
                                             city: altCityName
                                         });
                                     }
@@ -518,24 +599,24 @@ var WMEWAL_Cities;
                     extentStreets.push(thisStreet);
                 }
                 thisStreet.segments.push({
-                    id: s.attributes.id,
-                    center: s.attributes.geometry.getCentroid()
+                    id: s.getAttribute('id'),
+                    center: s.getAttribute('geometry').getCentroid()
                 });
-                thisStreet.geometries.addComponents([s.attributes.geometry.clone()]);
+                thisStreet.geometries.addComponents([s.getAttribute('geometry').clone()]);
             }
         }
         // Possibly change this
         for (let ix = 0; ix < segments.length; ix++) {
             segment = segments[ix];
             if (segment != null) {
-                if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) & settings.RoadTypeMask) &&
+                if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.getAttribute('roadType')) & settings.RoadTypeMask) &&
                     (!settings.EditableByMe || segment.arePropertiesEditable()) &&
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
                     const address = segment.getAddress();
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
-                            if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
-                                settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
+                            if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
+                                settings.StateOperation === Operation.NotEqual && address.attributes.state.getAttribute('id') === state.getAttribute('id')) {
                                 continue;
                             }
                         }
@@ -545,18 +626,18 @@ var WMEWAL_Cities;
                     }
                     const altCityNames = [];
                     if (!settings.IgnoreAlt) {
-                        if (segment.attributes.streetIDs != null) {
-                            for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length; streetIx++) {
-                                if (segment.attributes.streetIDs[streetIx] != null) {
-                                    const street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                        if (segment.getAttribute('streetIDs') != null) {
+                            for (let streetIx = 0; streetIx < segment.getAttribute('streetIDs').length; streetIx++) {
+                                if (segment.getAttribute('streetIDs')[streetIx] != null) {
+                                    const street = W.model.streets.getObjectById(segment.getAttribute('streetIDs')[streetIx]);
                                     if (street != null) {
-                                        if (street.cityID != null) {
-                                            const city = W.model.cities.getObjectById(street.cityID);
+                                        if (street.getAttribute('cityID') != null) {
+                                            const city = W.model.cities.getObjectById(street.getAttribute('cityID'));
                                             if (city != null) {
                                                 altCityNames.push({
                                                     hasName: city.hasName(),
-                                                    name: city.hasName() ? city.attributes.name : null,
-                                                    compressedName: city.hasName() ? city.attributes.name.replace(spaceRegex, "") : null
+                                                    name: city.hasName() ? city.getAttribute('name') : null,
+                                                    compressedName: city.hasName() ? city.getAttribute('name').replace(spaceRegex, "") : null
                                                 });
                                             }
                                         }
@@ -569,7 +650,7 @@ var WMEWAL_Cities;
                         let nameMatched = false;
                         if (address.attributes != null && !address.attributes.isEmpty) {
                             if (address.attributes.city != null && address.attributes.city.hasName()) {
-                                nameMatched = cityRegex.test(address.attributes.city.attributes.name);
+                                nameMatched = cityRegex.test(address.attributes.city.getAttribute('name'));
                             }
                             if (!nameMatched) {
                                 for (let altIx = 0; altIx < altCityNames.length && !nameMatched; altIx++) {
@@ -594,8 +675,8 @@ var WMEWAL_Cities;
                     if (address.attributes != null && address.attributes.city && address.attributes.city.hasName()) {
                         cityNames.push({
                             hasName: true,
-                            name: address.attributes.city.attributes.name,
-                            compressedName: address.attributes.city.attributes.name.replace(spaceRegex, "")
+                            name: address.attributes.city.getAttribute('name'),
+                            compressedName: address.attributes.city.getAttribute('name').replace(spaceRegex, "")
                         });
                     }
                     else {
@@ -624,7 +705,7 @@ var WMEWAL_Cities;
                             for (let ixCity = 0; ixCity < cityPolygons.length && cityMatches; ixCity++) {
                                 if (cityNames[ixCityName].compressedName === cityPolygons[ixCity].compressedName) {
                                     foundAny = true;
-                                    if (!cityPolygons[ixCity].geometry.intersects(segment.geometry)) {
+                                    if (!cityPolygons[ixCity].geometry.intersects(segment.getAttribute('geometry'))) {
                                         incorrectCity = cityNames[ixCityName].name;
                                         cityShouldBe = "No City";
                                         cityMatches = false;
@@ -641,7 +722,7 @@ var WMEWAL_Cities;
                     if (anyBlankCity && cityMatches) {
                         // No city names listed, so check to see if it's inside any of the city polygons
                         for (let ixCity = 0; ixCity < cityPolygons.length && cityMatches; ixCity++) {
-                            if (cityPolygons[ixCity].geometry.intersects(segment.geometry)) {
+                            if (cityPolygons[ixCity].geometry.intersects(segment.getAttribute('geometry'))) {
                                 incorrectCity = "No City";
                                 cityShouldBe = cityPolygons[ixCity].name;
                                 cityMatches = false;
@@ -917,102 +998,6 @@ var WMEWAL_Cities;
     function getStreetName(street) {
         return street.name || "No street";
     }
-    function Init() {
-        console.group(pluginName + ": Initializing");
-        initCount++;
-        let allOK = true;
-        const objectToCheck = [
-            "W.app",
-            "W.model.states",
-            "OpenLayers",
-            "WMEWAL.RegisterPlugIn",
-            "WazeWrap.Ready"
-        ];
-        for (let i = 0; i < objectToCheck.length; i++) {
-            const path = objectToCheck[i].split(".");
-            let object = window;
-            let ok = true;
-            for (let j = 0; j < path.length; j++) {
-                object = object[path[j]];
-                if (typeof object === "undefined" || object == null) {
-                    console.warn(objectToCheck[i] + " NOT OK");
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) {
-                console.log(objectToCheck[i] + " OK");
-            }
-            else {
-                allOK = false;
-            }
-        }
-        if (!allOK) {
-            if (initCount < 60) {
-                window.setTimeout(Init, 1000);
-            }
-            else {
-                console.error("Giving up on initialization");
-            }
-            console.groupEnd();
-            return;
-        }
-        // Check to see if WAL is at the minimum verson needed
-        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
-            log("log", "WAL not at required minimum version.");
-            console.groupEnd();
-            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
-                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false);
-            return;
-        }
-        if (typeof Storage !== "undefined") {
-            if (localStorage[settingsKey]) {
-                settings = JSON.parse(localStorage[settingsKey]);
-            }
-            if (localStorage[savedSettingsKey]) {
-                try {
-                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
-                }
-                catch (e) { }
-                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0) {
-                    log("debug", "decompressFromUTF16 failed, attempting decompress");
-                    localStorage[savedSettingsKey + "Backup"] = localStorage[savedSettingsKey];
-                    try {
-                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
-                    }
-                    catch (e) { }
-                    if (typeof savedSettings === "undefined" || savedSettings === null) {
-                        log("debug", "decompress failed, savedSetting unrecoverable. Using blank");
-                        savedSettings = [];
-                    }
-                    updateSavedSettings();
-                }
-            }
-        }
-        if (settings == null) {
-            settings = {
-                RoadTypeMask: WMEWAL.RoadType.Freeway,
-                State: null,
-                StateOperation: Operation.Equal,
-                ExcludeJunctionBoxes: true,
-                EditableByMe: true,
-                CityRegex: null,
-                CityRegexIgnoreCase: true,
-                PolygonLayerUniqueName: null,
-                IgnoreAlt: false,
-                IncludeAltNames: false
-            };
-        }
-        else {
-            if (updateProperties()) {
-                updateSettings();
-            }
-        }
-        console.log("Initialized");
-        console.groupEnd();
-        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
-        WMEWAL.RegisterPlugIn(WMEWAL_Cities);
-    }
     function updateProperties() {
         let upd = false;
         if (settings !== null) {
@@ -1046,26 +1031,26 @@ var WMEWAL_Cities;
             localStorage[settingsKey] = JSON.stringify(settings);
         }
     }
-    function log(level, message) {
+    function log(level, ...args) {
         const t = new Date();
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":
-                console.debug(`${scrName} ${t.toISOString()}: ${message}`);
+                console.debug(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "info":
             case "information":
-                console.info(`${scrName} ${t.toISOString()}: ${message}`);
+                console.info(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "warning":
             case "warn":
-                console.warn(`${scrName} ${t.toISOString()}: ${message}`);
+                console.warn(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "error":
-                console.error(`${scrName} ${t.toISOString()}: ${message}`);
+                console.error(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "log":
-                console.log(`${scrName} ${t.toISOString()}: ${message}`);
+                console.log(`${SCRIPT_NAME}:`, ...args);
                 break;
             default:
                 break;
@@ -1077,5 +1062,15 @@ var WMEWAL_Cities;
         }
         return s;
     }
-    Init();
+    function loadScriptUpdateMonitor() {
+        let updateMonitor;
+        try {
+            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, DOWNLOAD_URL, GM_xmlhttpRequest);
+            updateMonitor.start();
+        }
+        catch (ex) {
+            log('error', ex);
+        }
+    }
+    bootstrap();
 })(WMEWAL_Cities || (WMEWAL_Cities = {}));

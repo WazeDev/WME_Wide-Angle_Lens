@@ -8,10 +8,10 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find segments that don't match lock levels
 // @author              vtpearce and crazycaveman
-// @include             https://www.waze.com/editor
-// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.5.0
-// @grant               none
+// @match               *://*.waze.com/*editor*
+// @exclude             *://*.waze.com/user/editor*
+// @version             2023.09.18.001
+// @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -23,11 +23,12 @@
 /*global W, OL, $, WazeWrap, WMEWAL, OpenLayers */
 var WMEWAL_Locks;
 (function (WMEWAL_Locks) {
-    const scrName = GM_info.script.name;
-    const Version = GM_info.script.version;
-    const updateText = '<ul>' +
-        '<li>Support variable output fields</li>' +
-        '</ul>';
+    const SCRIPT_NAME = GM_info.script.name;
+    const SCRIPT_VERSION = GM_info.script.version.toString();
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
+    const updateText = '<ul>'
+        + '<li>Fixes for latest WME release</li>'
+        + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = `_wmewalLocks`;
@@ -58,6 +59,95 @@ var WMEWAL_Locks;
     let cityRegex = null;
     let initCount = 0;
     let savedSegments;
+    function onWmeReady() {
+        initCount++;
+        if (WazeWrap && WazeWrap.Ready && WMEWAL && WMEWAL.RegisterPlugIn) {
+            log('debug', 'WazeWrap and WMEWAL ready.');
+            init();
+        }
+        else {
+            if (initCount < 60) {
+                log('debug', 'WazeWrap or WMEWAL not ready. Trying again...');
+                setTimeout(onWmeReady, 1000);
+            }
+            else {
+                log('error', 'WazeWrap or WMEWAL not ready. Giving up.');
+            }
+        }
+    }
+    function bootstrap() {
+        if (W?.userscripts?.state.isReady) {
+            onWmeReady();
+        }
+        else {
+            document.addEventListener('wme-ready', onWmeReady, { once: true });
+        }
+    }
+    async function init() {
+        // Check to see if WAL is at the minimum verson needed
+        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
+            log('log', "WAL not at required minimum version.");
+            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
+                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false);
+            return;
+        }
+        if (typeof Storage !== "undefined") {
+            if (localStorage[settingsKey]) {
+                settings = JSON.parse(localStorage[settingsKey]);
+            }
+            if (localStorage[savedSettingsKey]) {
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                }
+                catch (e) { }
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0) {
+                    log('debug', "decompressFromUTF16 failed, attempting decompress");
+                    localStorage[savedSettingsKey + "Backup"] = localStorage[savedSettingsKey];
+                    try {
+                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    }
+                    catch (e) { }
+                    if (typeof savedSettings === "undefined" || savedSettings === null) {
+                        log('warn', "decompress failed, savedSettings unrecoverable. Using blank");
+                        savedSettings = [];
+                    }
+                    updateSavedSettings();
+                }
+            }
+        }
+        if (settings == null) {
+            settings = {
+                RoadTypeMask: WMEWAL.RoadType.Freeway,
+                State: null,
+                Regex: null,
+                RegexIgnoreCase: true,
+                ExcludeRoundabouts: false,
+                ExcludeJunctionBoxes: true,
+                EditableByMe: true,
+                StreetLockLevel: 1,
+                PrimaryStreetLockLevel: 2,
+                MinorHighwayLockLevel: 3,
+                MajorHighwayLockLevel: 4,
+                FreewayLockLevel: 5,
+                RampLockLevel: 7,
+                IncludeInOutput: IncludeInOutput.Low | IncludeInOutput.High,
+                PlusOneWayMask: 0,
+                CityRegex: null,
+                CityRegexIgnoreCase: true,
+                StateOperation: Operation.Equal,
+                RailroadLockLevel: 2,
+                IncludeAltNames: false
+            };
+        }
+        else {
+            if (updateProperties()) {
+                updateSettings();
+            }
+        }
+        log('log', "Initialized");
+        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, updateText, greasyForkPage, wazeForumThread);
+        WMEWAL.RegisterPlugIn(WMEWAL_Locks);
+    }
     function GetTab() {
         let html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
         html += "<tbody>";
@@ -181,6 +271,7 @@ var WMEWAL_Locks;
     }
     WMEWAL_Locks.GetTab = GetTab;
     function TabLoaded() {
+        loadScriptUpdateMonitor();
         updateStates();
         updateUI();
         updateSavedSettingsList();
@@ -206,8 +297,8 @@ var WMEWAL_Locks;
         for (let s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
                 const st = W.model.states.getObjectById(parseInt(s));
-                if (st.id !== 1 && st.name.length > 0) {
-                    stateObjs.push({ id: st.id, name: st.name });
+                if (st.getAttribute('id') !== 1 && st.getAttribute('name').length > 0) {
+                    stateObjs.push({ id: st.getAttribute('id'), name: st.getAttribute('name') });
                 }
             }
         }
@@ -432,7 +523,7 @@ var WMEWAL_Locks;
             settings = getSettings();
             if (settings.State !== null) {
                 state = W.model.states.getObjectById(settings.State);
-                stateName = state.name;
+                stateName = state.getAttribute('name');
             }
             else {
                 state = null;
@@ -462,7 +553,7 @@ var WMEWAL_Locks;
     }
     WMEWAL_Locks.ScanStarted = ScanStarted;
     function isOneWay(segment) {
-        return segment.attributes.fwdDirection !== segment.attributes.revDirection && (segment.attributes.fwdDirection || segment.attributes.revDirection);
+        return segment.getAttribute('fwdDirection') !== segment.getAttribute('revDirection') && (segment.getAttribute('fwdDirection') || segment.getAttribute('revDirection'));
     }
     function ScanExtent(segments, venues) {
         return new Promise(resolve => {
@@ -478,19 +569,19 @@ var WMEWAL_Locks;
         function addSegment(s, rId) {
             if (savedSegments.indexOf(s.getID()) === -1) {
                 savedSegments.push(s.getID());
-                const sid = s.attributes.primaryStreetID;
+                const sid = s.getAttribute('primaryStreetID');
                 const address = s.getAddress();
                 let thisStreet = null;
                 if (sid != null) {
                     // let street = W.model.streets.getObjectById(sid);
                     thisStreet = extentStreets.find(function (e) {
-                        let matches = (e.id === sid && (e.lockLevel === (s.attributes.lockRank || 0) + 1) && e.roundaboutId === rId && e.roadType === s.attributes.roadType);
+                        let matches = (e.id === sid && (e.lockLevel === (s.getAttribute('lockRank') || 0) + 1) && e.roundaboutId === rId && e.roadType === s.getAttribute('roadType'));
                         if (matches && (nameRegex != null || cityRegex != null)) {
                             // Test for alt names
                             for (let ixAlt = 0; ixAlt < e.altStreets.length && matches; ixAlt++) {
                                 matches = false;
                                 for (let ixSegAlt = 0; ixSegAlt < address.attributes.altStreets.length && !matches; ixSegAlt++) {
-                                    if (e.altStreets[ixAlt].id === address.attributes.altStreets[ixSegAlt].id) {
+                                    if (e.altStreets[ixAlt].id === address.attributes.altStreets[ixSegAlt].getAttribute('id')) {
                                         matches = true;
                                     }
                                 }
@@ -502,32 +593,32 @@ var WMEWAL_Locks;
                 if (thisStreet == null) {
                     thisStreet = {
                         id: sid,
-                        city: ((address && !address.attributes.isEmpty && address.attributes.city.hasName()) ? address.attributes.city.attributes.name : "No City"),
-                        state: ((address && !address.attributes.isEmpty) ? address.attributes.state.name : "No State"),
-                        name: ((address && !address.attributes.isEmpty && !address.attributes.street.isEmpty) ? address.attributes.street.name : "No street"),
+                        city: ((address && !address.attributes.isEmpty && address.attributes.city.hasName()) ? address.attributes.city.getAttribute('name') : "No City"),
+                        state: ((address && !address.attributes.isEmpty) ? address.attributes.state.getAttribute('name') : "No State"),
+                        name: ((address && !address.attributes.isEmpty && !address.attributes.street.getAttribute('isEmpty')) ? address.attributes.street.getAttribute('name') : "No street"),
                         geometries: new OpenLayers.Geometry.Collection(),
-                        lockLevel: (s.attributes.lockRank || 0) + 1,
+                        lockLevel: (s.getAttribute('lockRank') || 0) + 1,
                         segments: [],
                         roundaboutId: rId,
                         altStreets: [],
-                        roadType: s.attributes.roadType
+                        roadType: s.getAttribute('roadType')
                     };
                     if (settings.IncludeAltNames) {
-                        if (s.attributes.streetIDs != null) {
-                            for (let ixAlt = 0; ixAlt < s.attributes.streetIDs.length; ixAlt++) {
-                                if (s.attributes.streetIDs[ixAlt] != null) {
-                                    const altStreet = W.model.streets.getObjectById(s.attributes.streetIDs[ixAlt]);
+                        if (s.getAttribute('streetIDs') != null) {
+                            for (let ixAlt = 0; ixAlt < s.getAttribute('streetIDs').length; ixAlt++) {
+                                if (s.getAttribute('streetIDs')[ixAlt] != null) {
+                                    const altStreet = W.model.streets.getObjectById(s.getAttribute('streetIDs')[ixAlt]);
                                     if (altStreet != null) {
                                         let altCityName = null;
-                                        if (altStreet.cityID != null) {
-                                            const altCity = W.model.cities.getObjectById(altStreet.cityID);
+                                        if (altStreet.getAttribute('cityID') != null) {
+                                            const altCity = W.model.cities.getObjectById(altStreet.getAttribute('cityID'));
                                             if (altCity != null) {
-                                                altCityName = altCity.hasName() ? altCity.attributes.name : "No city";
+                                                altCityName = altCity.hasName() ? altCity.getAttribute('name') : "No city";
                                             }
                                         }
                                         thisStreet.altStreets.push({
-                                            id: s.attributes.streetIDs[ixAlt],
-                                            name: altStreet.name,
+                                            id: s.getAttribute('streetIDs')[ixAlt],
+                                            name: altStreet.getAttribute('name'),
                                             city: altCityName
                                         });
                                     }
@@ -538,23 +629,23 @@ var WMEWAL_Locks;
                     extentStreets.push(thisStreet);
                 }
                 thisStreet.segments.push({
-                    id: s.attributes.id,
-                    center: s.attributes.geometry.getCentroid()
+                    id: s.getAttribute('id'),
+                    center: s.getAttribute('geometry').getCentroid()
                 });
-                thisStreet.geometries.addComponents([s.attributes.geometry.clone()]);
+                thisStreet.geometries.addComponents([s.getAttribute('geometry').clone()]);
             }
         }
         for (let ix = 0; ix < segments.length; ix++) {
             const segment = segments[ix];
             if (segment != null) {
-                if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) & settings.RoadTypeMask) &&
+                if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.getAttribute('roadType')) & settings.RoadTypeMask) &&
                     (!settings.EditableByMe || segment.arePropertiesEditable()) &&
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
                     const address = segment.getAddress();
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
-                            if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
-                                settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
+                            if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
+                                settings.StateOperation === Operation.NotEqual && address.attributes.state.getAttribute('id') === state.getAttribute('id')) {
                                 continue;
                             }
                         }
@@ -562,25 +653,25 @@ var WMEWAL_Locks;
                             continue;
                         }
                     }
-                    const plusOne = (isOneWay(segment) && (WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.attributes.roadType) & settings.PlusOneWayMask)) ? 1 : 0;
+                    const plusOne = (isOneWay(segment) && (WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.getAttribute('roadType')) & settings.PlusOneWayMask)) ? 1 : 0;
                     let incorrectLock = false;
                     let expectedLockRank = 0;
-                    switch (segment.attributes.roadType) {
+                    switch (segment.getAttribute('roadType')) {
                         case 1:
-                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.attributes.lockRank || 0) + 1 < settings.StreetLockLevel + plusOne) ||
-                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.attributes.lockRank || 0) + 1 > settings.StreetLockLevel + plusOne)) {
+                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.getAttribute('lockRank') || 0) + 1 < settings.StreetLockLevel + plusOne) ||
+                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.getAttribute('lockRank') || 0) + 1 > settings.StreetLockLevel + plusOne)) {
                                 incorrectLock = true;
                             }
                             break;
                         case 2:
-                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.attributes.lockRank || 0) + 1 < settings.PrimaryStreetLockLevel + plusOne) ||
-                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.attributes.lockRank || 0) + 1 > settings.PrimaryStreetLockLevel + plusOne)) {
+                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.getAttribute('lockRank') || 0) + 1 < settings.PrimaryStreetLockLevel + plusOne) ||
+                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.getAttribute('lockRank') || 0) + 1 > settings.PrimaryStreetLockLevel + plusOne)) {
                                 incorrectLock = true;
                             }
                             break;
                         case 3:
-                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.attributes.lockRank || 0) + 1 < settings.FreewayLockLevel + plusOne) ||
-                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.attributes.lockRank || 0) + 1 > settings.FreewayLockLevel + plusOne)) {
+                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.getAttribute('lockRank') || 0) + 1 < settings.FreewayLockLevel + plusOne) ||
+                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.getAttribute('lockRank') || 0) + 1 > settings.FreewayLockLevel + plusOne)) {
                                 incorrectLock = true;
                             }
                             break;
@@ -590,14 +681,14 @@ var WMEWAL_Locks;
                                 // Find lock rank of every connected segment
                                 const fromSegments = segment.getConnectedSegments("from");
                                 for (let ix = 0; ix < fromSegments.length; ix++) {
-                                    if (fromSegments[ix].attributes.id !== segment.attributes.id && (fromSegments[ix].attributes.lockRank || 0) + 1 > expectedLockRank) {
-                                        expectedLockRank = (fromSegments[ix].attributes.lockRank || 0) + 1;
+                                    if (fromSegments[ix].getAttribute('id') !== segment.getAttribute('id') && (fromSegments[ix].getAttribute('lockRank') || 0) + 1 > expectedLockRank) {
+                                        expectedLockRank = (fromSegments[ix].getAttribute('lockRank') || 0) + 1;
                                     }
                                 }
                                 const toSegments = segment.getConnectedSegments("to");
                                 for (let ix = 0; ix < toSegments.length; ix++) {
-                                    if (toSegments[ix].attributes.id !== segment.attributes.id && (toSegments[ix].attributes.lockRank || 0) + 1 > expectedLockRank) {
-                                        expectedLockRank = (toSegments[ix].attributes.lockRank || 0) + 1;
+                                    if (toSegments[ix].getAttribute('id') !== segment.getAttribute('id') && (toSegments[ix].getAttribute('lockRank') || 0) + 1 > expectedLockRank) {
+                                        expectedLockRank = (toSegments[ix].getAttribute('lockRank') || 0) + 1;
                                     }
                                 }
                             }
@@ -605,26 +696,26 @@ var WMEWAL_Locks;
                                 expectedLockRank = settings.RampLockLevel;
                             }
                             expectedLockRank += plusOne;
-                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.attributes.lockRank || 0) + 1 < expectedLockRank) ||
-                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.attributes.lockRank || 0) + 1 > expectedLockRank)) {
+                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.getAttribute('lockRank') || 0) + 1 < expectedLockRank) ||
+                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.getAttribute('lockRank') || 0) + 1 > expectedLockRank)) {
                                 incorrectLock = true;
                             }
                             break;
                         case 6:
-                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.attributes.lockRank || 0) + 1 < settings.MajorHighwayLockLevel + plusOne) ||
-                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.attributes.lockRank || 0) + 1 > settings.MajorHighwayLockLevel + plusOne)) {
+                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.getAttribute('lockRank') || 0) + 1 < settings.MajorHighwayLockLevel + plusOne) ||
+                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.getAttribute('lockRank') || 0) + 1 > settings.MajorHighwayLockLevel + plusOne)) {
                                 incorrectLock = true;
                             }
                             break;
                         case 7:
-                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.attributes.lockRank || 0) + 1 < settings.MinorHighwayLockLevel + plusOne) ||
-                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.attributes.lockRank || 0) + 1 > settings.MinorHighwayLockLevel + plusOne)) {
+                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.getAttribute('lockRank') || 0) + 1 < settings.MinorHighwayLockLevel + plusOne) ||
+                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.getAttribute('lockRank') || 0) + 1 > settings.MinorHighwayLockLevel + plusOne)) {
                                 incorrectLock = true;
                             }
                             break;
                         case 18:
-                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.attributes.lockRank || 0) + 1 < settings.RailroadLockLevel + plusOne) ||
-                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.attributes.lockRank || 0) + 1 > settings.RailroadLockLevel + plusOne)) {
+                            if ((settings.IncludeInOutput & IncludeInOutput.Low && (segment.getAttribute('lockRank') || 0) + 1 < settings.RailroadLockLevel + plusOne) ||
+                                (settings.IncludeInOutput & IncludeInOutput.High && (segment.getAttribute('lockRank') || 0) + 1 > settings.RailroadLockLevel + plusOne)) {
                                 incorrectLock = true;
                             }
                             break;
@@ -638,23 +729,23 @@ var WMEWAL_Locks;
                         let nameMatched = false;
                         if (address != null && address.attributes != null && !address.attributes.isEmpty) {
                             if (nameRegex != null && address.attributes.street != null) {
-                                nameMatched = nameRegex.test(address.attributes.street.name);
+                                nameMatched = nameRegex.test(address.attributes.street.getAttribute('name'));
                             }
                             if (!nameMatched && cityRegex != null && address.attributes.city != null && address.attributes.city.hasName()) {
-                                nameMatched = cityRegex.test(address.attributes.city.attributes.name);
+                                nameMatched = cityRegex.test(address.attributes.city.getAttribute('name'));
                             }
-                            if (!nameMatched && segment.attributes.streetIDs != null) {
-                                for (let streetIx = 0; streetIx < segment.attributes.streetIDs.length && !nameMatched; streetIx++) {
-                                    if (segment.attributes.streetIDs[streetIx] != null) {
-                                        const street = W.model.streets.getObjectById(segment.attributes.streetIDs[streetIx]);
+                            if (!nameMatched && segment.getAttribute('streetIDs') != null) {
+                                for (let streetIx = 0; streetIx < segment.getAttribute('streetIDs').length && !nameMatched; streetIx++) {
+                                    if (segment.getAttribute('streetIDs')[streetIx] != null) {
+                                        const street = W.model.streets.getObjectById(segment.getAttribute('streetIDs')[streetIx]);
                                         if (street != null) {
                                             if (nameRegex != null) {
-                                                nameMatched = nameRegex.test(street.name);
+                                                nameMatched = nameRegex.test(street.getAttribute('name'));
                                             }
-                                            if (!nameMatched && cityRegex != null && street.cityID != null) {
-                                                const city = W.model.cities.getObjectById(street.cityID);
+                                            if (!nameMatched && cityRegex != null && street.getAttribute('cityID') != null) {
+                                                const city = W.model.cities.getObjectById(street.getAttribute('cityID'));
                                                 if (city != null && city.hasName()) {
-                                                    nameMatched = cityRegex.test(city.attributes.name);
+                                                    nameMatched = cityRegex.test(city.getAttribute('name'));
                                                 }
                                             }
                                         }
@@ -942,113 +1033,6 @@ var WMEWAL_Locks;
     function getStreetName(street) {
         return street.name || "No street";
     }
-    function Init() {
-        console.group(pluginName + ": Initializing");
-        initCount++;
-        let allOK = true;
-        const objectToCheck = [
-            "W.app",
-            "W.model.states",
-            "OpenLayers",
-            "WMEWAL.RegisterPlugIn",
-            "WazeWrap.Ready"
-        ];
-        for (let i = 0; i < objectToCheck.length; i++) {
-            const path = objectToCheck[i].split(".");
-            let object = window;
-            let ok = true;
-            for (let j = 0; j < path.length; j++) {
-                object = object[path[j]];
-                if (typeof object === "undefined" || object == null) {
-                    console.warn(objectToCheck[i] + " NOT OK");
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) {
-                console.log(objectToCheck[i] + " OK");
-            }
-            else {
-                allOK = false;
-            }
-        }
-        if (!allOK) {
-            if (initCount < 60) {
-                console.groupEnd();
-                window.setTimeout(Init, 1000);
-            }
-            else {
-                console.error("Giving up on initialization");
-                console.groupEnd();
-            }
-            return;
-        }
-        // Check to see if WAL is at the minimum verson needed
-        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
-            log("log", "WAL not at required minimum version.");
-            console.groupEnd();
-            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
-                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false);
-            return;
-        }
-        if (typeof Storage !== "undefined") {
-            if (localStorage[settingsKey]) {
-                settings = JSON.parse(localStorage[settingsKey]);
-            }
-            if (localStorage[savedSettingsKey]) {
-                try {
-                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
-                }
-                catch (e) { }
-                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0) {
-                    log("debug", "decompressFromUTF16 failed, attempting decompress");
-                    localStorage[savedSettingsKey + "Backup"] = localStorage[savedSettingsKey];
-                    try {
-                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
-                    }
-                    catch (e) { }
-                    if (typeof savedSettings === "undefined" || savedSettings === null) {
-                        log("debug", "decompress failed, savedSettings unrecoverable. Using blank");
-                        savedSettings = [];
-                    }
-                    updateSavedSettings();
-                }
-            }
-        }
-        if (settings == null) {
-            settings = {
-                RoadTypeMask: WMEWAL.RoadType.Freeway,
-                State: null,
-                Regex: null,
-                RegexIgnoreCase: true,
-                ExcludeRoundabouts: false,
-                ExcludeJunctionBoxes: true,
-                EditableByMe: true,
-                StreetLockLevel: 1,
-                PrimaryStreetLockLevel: 2,
-                MinorHighwayLockLevel: 3,
-                MajorHighwayLockLevel: 4,
-                FreewayLockLevel: 5,
-                RampLockLevel: 7,
-                IncludeInOutput: IncludeInOutput.Low | IncludeInOutput.High,
-                PlusOneWayMask: 0,
-                CityRegex: null,
-                CityRegexIgnoreCase: true,
-                StateOperation: Operation.Equal,
-                RailroadLockLevel: 2,
-                IncludeAltNames: false
-            };
-        }
-        else {
-            if (updateProperties()) {
-                updateSettings();
-            }
-        }
-        console.log("Initialized");
-        console.groupEnd();
-        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
-        WMEWAL.RegisterPlugIn(WMEWAL_Locks);
-    }
     function updateProperties() {
         let upd = false;
         if (settings !== null) {
@@ -1082,26 +1066,25 @@ var WMEWAL_Locks;
             localStorage[settingsKey] = JSON.stringify(settings);
         }
     }
-    function log(level, message) {
-        const t = new Date();
+    function log(level, ...args) {
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":
-                console.debug(`${scrName} ${t.toISOString()}: ${message}`);
+                console.debug(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "info":
             case "information":
-                console.info(`${scrName} ${t.toISOString()}: ${message}`);
+                console.info(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "warning":
             case "warn":
-                console.warn(`${scrName} ${t.toISOString()}: ${message}`);
+                console.warn(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "error":
-                console.error(`${scrName} ${t.toISOString()}: ${message}`);
+                console.error(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "log":
-                console.log(`${scrName} ${t.toISOString()}: ${message}`);
+                console.log(`${SCRIPT_NAME}:`, ...args);
                 break;
             default:
                 break;
@@ -1113,5 +1096,15 @@ var WMEWAL_Locks;
         }
         return s;
     }
-    Init();
+    function loadScriptUpdateMonitor() {
+        let updateMonitor;
+        try {
+            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, DOWNLOAD_URL, GM_xmlhttpRequest);
+            updateMonitor.start();
+        }
+        catch (ex) {
+            log('error', ex);
+        }
+    }
+    bootstrap();
 })(WMEWAL_Locks || (WMEWAL_Locks = {}));

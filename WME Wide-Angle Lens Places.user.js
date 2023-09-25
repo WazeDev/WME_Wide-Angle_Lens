@@ -9,10 +9,10 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find place that match filter criteria
 // @author              vtpearce and crazycaveman
-// @include             https://www.waze.com/editor
-// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.6.0
-// @grant               none
+// @match               *://*.waze.com/*editor*
+// @exclude             *://*.waze.com/user/editor*
+// @version             2023.09.18.001
+// @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -24,11 +24,12 @@
 /*global W, OL, I18n, $, WazeWrap, WMEWAL, OpenLayers */
 var WMEWAL_Places;
 (function (WMEWAL_Places) {
-    const scrName = GM_info.script.name;
-    const Version = GM_info.script.version;
-    const updateText = '<ul>' +
-        '<li>Support variable output fields</li>' +
-        '</ul>';
+    const SCRIPT_NAME = GM_info.script.name;
+    const SCRIPT_VERSION = GM_info.script.version.toString();
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
+    const updateText = '<ul>'
+        + '<li>Fixes for latest WME release</li>'
+        + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalPlaces";
@@ -83,6 +84,74 @@ var WMEWAL_Places;
     let initCount = 0;
     let detectIssues = false;
     let savedVenues;
+    function onWmeReady() {
+        initCount++;
+        if (WazeWrap && WazeWrap.Ready && WMEWAL && WMEWAL.RegisterPlugIn) {
+            log('debug', 'WazeWrap and WMEWAL ready.');
+            init();
+        }
+        else {
+            if (initCount < 60) {
+                log('debug', 'WazeWrap or WMEWAL not ready. Trying again...');
+                setTimeout(onWmeReady, 1000);
+            }
+            else {
+                log('error', 'WazeWrap or WMEWAL not ready. Giving up.');
+            }
+        }
+    }
+    function bootstrap() {
+        if (W?.userscripts?.state.isReady) {
+            onWmeReady();
+        }
+        else {
+            document.addEventListener('wme-ready', onWmeReady, { once: true });
+        }
+    }
+    async function init() {
+        // Check to see if WAL is at the minimum verson needed
+        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
+            log('log', "WAL not at required minimum version.");
+            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
+                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false);
+            return;
+        }
+        if (typeof Storage !== "undefined") {
+            if (localStorage[settingsKey]) {
+                settings = JSON.parse(localStorage[settingsKey]);
+            }
+            if (localStorage[savedSettingsKey]) {
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                }
+                catch (e) { }
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0) {
+                    log('debug', "decompressFromUTF16 failed, attempting decompress");
+                    localStorage[savedSettingsKey + "Backup"] = localStorage[savedSettingsKey];
+                    try {
+                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    }
+                    catch (e) { }
+                    if (typeof savedSettings === "undefined" || savedSettings === null) {
+                        log('warn', "decompress failed, savedSettings unrecoverable. Using blank");
+                        savedSettings = [];
+                    }
+                    updateSavedSettings();
+                }
+            }
+        }
+        if (settings == null) {
+            initSettings();
+        }
+        else {
+            if (updateProperties()) {
+                updateSettings();
+            }
+        }
+        log('log', "Initialized");
+        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, updateText, greasyForkPage, wazeForumThread);
+        WMEWAL.RegisterPlugIn(WMEWAL_Places);
+    }
     function GetTab() {
         const rpp = "RESIDENCE_HOME";
         let html = "<table style='border-collapse:separate;border-spacing:0px 1px;'>";
@@ -232,6 +301,7 @@ var WMEWAL_Places;
     }
     WMEWAL_Places.GetTab = GetTab;
     function TabLoaded() {
+        loadScriptUpdateMonitor();
         updateStates();
         updateUsers($(`#${ctlPrefix}LastModifiedBy`));
         updateUsers($(`#${ctlPrefix}CreatedBy`));
@@ -264,8 +334,8 @@ var WMEWAL_Places;
         for (let s in W.model.states.objects) {
             if (W.model.states.objects.hasOwnProperty(s)) {
                 const st = W.model.states.getObjectById(parseInt(s));
-                if (st.id !== 1 && st.name.length !== 0) {
-                    stateObjs.push({ id: st.id, name: st.name });
+                if (st.getAttribute('id') !== 1 && st.getAttribute('name').length !== 0) {
+                    stateObjs.push({ id: st.getAttribute('id'), name: st.getAttribute('name') });
                 }
             }
         }
@@ -295,8 +365,8 @@ var WMEWAL_Places;
         for (let uo in W.model.users.objects) {
             if (W.model.users.objects.hasOwnProperty(uo)) {
                 const u = W.model.users.getObjectById(parseInt(uo));
-                if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
-                    userObjs.push({ id: u.id, name: u.userName });
+                if (u.type === "user" && u.getAttribute('userName') !== null && typeof u.getAttribute('userName') !== "undefined") {
+                    userObjs.push({ id: u.getAttribute('id'), name: u.getAttribute('userName') });
                 }
             }
         }
@@ -560,21 +630,21 @@ var WMEWAL_Places;
         if (nullif(selectedState, "") !== null) {
             const state = W.model.states.getObjectById(parseInt(selectedState));
             if (state !== null) {
-                s.State = state.id;
+                s.State = state.getAttribute('id');
             }
         }
         const selectedModifiedUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedModifiedUser, "") !== null) {
             const u = W.model.users.getObjectById(selectedModifiedUser);
             if (u !== null) {
-                s.LastModifiedBy = u.id;
+                s.LastModifiedBy = u.getAttribute('id');
             }
         }
         const selectedCreatedUser = $(`#${ctlPrefix}CreatedBy`).val();
         if (nullif(selectedCreatedUser, "") !== null) {
             const u = W.model.users.getObjectById(selectedCreatedUser);
             if (u !== null) {
-                s.CreatedBy = u.id;
+                s.CreatedBy = u.getAttribute('id');
             }
         }
         const selectedLockLevel = $(`#${ctlPrefix}LockLevel`).val();
@@ -649,7 +719,7 @@ var WMEWAL_Places;
             }
             if (settings.State !== null) {
                 state = W.model.states.getObjectById(settings.State);
-                stateName = state.name;
+                stateName = state.getAttribute('name');
             }
             else {
                 state = null;
@@ -657,7 +727,7 @@ var WMEWAL_Places;
             }
             if (settings.LastModifiedBy !== null) {
                 lastModifiedBy = W.model.users.getObjectById(settings.LastModifiedBy);
-                lastModifiedByName = lastModifiedBy.userName;
+                lastModifiedByName = lastModifiedBy.getAttribute('userName');
             }
             else {
                 lastModifiedBy = null;
@@ -665,7 +735,7 @@ var WMEWAL_Places;
             }
             if (settings.CreatedBy !== null) {
                 createdBy = W.model.users.getObjectById(settings.CreatedBy);
-                createdByName = createdBy.userName;
+                createdByName = createdBy.getAttribute('userName');
             }
             else {
                 createdBy = null;
@@ -714,35 +784,35 @@ var WMEWAL_Places;
         for (let ix = 0; ix < venues.length; ix++) {
             const venue = venues[ix];
             if (venue != null) {
-                const categories = venue.attributes.categories;
+                const categories = venue.getAttribute('categories');
                 const address = venue.getAddress();
                 if ((settings.LockLevel == null ||
-                    (settings.LockLevelOperation === Operation.Equal && (venue.attributes.lockRank || 0) + 1 === settings.LockLevel) ||
-                    (settings.LockLevelOperation === Operation.NotEqual && (venue.attributes.lockRank || 0) + 1 !== settings.LockLevel)) &&
+                    (settings.LockLevelOperation === Operation.Equal && (venue.getAttribute('lockRank') || 0) + 1 === settings.LockLevel) ||
+                    (settings.LockLevelOperation === Operation.NotEqual && (venue.getAttribute('lockRank') || 0) + 1 !== settings.LockLevel)) &&
                     (!settings.EditableByMe || venue.arePropertiesEditable() || venue.areUpdateRequestsEditable()) &&
                     (settings.PlaceType == null || (settings.PlaceType === "point" && venue.isPoint() && !venue.is2D()) || (settings.PlaceType === "area" && !venue.isPoint() && venue.is2D())) &&
-                    (nameRegex == null || nameRegex.test(venue.attributes.name)) &&
+                    (nameRegex == null || nameRegex.test(venue.getAttribute('name'))) &&
                     (!settings.Created ||
-                        (settings.CreatedOperation === Operation.LessThan && venue.attributes.createdOn < settings.CreatedDate) ||
-                        (settings.CreatedOperation === Operation.LessThanOrEqual && venue.attributes.createdOn <= settings.CreatedDate) ||
-                        (settings.CreatedOperation === Operation.GreaterThanOrEqual && venue.attributes.createdOn >= settings.CreatedDate) ||
-                        (settings.CreatedOperation === Operation.GreaterThan && venue.attributes.createdOn > settings.CreatedDate)) &&
+                        (settings.CreatedOperation === Operation.LessThan && venue.getAttribute('createdOn') < settings.CreatedDate) ||
+                        (settings.CreatedOperation === Operation.LessThanOrEqual && venue.getAttribute('createdOn') <= settings.CreatedDate) ||
+                        (settings.CreatedOperation === Operation.GreaterThanOrEqual && venue.getAttribute('createdOn') >= settings.CreatedDate) ||
+                        (settings.CreatedOperation === Operation.GreaterThan && venue.getAttribute('createdOn') > settings.CreatedDate)) &&
                     (!settings.Updated ||
-                        (settings.UpdatedOperation === Operation.LessThan && (venue.attributes.updatedOn || venue.attributes.createdOn) < settings.UpdatedDate) ||
-                        (settings.UpdatedOperation === Operation.LessThanOrEqual && (venue.attributes.updatedOn || venue.attributes.createdOn) <= settings.UpdatedDate) ||
-                        (settings.UpdatedOperation === Operation.GreaterThanOrEqual && (venue.attributes.updatedOn || venue.attributes.createdOn) >= settings.UpdatedDate) ||
-                        (settings.UpdatedOperation === Operation.GreaterThan && (venue.attributes.updatedOn || venue.attributes.createdOn) > settings.UpdatedDate)) &&
+                        (settings.UpdatedOperation === Operation.LessThan && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) < settings.UpdatedDate) ||
+                        (settings.UpdatedOperation === Operation.LessThanOrEqual && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) <= settings.UpdatedDate) ||
+                        (settings.UpdatedOperation === Operation.GreaterThanOrEqual && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) >= settings.UpdatedDate) ||
+                        (settings.UpdatedOperation === Operation.GreaterThan && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) > settings.UpdatedDate)) &&
                     ((settings.CreatedBy === null) ||
                         (venue.getCreatedBy() === settings.CreatedBy)) &&
                     ((settings.LastModifiedBy === null) ||
                         ((venue.getUpdatedBy() ?? venue.getCreatedBy()) === settings.LastModifiedBy)) &&
                     (websiteRegex === null ||
-                        websiteRegex.test(venue.attributes.url))) {
+                        websiteRegex.test(venue.getAttribute('url')))) {
                     let issues = 0;
                     if (state != null) {
                         if (address && !address.isEmpty() && address.attributes.state) {
-                            if (settings.StateOperation === Operation.Equal && address.attributes.state.id !== state.id ||
-                                settings.StateOperation === Operation.NotEqual && address.attributes.state.id === state.id) {
+                            if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
+                                settings.StateOperation === Operation.NotEqual && address.attributes.state.getAttribute('id') === state.getAttribute('id')) {
                                 continue;
                             }
                         }
@@ -751,16 +821,16 @@ var WMEWAL_Places;
                         }
                     }
                     // if (settings.LastModifiedBy != null) {
-                    //     if (venue.attributes.updatedBy != null) {
-                    //         if (venue.attributes.updatedBy !== settings.LastModifiedBy) {
+                    //     if (venue.getAttribute('updatedBy') != null) {
+                    //         if (venue.getAttribute('updatedBy') !== settings.LastModifiedBy) {
                     //             continue;
                     //         }
-                    //     } else if (venue.attributes.createdBy !== settings.LastModifiedBy) {
+                    //     } else if (venue.getAttribute('createdBy') !== settings.LastModifiedBy) {
                     //         continue;
                     //     }
                     // }
                     // if (settings.CreatedBy != null) {
-                    //     if (venue.attributes.createdBy !== settings.CreatedBy) {
+                    //     if (venue.getAttribute('createdBy') !== settings.CreatedBy) {
                     //         continue;
                     //     }
                     // }
@@ -773,7 +843,7 @@ var WMEWAL_Places;
                     if (cityRegex != null) {
                         regExMatched = false;
                         if (address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) {
-                            regExMatched = cityRegex.test(address.attributes.city.attributes.name);
+                            regExMatched = cityRegex.test(address.attributes.city.getAttribute('name'));
                         }
                         if (!regExMatched) {
                             continue;
@@ -782,7 +852,7 @@ var WMEWAL_Places;
                     if (streetRegex != null) {
                         regExMatched = false;
                         if (address && !address.isEmpty() && !address.isEmptyStreet()) {
-                            regExMatched = streetRegex.test(address.attributes.street.name);
+                            regExMatched = streetRegex.test(address.attributes.street.getAttribute('name'));
                         }
                         if (!regExMatched) {
                             continue;
@@ -790,21 +860,21 @@ var WMEWAL_Places;
                     }
                     if (settings.ParkingLotType) {
                         // Don't pay attention if we don't have a parking lot type
-                        if (!venue.attributes.categoryAttributes.PARKING_LOT ||
-                            venue.attributes.categoryAttributes.PARKING_LOT.parkingType !== settings.ParkingLotTypeFilter) {
+                        if (!venue.getAttribute('categoryAttributes').PARKING_LOT ||
+                            venue.getAttribute('categoryAttributes').PARKING_LOT.parkingType !== settings.ParkingLotTypeFilter) {
                             continue;
                         }
                     }
-                    if (settings.NoName && !venue.attributes.name) {
+                    if (settings.NoName && !venue.getAttribute('name')) {
                         issues |= Issue.NoName;
                     }
                     if (settings.NoHouseNumber && (!address || address.attributes.houseNumber == null)) {
                         issues |= Issue.MissingHouseNumber;
                     }
-                    if (settings.AdLocked && venue.attributes.adLocked) {
+                    if (settings.AdLocked && venue.getAttribute('adLocked')) {
                         issues |= Issue.AdLocked;
                     }
-                    if (settings.UndefStreet && typeof W.model.streets.objects[venue.attributes.streetID] === 'undefined') {
+                    if (settings.UndefStreet && typeof W.model.streets.objects[venue.getAttribute('streetID')] === 'undefined') {
                         issues |= Issue.UndefStreet;
                     }
                     if (settings.UpdateRequests && venue.hasOpenUpdateRequests()) {
@@ -819,25 +889,25 @@ var WMEWAL_Places;
                     if (settings.NoCity && (!address || address.isEmpty() || !address.getCity() || address.getCity().isEmpty())) {
                         issues |= Issue.NoCity;
                     }
-                    if (settings.NoExternalProviders && (!venue.attributes.externalProviderIDs || venue.attributes.externalProviderIDs.length === 0)) {
+                    if (settings.NoExternalProviders && (!venue.getAttribute('externalProviderIDs') || venue.getAttribute('externalProviderIDs').length === 0)) {
                         issues |= Issue.NoExternalProviders;
                     }
-                    if (settings.NoHours && (!venue.attributes.openingHours || venue.attributes.openingHours.length === 0)) {
+                    if (settings.NoHours && (!venue.getAttribute('openingHours') || venue.getAttribute('openingHours').length === 0)) {
                         issues |= Issue.NoHours;
                     }
-                    if (settings.NoPhoneNumber && !venue.attributes.phone) {
+                    if (settings.NoPhoneNumber && !venue.getAttribute('phone')) {
                         issues |= Issue.NoPhoneNumber;
                     }
-                    if (settings.BadPhoneNumberFormat && (venue.attributes.phone && !validPhoneRegex.test(venue.attributes.phone))) {
+                    if (settings.BadPhoneNumberFormat && (venue.getAttribute('phone') && !validPhoneRegex.test(venue.getAttribute('phone')))) {
                         issues |= Issue.BadPhoneNumberFormat;
                     }
-                    if (settings.NoWebsite && !venue.attributes.url) {
+                    if (settings.NoWebsite && !venue.getAttribute('url')) {
                         issues |= Issue.NoWebsite;
                     }
-                    if (settings.NoEntryExitPoints && (!venue.attributes.entryExitPoints || venue.attributes.entryExitPoints.length === 0)) {
+                    if (settings.NoEntryExitPoints && (!venue.getAttribute('entryExitPoints') || venue.getAttribute('entryExitPoints').length === 0)) {
                         issues |= Issue.NoEntryExitPoints;
                     }
-                    if (settings.MissingBrand && checkCategory(categories, "GAS_STATION", Operation.Equal) && venue.attributes.brand === null) {
+                    if (settings.MissingBrand && checkCategory(categories, "GAS_STATION", Operation.Equal) && venue.getAttribute('brand') === null) {
                         issues |= Issue.MissingBrand;
                     }
                     if (detectIssues && issues === 0) {
@@ -851,31 +921,31 @@ var WMEWAL_Places;
                     if (savedVenues.indexOf(venue.getID()) === -1) {
                         savedVenues.push(venue.getID());
                         const lastEditorID = venue.getUpdatedBy() ?? venue.getCreatedBy();
-                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found' };
+                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { attributes: { userName: 'Not found' } };
                         const createdByID = venue.getCreatedBy();
-                        const createdBy = W.model.users.getObjectById(createdByID) ?? { userName: 'Not found' };
+                        const createdBy = W.model.users.getObjectById(createdByID) ?? { attributes: { userName: 'Not found' } };
                         const place = {
-                            id: venue.attributes.id,
+                            id: venue.getAttribute('id'),
                             mainCategory: venue.getMainCategory(),
-                            name: venue.attributes.name,
+                            name: venue.getAttribute('name'),
                             lockLevel: venue.getLockRank() + 1,
                             pointGeometry: venue.getPointGeometry(),
                             // navigationPoint: venue.getNavigationPoint(),
                             categories: categories,
-                            streetID: venue.attributes.streetID,
+                            streetID: venue.getAttribute('streetID'),
                             placeType: ((venue.isPoint() && !venue.is2D()) ? I18n.t("edit.venue.type.point") : I18n.t("edit.venue.type.area")),
                             isApproved: venue.isApproved(),
-                            city: ((address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) ? address.attributes.city.attributes.name : "No City"),
-                            state: ((address && !address.isEmpty() && address.attributes.state) ? address.attributes.state.name : "No State"),
-                            houseNumber: venue.attributes.houseNumber ?? "",
-                            streetName: ((address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.name : "") || "",
-                            lastEditor: (lastEditor && lastEditor.userName) || "",
-                            createdBy: (createdBy && createdBy.userName) || "",
-                            url: venue.attributes.url ?? "",
-                            phone: venue.attributes.phone ?? "",
+                            city: ((address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) ? address.attributes.city.getAttribute('name') : "No City"),
+                            state: ((address && !address.isEmpty() && address.attributes.state) ? address.attributes.state.getAttribute('name') : "No State"),
+                            houseNumber: venue.getAttribute('houseNumber') ?? "",
+                            streetName: ((address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.getAttribute('name') : "") || "",
+                            lastEditor: (lastEditor && lastEditor.getAttribute('userName')) || "",
+                            createdBy: (createdBy && createdBy.getAttribute('userName')) || "",
+                            url: venue.getAttribute('url') ?? "",
+                            phone: venue.getAttribute('phone') ?? "",
                             issues: issues,
-                            parkingLotType: (venue.attributes.categoryAttributes.PARKING_LOT && venue.attributes.categoryAttributes.PARKING_LOT.parkingType && I18n.t("edit.venue.parking.types.parkingType." + venue.attributes.categoryAttributes.PARKING_LOT.parkingType)) || "",
-                            altNames: [...venue.attributes.aliases]
+                            parkingLotType: (venue.getAttribute('categoryAttributes').PARKING_LOT && venue.getAttribute('categoryAttributes').PARKING_LOT.parkingType && I18n.t("edit.venue.parking.types.parkingType." + venue.getAttribute('categoryAttributes').PARKING_LOT.parkingType)) || "",
+                            altNames: [...venue.getAttribute('aliases')]
                         };
                         places.push(place);
                     }
@@ -1219,90 +1289,6 @@ var WMEWAL_Places;
         ScanComplete();
     }
     WMEWAL_Places.ScanCancelled = ScanCancelled;
-    async function Init() {
-        console.group(pluginName + ": Initializing");
-        initCount++;
-        let allOK = true;
-        const objectToCheck = ["OpenLayers",
-            "W.app",
-            "W.Config.venues",
-            "WMEWAL.RegisterPlugIn",
-            "WazeWrap.Ready"];
-        for (let i = 0; i < objectToCheck.length; i++) {
-            const path = objectToCheck[i].split(".");
-            let object = window;
-            let ok = true;
-            for (let j = 0; j < path.length; j++) {
-                object = object[path[j]];
-                if (typeof object === "undefined" || object == null) {
-                    console.warn(objectToCheck[i] + " NOT OK");
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) {
-                console.log(objectToCheck[i] + " OK");
-            }
-            else {
-                allOK = false;
-            }
-        }
-        if (!allOK) {
-            if (initCount < 60) {
-                console.groupEnd();
-                setTimeout(Init, 1000);
-            }
-            else {
-                console.error("Giving up on initialization");
-                console.groupEnd();
-            }
-            return;
-        }
-        // Check to see if WAL is at the minimum verson needed
-        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
-            log("log", "WAL not at required minimum version.");
-            console.groupEnd();
-            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
-                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false);
-            return;
-        }
-        if (typeof Storage !== "undefined") {
-            if (localStorage[settingsKey]) {
-                settings = JSON.parse(localStorage[settingsKey]);
-            }
-            if (localStorage[savedSettingsKey]) {
-                try {
-                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
-                }
-                catch (e) { }
-                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0) {
-                    log("debug", "decompressFromUTF16 failed, attempting decompress");
-                    localStorage[savedSettingsKey + "Backup"] = localStorage[savedSettingsKey];
-                    try {
-                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
-                    }
-                    catch (e) { }
-                    if (typeof savedSettings === "undefined" || savedSettings === null) {
-                        log("debug", "decompress failed, savedSettings unrecoverable. Using blank");
-                        savedSettings = [];
-                    }
-                    updateSavedSettings();
-                }
-            }
-        }
-        if (settings == null) {
-            initSettings();
-        }
-        else {
-            if (updateProperties()) {
-                updateSettings();
-            }
-        }
-        console.log("Initialized");
-        console.groupEnd();
-        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
-        WMEWAL.RegisterPlugIn(WMEWAL_Places);
-    }
     function initSettings() {
         settings = {
             NoName: false,
@@ -1526,26 +1512,25 @@ var WMEWAL_Places;
         }
         updateSavedSettingsList();
     }
-    function log(level, message) {
-        const t = new Date();
+    function log(level, ...args) {
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":
-                console.debug(`${scrName} ${t.toISOString()}: ${message}`);
+                console.debug(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "info":
             case "information":
-                console.info(`${scrName} ${t.toISOString()}: ${message}`);
+                console.info(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "warning":
             case "warn":
-                console.warn(`${scrName} ${t.toISOString()}: ${message}`);
+                console.warn(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "error":
-                console.error(`${scrName} ${t.toISOString()}: ${message}`);
+                console.error(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "log":
-                console.log(`${scrName} ${t.toISOString()}: ${message}`);
+                console.log(`${SCRIPT_NAME}:`, ...args);
                 break;
             default:
                 break;
@@ -1557,5 +1542,15 @@ var WMEWAL_Places;
         }
         return s;
     }
-    Init();
+    function loadScriptUpdateMonitor() {
+        let updateMonitor;
+        try {
+            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, DOWNLOAD_URL, GM_xmlhttpRequest);
+            updateMonitor.start();
+        }
+        catch (ex) {
+            log('error', ex);
+        }
+    }
+    bootstrap();
 })(WMEWAL_Places || (WMEWAL_Places = {}));

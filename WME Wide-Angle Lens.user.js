@@ -11,8 +11,8 @@
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @include             https://www.waze.com/editor
 // @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.8.0
-// @grant               none
+// @grant               GM_xmlhttpRequest
+// @version             2023.09.18.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -21,19 +21,25 @@
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.user.js
-/* global W, OL, $, WazeWrap, OpenLayers, I18n */
 var WMEWAL;
 (function (WMEWAL) {
-    const scrName = GM_info.script.name;
-    const Version = GM_info.script.version;
-    const updateText = '<ul>' +
-        '<li>Support suggested segments</li>';
-    '</ul>';
-    const SHOW_UPDATE = true;
+    const SCRIPT_NAME = GM_info.script.name;
+    const SCRIPT_VERSION = GM_info.script.version.toString();
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
+    const updateText = '<ul>'
+        + '<li>Fixes for latest WME release</li>'
+        + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const debug = false;
     class ProgressBar {
+        root;
+        div;
+        information;
+        counts;
+        streets;
+        places;
+        mapComments;
         constructor(id) {
             this.root = $(id);
             this.div = this.root.children('#wal-progressBar');
@@ -138,6 +144,7 @@ var WMEWAL;
     }
     let RoadType;
     (function (RoadType) {
+        RoadType[RoadType["Unknown"] = 0] = "Unknown";
         RoadType[RoadType["Street"] = 1] = "Street";
         RoadType[RoadType["PrimaryStreet"] = 2] = "PrimaryStreet";
         RoadType[RoadType["MinorHighway"] = 4] = "MinorHighway";
@@ -196,66 +203,45 @@ var WMEWAL;
     let initCount = 0;
     let layerCheckboxAdded = false;
     let WALMap;
-    async function WideAngleLens() {
-        function CheckObject(objToCheck) {
-            const path = objToCheck.split(".");
-            let object = window;
-            let ok = true;
-            for (let j = 0; j < path.length; j++) {
-                object = object[path[j]];
-                if (typeof object === "undefined" || object == null) {
-                    console.warn(objToCheck + " NOT OK");
-                    ok = false;
-                    break;
-                }
-            }
-            return ok;
-        }
-        console.group("WMEWAL: Initializing");
+    function onWmeReady() {
         initCount++;
-        let allOK = true;
-        const objectToCheck = ["W.map",
-            "W.model.segments",
-            "W.model.venues",
-            "W.model.states",
-            "W.model.events",
-            "OpenLayers",
-            ["W.vent", "W.app.layout.model"],
-            "W.controller",
-            "W.model.actionManager",
-            "WazeWrap.Ready"];
-        for (let i = 0; i < objectToCheck.length; i++) {
-            let ok;
-            let objName;
-            if (typeof objectToCheck[i] === 'string') {
-                objName = objectToCheck[i];
-                ok = CheckObject(objectToCheck[i]);
-            }
-            else {
-                ok = false;
-                for (let k = 0; k < objectToCheck[i].length && !ok; k++) {
-                    objName = objectToCheck[i][k];
-                    ok = ok || CheckObject(objectToCheck[i][k]);
-                }
-            }
-            if (ok) {
-                console.log(objName + " OK");
-            }
-            else {
-                allOK = false;
-            }
+        if (WazeWrap && WazeWrap.Ready) {
+            log('debug', 'WazeWrap ready.');
+            init();
         }
-        if (!allOK) {
+        else {
             if (initCount < 60) {
-                console.groupEnd();
-                setTimeout(WideAngleLens, 1000);
+                log('debug', 'WazeWrap not ready. Trying again...');
+                setTimeout(onWmeReady, 1000);
             }
             else {
-                console.error("Giving up on initialization");
-                console.groupEnd();
+                log('error', 'WazeWrap not ready. Giving up.');
             }
-            return;
         }
+    }
+    function bootstrap() {
+        if (W?.userscripts?.state.isReady) {
+            onWmeReady();
+        }
+        else {
+            document.addEventListener('wme-ready', onWmeReady, { once: true });
+        }
+    }
+    function loadScriptUpdateMonitor() {
+        let updateMonitor;
+        try {
+            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, DOWNLOAD_URL, GM_xmlhttpRequest);
+            updateMonitor.start();
+        }
+        catch (ex) {
+            log('error', ex);
+        }
+    }
+    async function init() {
+        const sandboxed = typeof unsafeWindow !== 'undefined';
+        const pageWindow = sandboxed ? unsafeWindow : window;
+        const walAvailable = pageWindow.WMEWAL;
+        loadScriptUpdateMonitor();
         if (typeof (Storage) !== "undefined") {
             if (localStorage[settingsKey]) {
                 let settingsString = localStorage[settingsKey];
@@ -289,7 +275,7 @@ var WMEWAL;
                             SavedAreas: [],
                             ActivePlugins: [],
                             OutputTo: "csv",
-                            Version: Version,
+                            Version: SCRIPT_VERSION,
                             showLayer: false,
                             AddBOM: WMEWAL.addBOM,
                             OutputFields: defaultOutputFields
@@ -304,7 +290,7 @@ var WMEWAL;
                     settings.AddBOM = false;
                 }
                 if (!Object.prototype.hasOwnProperty.call(settings, 'Version')) {
-                    settings.Version = Version;
+                    settings.Version = SCRIPT_VERSION;
                 }
                 if (!Object.prototype.hasOwnProperty.call(settings, 'showLayer')) {
                     settings.showLayer = false;
@@ -336,7 +322,7 @@ var WMEWAL;
                     SavedAreas: savedAreas,
                     ActivePlugins: [],
                     OutputTo: "csv",
-                    Version: Version,
+                    Version: SCRIPT_VERSION,
                     showLayer: false,
                     AddBOM: WMEWAL.addBOM,
                     OutputFields: defaultOutputFields
@@ -355,16 +341,14 @@ var WMEWAL;
                     SavedAreas: [],
                     ActivePlugins: [],
                     OutputTo: "csv",
-                    Version: Version,
+                    Version: SCRIPT_VERSION,
                     showLayer: false,
                     AddBOM: false,
                     OutputFields: defaultOutputFields
                 };
             }
         }
-        if (SHOW_UPDATE) {
-            WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
-        }
+        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, updateText, greasyForkPage, wazeForumThread);
         let style = document.createElement("style");
         //style.type = "text/css";
         let css = ".wal-heading { font-size: 1.2em; font-weight: bold }";
@@ -377,17 +361,19 @@ var WMEWAL;
         css += ".wal-textbox { width: 100% }";
         css += '#wal-info { text-align: center }';
         css += '#wal-counts { text-align: center }';
-        css += "#sidepanel-wme-wal hr { border: 1px inset; margin-top: 10px; margin-bottom: 10px } ";
+        css += '#wal-tabPane { font-size: 10pt }';
+        css += "#wal-tabPane hr { border: 1px inset; margin-top: 10px; margin-bottom: 10px }";
+        css += "#wal-tabPane .tab-pane { margin-left: -15px }";
+        css += '#wal-tabPane .tab-pane table { width: 100%; table-layout: fixed }';
         style.innerHTML = css;
         document.body.appendChild(style);
-        console.log("Initialized");
-        console.groupEnd();
-        makeTab();
+        log('log', 'Initialized');
+        await makeTab();
         //recreate tab here
         // Editing mode changed to/from event mode
         if (W.app.modeController) {
             W.app.modeController.model.bind("change:mode", function (model, modeId) {
-                if (modeId === 0 && $("#sidepanel-wme-wal").length === 0) {
+                if (modeId === 0 && $("#wal-tabPane").length === 0) {
                     log("debug", "Mode changed");
                     recreateTab();
                 }
@@ -399,25 +385,33 @@ var WMEWAL;
         }
         // Create map object
         WALMap = W.map.getOLMap();
-        window["WMEWAL"] = WMEWAL;
+        if (!walAvailable) {
+            pageWindow.WMEWAL = WMEWAL;
+        }
+        if (sandboxed)
+            window.WMEWAL = WMEWAL;
     }
-    function makeTab() {
-        const userTabs = $("#user-info");
-        const navTabs = $("ul.nav-tabs", userTabs).filter(":first");
-        const tabContent = $(".tab-content", userTabs).filter(":first");
-        navTabs.append("<li><a href='#sidepanel-wme-wal' data-toggle='tab'>WAL</a></li>");
-        const addon = $("<div id='sidepanel-wme-wal' class='tab-pane'><h3>Wide-Angle Lens <span style='font-size:11px;'>v" + Version + "</span></h3></div>");
-        const pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(addon);
+    async function makeTab() {
+        const { tabLabel, tabPane } = W.userscripts.registerSidebarTab('WMEWAL');
+        tabLabel.innerText = 'WAL';
+        tabLabel.title = 'Wide-Angle Lens';
+        // const userTabs = $("#user-info");
+        // const navTabs = $("ul.nav-tabs", userTabs).filter(":first");
+        // const tabContent = $(".tab-content", userTabs).filter(":first");
+        // navTabs.append("<li><a href='#sidepanel-wme-wal' data-toggle='tab'>WAL</a></li>");
+        const tab = $("<div id='wal-tabPane'><h4>Wide-Angle Lens <span style='font-size:11px;'>v" + SCRIPT_VERSION + "</span></h4></div>");
+        // const addon = $("").appendTo(tab);
+        const pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(tab);
         const pb$ = $("<div/>").attr("id", "wal-progressBar").css({ width: "100%", display: "none" }).appendTo(pbi);
         pb$.append($("<div/>").addClass("wal-progressBarBG"));
         pb$.append($("<span/>").addClass("wal-progressBarFG").text("100%"));
         pbi.append("<div id='wal-info'/>");
         pbi.append("<div id='wal-counts'/>");
-        const addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(addon);
+        const addonTabs = $("<ul id='wmewal-tabs' class='nav nav-tabs' style='width: 95%;'/>").appendTo(tab);
         addonTabs.append("<li class='active'><a data-toggle='tab' href='#sidepanel-wmewal-scan'>Scan</a></li>");
         addonTabs.append("<li><a data-toggle='tab' href='#sidepanel-wmewal-areas'>Areas</a></li>");
         addonTabs.append("<li><a data-toggle='tab' href='#sidepanel-wmewal-output'>Output</a></li>");
-        const addonTabContent = $("<div class='tab-content'/>").appendTo(addon);
+        const addonTabContent = $("<div class='tab-content'/>").appendTo(tab);
         const tabScan = $("<div class='tab-pane active' id='sidepanel-wmewal-scan'/>").appendTo(addonTabContent);
         tabScan.append("<div><b>Output to: </b><select class='form-control' id='_wmewalScanOutputTo'><option value='csv'>CSV File</option><option value='tab'>Browser Tab</option>" +
             "<option value='both'>Both CSV File and Browser Tab</option></select></div>");
@@ -463,7 +457,8 @@ var WMEWAL;
         if (settings.OutputFields.indexOf('Lon') > -1) {
             outputField.attr('selected', 'selected');
         }
-        tabContent.append(addon);
+        tabPane.innerHTML = $(tab)[0].outerHTML;
+        await W.userscripts.waitForElementConnected(tabPane);
         $("#_wmewalScanOutputTo").val(settings.OutputTo || "csv");
         WMEWAL.outputTo = parseOutputTo(settings.OutputTo || "csv");
         $('#_wmewalAddBOM').prop('checked', settings.AddBOM);
@@ -498,9 +493,10 @@ var WMEWAL;
             updateSettings();
         });
     }
-    function recreateTab() {
+    async function recreateTab() {
         log("Debug", "Tab stuff");
-        makeTab();
+        W.userscripts.removeSidebarTab('WMEWAL');
+        await makeTab();
         plugins.forEach(function (plugin) {
             log("Debug", "Running for plugin: " + plugin.Title);
             updatePluginList();
@@ -520,7 +516,7 @@ var WMEWAL;
         }
     }
     function addPluginTab(plugin) {
-        const sidepanel = $("#sidepanel-wme-wal");
+        const sidepanel = $("#wal-tabPane");
         const tabs = $("#wmewal-tabs", sidepanel);
         tabs.append("<li><a data-toggle='tab' href='#" + plugin.Id + "'>" + plugin.Title + "</a></li>");
         const tabContent = $("div.tab-content", sidepanel);
@@ -568,7 +564,7 @@ var WMEWAL;
     }
     WMEWAL.RegisterPlugIn = RegisterPlugIn;
     function IsSegmentInArea(segment) {
-        return WMEWAL.areaToScan.intersects(segment.geometry);
+        return WMEWAL.areaToScan.intersects(segment.getAttribute('geometry'));
     }
     WMEWAL.IsSegmentInArea = IsSegmentInArea;
     function getVenueGeometry(venue) {
@@ -671,7 +667,7 @@ var WMEWAL;
             alert("You must drawn an area place and not save it.");
             return;
         }
-        if (theVenue.geometry.components.length !== 1) {
+        if (theVenue.getAttribute('geometry').components.length !== 1) {
             alert("Can't parse the geometry");
             return;
         }
@@ -682,7 +678,7 @@ var WMEWAL;
         }
         const savedArea = {
             name: nameBox.value.trim(),
-            geometry: theVenue.geometry.clone()
+            geometry: theVenue.getAttribute('geometry').clone()
         };
         settings.SavedAreas.push(savedArea);
         updateSavedAreasList();
@@ -1458,26 +1454,25 @@ var WMEWAL;
             return ScanStatus.Abort;
         }
     }
-    function log(level, message) {
-        const t = new Date();
+    function log(level, ...args) {
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":
-                console.debug(`${scrName} ${t.toISOString()}: ${message}`);
+                console.debug(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "info":
             case "information":
-                console.info(`${scrName} ${t.toISOString()}: ${message}`);
+                console.info(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "warning":
             case "warn":
-                console.warn(`${scrName} ${t.toISOString()}: ${message}`);
+                console.warn(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "error":
-                console.error(`${scrName} ${t.toISOString()}: ${message}`);
+                console.error(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "log":
-                console.log(`${scrName} ${t.toISOString()}: ${message}`);
+                console.log(`${SCRIPT_NAME}:`, ...args);
                 break;
             default:
                 break;
@@ -1535,7 +1530,7 @@ var WMEWAL;
             case 22:
                 return RoadType.Alley;
             default:
-                return 0;
+                return RoadType.Unknown;
         }
     }
     WMEWAL.WazeRoadTypeToRoadTypeBitmask = WazeRoadTypeToRoadTypeBitmask;
@@ -2121,5 +2116,5 @@ var WMEWAL;
         return LZString;
     })();
     /* tslint:enable */
-    setTimeout(WideAngleLens, 1000);
+    bootstrap();
 })(WMEWAL || (WMEWAL = {}));

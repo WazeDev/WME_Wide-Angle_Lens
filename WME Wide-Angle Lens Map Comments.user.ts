@@ -9,10 +9,10 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find map comments that match filter criteria
 // @author              vtpearce and crazycaveman
-// @include             https://www.waze.com/editor
-// @include             /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor.*$/
-// @version             1.2.0
-// @grant               none
+// @match               *://*.waze.com/*editor*
+// @exclude             *://*.waze.com/user/editor*
+// @version             2023.09.18.001
+// @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -26,11 +26,13 @@
 
 namespace WMEWAL_MapComments {
 
-    const scrName = GM_info.script.name;
-    const Version = GM_info.script.version;
-    const updateText = '<ul>' +
-        '<li>Support variable output fields</li>' +
-        '</ul>';
+    const SCRIPT_NAME = GM_info.script.name;
+    const SCRIPT_VERSION = GM_info.script.version.toString();
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
+
+    const updateText = '<ul>'
+        + '<li>Fixes for latest WME release</li>'
+        + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40644';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
@@ -108,6 +110,91 @@ namespace WMEWAL_MapComments {
     let createdByName: string;
     let mc: Array<string> = null;
     let initCount = 0;
+
+    function onWmeReady() {
+        initCount++;
+        if (WazeWrap && WazeWrap.Ready && WMEWAL && WMEWAL.RegisterPlugIn) {
+            log('debug','WazeWrap and WMEWAL ready.');
+            init();
+        } else {
+            if (initCount < 60) {
+                log('debug','WazeWrap or WMEWAL not ready. Trying again...');
+                setTimeout(onWmeReady, 1000);
+            } else {
+                log('error','WazeWrap or WMEWAL not ready. Giving up.');
+            }
+        }
+    }
+
+    function bootstrap() {
+        if (W?.userscripts?.state.isReady) {
+            onWmeReady();
+        } else {
+            document.addEventListener('wme-ready', onWmeReady, { once: true });
+        }
+    }
+
+    async function init(): Promise<void> {
+        // Check to see if WAL is at the minimum verson needed
+        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
+            log('log',"WAL not at required minimum version.");
+            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
+                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false)
+            return;
+        }
+
+        if (typeof Storage !== "undefined") {
+            if (localStorage[settingsKey]) {
+                settings = JSON.parse(localStorage[settingsKey]);
+            }
+            if (localStorage[savedSettingsKey]) {
+                try {
+                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
+                } catch (e) {}
+                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0)
+                {
+                    log('debug',"decompressFromUTF16 failed, attempting decompress");
+                    localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
+                    try {
+                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
+                    } catch (e) {}
+                    if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0)
+                    {
+                        log('warn',"decompress failed, savedSettings unrecoverable. Using blank");
+                        savedSettings = [];
+                    }
+                    updateSavedSettings();
+                }
+            }
+        }
+
+        if (settings == null) {
+            settings = {
+                TitleRegex: null,
+                TitleRegexIgnoreCase: true,
+                CommentRegex: null,
+                CommentRegexIgnoreCase: true,
+                GeometryType: null,
+                ExpirationDate: null,
+                LockLevel: null,
+                LockLevelOperation: Operation.Equal,
+                LastModifiedBy: null,
+                EditableByMe: true,
+                Expiration: false,
+                ExpirationOperation: Operation.GreaterThanOrEqual,
+                CreatedBy: null
+            };
+        } else {
+            if (updateProperties()) {
+                updateSettings();
+            }
+        }
+
+        log('log',"Initialized");
+
+        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, updateText, greasyForkPage, wazeForumThread);
+        WMEWAL.RegisterPlugIn(WMEWAL_MapComments);
+    }
 
     export function GetTab(): string {
         let html = "<table style='border-collapse: separate; border-spacing:0px 1px;'>";
@@ -205,8 +292,8 @@ namespace WMEWAL_MapComments {
         for (let uo in W.model.users.objects) {
             if (W.model.users.objects.hasOwnProperty(uo)) {
                 const u = W.model.users.getObjectById(parseInt(uo));
-                if (u.type === "user" && u.userName !== null && typeof u.userName !== "undefined") {
-                    userObjs.push({ id: u.id, name: u.userName });
+                if (u.type === "user" && u.getAttribute('userName') !== null && typeof u.getAttribute('userName') !== "undefined") {
+                    userObjs.push({ id: u.getAttribute('id'), name: u.getAttribute('userName') });
                 }
             }
         }
@@ -379,12 +466,12 @@ namespace WMEWAL_MapComments {
 
         const selectedUpdateUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedUpdateUser, "") !== null) {
-            s.LastModifiedBy = W.model.users.getObjectById(selectedUpdateUser).id;
+            s.LastModifiedBy = W.model.users.getObjectById(selectedUpdateUser).getAttribute('id');
         }
 
         const selectedCreateUser = $(`#${ctlPrefix}CreatedBy`).val();
         if (nullif(selectedCreateUser, "") !== null) {
-            s.CreatedBy = W.model.users.getObjectById(selectedCreateUser).id;
+            s.CreatedBy = W.model.users.getObjectById(selectedCreateUser).getAttribute('id');
         }
 
         let pattern = $(`#${ctlPrefix}Title`).val();
@@ -443,7 +530,7 @@ namespace WMEWAL_MapComments {
 
             if (settings.LastModifiedBy !== null) {
                 lastModifiedBy = W.model.users.getObjectById(settings.LastModifiedBy);
-                lastModifiedByName = lastModifiedBy.userName;
+                lastModifiedByName = lastModifiedBy.getAttribute('userName');
             } else {
                 lastModifiedBy = null;
                 lastModifiedByName = null;
@@ -451,7 +538,7 @@ namespace WMEWAL_MapComments {
 
             if (settings.CreatedBy !== null) {
                 createdBy = W.model.users.getObjectById(settings.CreatedBy);
-                createdByName = createdBy.userName;
+                createdByName = createdBy.getAttribute('userName');
             } else {
                 createdBy = null;
                 createdByName = null;
@@ -508,25 +595,25 @@ namespace WMEWAL_MapComments {
                     mc.push(c);
 
                     if ((settings.LockLevel == null ||
-                        (settings.LockLevelOperation === Operation.Equal && (mapComment.attributes.lockRank || 0) + 1 === settings.LockLevel) ||
-                        (settings.LockLevelOperation === Operation.NotEqual && (mapComment.attributes.lockRank || 0) + 1 !== settings.LockLevel)) &&
+                        (settings.LockLevelOperation === Operation.Equal && (mapComment.getAttribute('lockRank') || 0) + 1 === settings.LockLevel) ||
+                        (settings.LockLevelOperation === Operation.NotEqual && (mapComment.getAttribute('lockRank') || 0) + 1 !== settings.LockLevel)) &&
                         (!settings.EditableByMe || mapComment.arePropertiesEditable()) &&
                         (settings.GeometryType == null || (settings.GeometryType === "point" && mapComment.isPoint()) || (settings.GeometryType === "area" && !mapComment.isPoint())) &&
-                        (titleRegex == null || titleRegex.test(mapComment.attributes.subject)) &&
+                        (titleRegex == null || titleRegex.test(mapComment.getAttribute('subject'))) &&
                         ((settings.LastModifiedBy === null) ||
                             ((mapComment.getUpdatedBy() ?? mapComment.getCreatedBy()) === settings.LastModifiedBy)) &&
                         ((settings.CreatedBy === null) ||
                             (mapComment.getCreatedBy() === settings.CreatedBy))) {
 
                         if (settings.Expiration) {
-                            if (mapComment.attributes.endDate === null) {
+                            if (mapComment.getAttribute('endDate') === null) {
                                 // If map comment doesn't have an end date, it automatically matches any greater than (or equal) filter
                                 // and automatically fails any less than (or equal) filter
                                 if (settings.ExpirationOperation === Operation.LessThan || settings.ExpirationOperation === Operation.LessThanOrEqual) {
                                     continue;
                                 }
                             } else {
-                                const endDateNumber = Date.parse(mapComment.attributes.endDate);
+                                const endDateNumber = Date.parse(mapComment.getAttribute('endDate'));
                                 if (isNaN(endDateNumber)) {
                                     continue;
                                 }
@@ -556,17 +643,17 @@ namespace WMEWAL_MapComments {
                         }
 
                         // if (settings.LastModifiedBy != null) {
-                        //     if (mapComment.attributes.updatedBy != null) {
-                        //         if (mapComment.attributes.updatedBy !== settings.LastModifiedBy) {
+                        //     if (mapComment.getAttribute('updatedBy') != null) {
+                        //         if (mapComment.getAttribute('updatedBy') !== settings.LastModifiedBy) {
                         //             continue;
                         //         }
-                        //     } else if (mapComment.attributes.createdBy !== settings.LastModifiedBy) {
+                        //     } else if (mapComment.getAttribute('createdBy') !== settings.LastModifiedBy) {
                         //         continue;
                         //     }
                         // }
 
                         if (settings.CommentRegex != null) {
-                            let match = commentRegex.test(mapComment.attributes.body);
+                            let match = commentRegex.test(mapComment.getAttribute('body'));
 
                             const comments = mapComment.getComments();
                             for (let ixComment = 0; ixComment < comments.length; ixComment++ && !match) {
@@ -582,9 +669,9 @@ namespace WMEWAL_MapComments {
                         }
 
                         const lastEditorID = mapComment.getUpdatedBy() ?? mapComment.getCreatedBy();
-                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? { userName: 'Not found'};
+                        const lastEditor = W.model.users.getObjectById(lastEditorID) ?? <WazeNS.Model.Object.User> { attributes: { userName: 'Not found' } };
                         let endDate: number = null;
-                        const expirationDate = mapComment.attributes.endDate;
+                        const expirationDate = mapComment.getAttribute('endDate');
                         if (expirationDate != null) {
                             endDate = Date.parse(expirationDate);
                             if (isNaN(endDate)) {
@@ -592,15 +679,15 @@ namespace WMEWAL_MapComments {
                             }
                         }
                         const mComment: IMapComment = {
-                            id: mapComment.attributes.id,
+                            id: mapComment.getAttribute('id'),
                             geometryType: ((mapComment.isPoint()) ? I18n.t("edit.venue.type.point") : I18n.t("edit.venue.type.area")),
-                            lastEditor: (lastEditor && lastEditor.userName) || "",
-                            title: mapComment.attributes.subject,
-                            lockLevel: mapComment.attributes.lockRank + 1,
+                            lastEditor: (lastEditor && lastEditor.getAttribute('userName')) || "",
+                            title: mapComment.getAttribute('subject'),
+                            lockLevel: mapComment.getAttribute('lockRank') + 1,
                             expirationDate: endDate,
-                            center: mapComment.attributes.geometry.getCentroid(),
-                            createdOn: mapComment.attributes.createdOn,
-                            updatedOn: mapComment.attributes.updatedOn
+                            center: mapComment.getAttribute('geometry').getCentroid(),
+                            createdOn: mapComment.getAttribute('createdOn'),
+                            updatedOn: mapComment.getAttribute('updatedOn')
                         };
 
                         mapComments.push(mComment);
@@ -803,107 +890,6 @@ namespace WMEWAL_MapComments {
         ScanComplete();
     }
 
-    function Init(): void {
-        console.group(pluginName + ": Initializing");
-        initCount++;
-
-        let allOK = true;
-        const objectToCheck: Array<string> = ["OpenLayers",
-            "W.app",
-            "WMEWAL.RegisterPlugIn",
-            "WazeWrap.Ready"];
-        for (let i: number = 0; i < objectToCheck.length; i++) {
-            const path = objectToCheck[i].split(".");
-            let object: Window = window;
-            let ok = true;
-            for (let j: number = 0; j < path.length; j++) {
-                object = object[path[j]];
-                if (typeof object === "undefined" || object == null) {
-                    console.warn(objectToCheck[i] + " NOT OK");
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) {
-                console.log(objectToCheck[i] + " OK");
-            } else {
-                allOK = false;
-            }
-        }
-
-        if (!allOK) {
-            if (initCount < 60) {
-                window.setTimeout(Init, 1000);
-            } else {
-                console.error("Giving up on initialization");
-            }
-            console.groupEnd();
-            return;
-        }
-
-        // Check to see if WAL is at the minimum verson needed
-        if (!(typeof WMEWAL.IsAtMinimumVersion === "function" && WMEWAL.IsAtMinimumVersion(minimumWALVersionRequired))) {
-            log("log", "WAL not at required minimum version.");
-            console.groupEnd();
-            WazeWrap.Alerts.info(GM_info.script.name, "Cannot load plugin because WAL is not at the required minimum version.&nbsp;" +
-                "You might need to manually update it from <a href='https://greasyfork.org/scripts/40641' target='_blank'>Greasy Fork</a>.", true, false)
-            return;
-        }
-
-        if (typeof Storage !== "undefined") {
-            if (localStorage[settingsKey]) {
-                settings = JSON.parse(localStorage[settingsKey]);
-            }
-            if (localStorage[savedSettingsKey]) {
-                try {
-                    savedSettings = JSON.parse(WMEWAL.LZString.decompressFromUTF16(localStorage[savedSettingsKey]));
-                } catch (e) {}
-                if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0)
-                {
-                    log("debug", "decompressFromUTF16 failed, attempting decompress");
-                    localStorage[savedSettingsKey +"Backup"] = localStorage[savedSettingsKey];
-                    try {
-                        savedSettings = JSON.parse(WMEWAL.LZString.decompress(localStorage[savedSettingsKey]));
-                    } catch (e) {}
-                    if (typeof savedSettings === "undefined" || savedSettings === null || savedSettings.length === 0)
-                    {
-                        log("debug", "decompress failed, savedSettings unrecoverable. Using blank");
-                        savedSettings = [];
-                    }
-                    updateSavedSettings();
-                }
-            }
-        }
-
-        if (settings == null) {
-            settings = {
-                TitleRegex: null,
-                TitleRegexIgnoreCase: true,
-                CommentRegex: null,
-                CommentRegexIgnoreCase: true,
-                GeometryType: null,
-                ExpirationDate: null,
-                LockLevel: null,
-                LockLevelOperation: Operation.Equal,
-                LastModifiedBy: null,
-                EditableByMe: true,
-                Expiration: false,
-                ExpirationOperation: Operation.GreaterThanOrEqual,
-                CreatedBy: null
-            };
-        } else {
-            if (updateProperties()) {
-                updateSettings();
-            }
-        }
-
-        console.log("Initialized");
-        console.groupEnd();
-
-        WazeWrap.Interface.ShowScriptUpdate(scrName, Version, updateText, greasyForkPage, wazeForumThread);
-        WMEWAL.RegisterPlugIn(WMEWAL_MapComments);
-    }
-
     function updateProperties(): boolean {
         let upd = false;
 
@@ -944,31 +930,40 @@ namespace WMEWAL_MapComments {
         return s;
     }
 
-    function log(level: string, message: any): void {
-        const t = new Date();
+    function log(level: string, ...args: any[]): void {
         switch (level.toLocaleLowerCase()) {
             case "debug":
             case "verbose":
-                console.debug(`${scrName} ${t.toISOString()}: ${message}`);
+                console.debug(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "info":
             case "information":
-                console.info(`${scrName} ${t.toISOString()}: ${message}`);
+                console.info(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "warning":
             case "warn":
-                console.warn(`${scrName} ${t.toISOString()}: ${message}`);
+                console.warn(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "error":
-                console.error(`${scrName} ${t.toISOString()}: ${message}`);
+                console.error(`${SCRIPT_NAME}:`, ...args);
                 break;
             case "log":
-                console.log(`${scrName} ${t.toISOString()}: ${message}`);
+                console.log(`${SCRIPT_NAME}:`, ...args);
                 break;
             default:
                 break;
         }
     }
 
-    Init();
+    function loadScriptUpdateMonitor() {
+        let updateMonitor: WazeWrap.Alerts.ScriptUpdateMonitor;
+        try {
+            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, DOWNLOAD_URL, GM_xmlhttpRequest);
+            updateMonitor.start();
+        } catch (ex) {
+            log('error', ex);
+        }
+    }
+
+    bootstrap();
 }
