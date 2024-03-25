@@ -5,22 +5,23 @@
 /// <reference path="../typescript-typings/wazewrap.d.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens
+// @name                WME Wide-Angle Lens Beta
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
 // @grant               GM_xmlhttpRequest
-// @version             2023.09.25.003
+// @version             2024.01.25.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
-// @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
-// ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.user.js
+// @connect             https://greasyfork.org
+// ==/UserScript==
+// @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
+// @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
 var WMEWAL;
 (function (WMEWAL) {
     const SCRIPT_NAME = GM_info.script.name;
@@ -182,8 +183,8 @@ var WMEWAL;
     // let venues: Array<string> = null;
     WMEWAL.areaName = null;
     const defaultOutputFields = ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
-    let currentX;
-    let currentY;
+    let currentLon;
+    let currentLat;
     let currentCenter = null;
     let currentZoom = null;
     let layerToggle = null;
@@ -705,7 +706,8 @@ var WMEWAL;
             return function () {
                 const center = settings.SavedAreas[index].geometry.getCentroid();
                 const lonlat = new OpenLayers.LonLat(center.x, center.y);
-                W.map.setCenter(lonlat);
+                W.map.moveTo(lonlat);
+                // W.map.setCenter(lonlat);
             };
         }
         settings.SavedAreas.sort(function (a, b) {
@@ -841,7 +843,7 @@ var WMEWAL;
         return new Promise(resolve => {
             WazeWrap.Model.onModelReady(function () {
                 resolve();
-            }, true, null);
+            }, false, null);
         });
     }
     function onModelReady(now) {
@@ -868,11 +870,20 @@ var WMEWAL;
                 W.app.layout.model.on('operationDone', operationDone);
             }
         });
+        // const featuresPromise : Promise<void> = new Promise(resolve => {
+        //     const loadingFeatures = function () {
+        //         resolve();
+        //         W.app.layout.model.off('loadingFeatures', loadingFeatures);
+        //     };
+        //     W.app.layout.model.on('loadingFeatures', loadingFeatures);
+        // });
         if (now && WazeWrap.Util.mapReady() && WazeWrap.Util.modelReady()) {
             return Promise.resolve();
         }
         else {
-            return Promise.all([modelPromise, mapPromise]);
+            return Promise.all([modelPromise, mapPromise]).then(() => {
+                console.log('All promises resolved');
+            });
         }
     }
     ;
@@ -927,7 +938,8 @@ var WMEWAL;
         }
         if (currentCenter != null) {
             log("Debug", "Moving back to original location");
-            W.map.setCenter(currentCenter);
+            W.map.moveTo(currentCenter);
+            // W.map.setCenter(currentCenter);
         }
         if (currentZoom != null) {
             log("Debug", "Resetting zoom");
@@ -1098,130 +1110,127 @@ var WMEWAL;
         currentCenter = W.map.getCenter();
         currentZoom = W.map.zoom;
         layerToggle = [];
-        const groups = $("div.layer-switcher li.group");
-        groups.each(function (ix, g) {
-            const groupToggle = $(g).find("wz-toggle-switch");
-            if (groupToggle.length > 0) {
-                switch ($(groupToggle).attr("id")) {
-                    case "layer-switcher-group_places":
-                        if (needVenues) {
-                            if (!$(groupToggle).prop("checked")) {
-                                $(groupToggle).trigger("click");
-                                layerToggle.push($(groupToggle).attr("id"));
-                            }
-                            // Loop through each child in the group
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-                                switch ($(c).attr("id")) {
-                                    case "layer-switcher-item_venues":
-                                    case "layer-switcher-item_residential_places":
-                                    case "layer-switcher-item_parking_places":
-                                        if (!$(c).prop("checked")) {
-                                            $(c).trigger("click");
-                                            layerToggle.push($(c).attr("id"));
-                                        }
-                                        break;
-                                    default:
-                                        if ($(c).prop("checked")) {
-                                            $(c).trigger("click");
-                                            layerToggle.push($(c).attr("id"));
-                                        }
-                                        break;
-                                }
-                            });
-                        }
-                        else {
-                            if ($(groupToggle).prop("checked")) {
-                                $(groupToggle).trigger("click");
-                                layerToggle.push($(groupToggle).attr("id"));
-                            }
-                        }
-                        break;
-                    case "layer-switcher-group_road":
-                        if ($(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
-                        }
-                        break;
-                    case "layer-switcher-group_display":
-                        if (needMapComments) {
-                            if (!$(groupToggle).prop("checked")) {
-                                $(groupToggle).trigger("click");
-                                layerToggle.push($(groupToggle).attr("id"));
-                            }
-                            // Loop through each child in the group
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-                                switch ($(c).attr("id")) {
-                                    case "layer-switcher-item_map_comments":
-                                        if (!$(c).prop("checked")) {
-                                            $(c).trigger("click");
-                                            layerToggle.push($(c).attr("id"));
-                                        }
-                                        break;
-                                    default:
-                                        if ($(c).prop("checked")) {
-                                            $(c).trigger("click");
-                                            layerToggle.push($(c).attr("id"));
-                                        }
-                                        break;
-                                }
-                            });
-                        }
-                        else {
-                            if ($(groupToggle).prop("checked")) {
-                                $(groupToggle).trigger("click");
-                                layerToggle.push($(groupToggle).attr("id"));
-                            }
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-                                if (!$(c).prop("checked")) {
-                                    $(c).trigger("click");
-                                    layerToggle.push($(c).attr("id"));
-                                }
-                            });
-                        }
-                        break;
-                    case "layer-switcher-group_map_suggestions":
-                        if (needSuggestedSegments) {
-                            if (!$(groupToggle).prop("checked")) {
-                                $(groupToggle).trigger("click");
-                                layerToggle.push($(groupToggle).attr("id"));
-                            }
-                        }
-                        else {
-                            if ($(groupToggle).prop("checked")) {
-                                $(groupToggle).trigger("click");
-                                layerToggle.push($(groupToggle).attr("id"));
-                            }
-                        }
-                        break;
-                    default:
-                        if ($(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
-                        }
-                        break;
-                }
-            }
-        });
-        // Turn off Road Shield Assistant if currently enabled
-        if ($('#rsa-enableScript').prop('checked')) {
-            $('#rsa-enableScript').trigger('click');
-            layerToggle.push('rsa-enableScript');
-        }
-        // Turn off Lane Tools if currently enabled
-        if ($('#lt-ScriptEnabled').prop('checked')) {
-            $('#lt-ScriptEnabled').trigger('click');
-            layerToggle.push('lt-ScriptEnabled');
-        }
-        // Turn off WMEPH Highlighting if currently enabled
-        if ($('#WMEPH-ColorHighlighting').prop('checked')) {
-            $('#WMEPH-ColorHighlighting').trigger('click');
-            layerToggle.push('WMEPH-ColorHighlighting');
-        }
-        // Turn off Magic if currently enabled because it doesn't respect the overall Display group toggle
-        if ($('#layer-switcher-item_magic').prop('checked')) {
-            $('#layer-switcher-item_magic').trigger('click');
-            layerToggle.push('layer-switcher-item_magic');
-        }
+        // const groups = $("div.layer-switcher li.group");
+        // groups.each(function (ix, g) {
+        //     const groupToggle = $(g).find("wz-toggle-switch");
+        //     if (groupToggle.length > 0) {
+        //         switch ($(groupToggle).attr("id")) {
+        //             case "layer-switcher-group_places":
+        //                 if (needVenues) {
+        //                     if (!$(groupToggle).prop("checked")) {
+        //                         $(groupToggle).trigger("click");
+        //                         layerToggle.push($(groupToggle).attr("id"));
+        //                     }
+        //                     // Loop through each child in the group
+        //                     $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+        //                         switch ($(c).attr("id")) {
+        //                             case "layer-switcher-item_venues":
+        //                             case "layer-switcher-item_residential_places":
+        //                             case "layer-switcher-item_parking_places":
+        //                                 if (!$(c).prop("checked")) {
+        //                                     $(c).trigger("click");
+        //                                     layerToggle.push($(c).attr("id"));
+        //                                 }
+        //                                 break;
+        //                             default:
+        //                                 if ($(c).prop("checked")) {
+        //                                     $(c).trigger("click");
+        //                                     layerToggle.push($(c).attr("id"));
+        //                                 }
+        //                                 break;
+        //                         }
+        //                     });
+        //                 } else {
+        //                     if ($(groupToggle).prop("checked")) {
+        //                         $(groupToggle).trigger("click");
+        //                         layerToggle.push($(groupToggle).attr("id"));
+        //                     }
+        //                 }
+        //                 break;
+        //             case "layer-switcher-group_road":
+        //                 if ($(groupToggle).prop("checked")) {
+        //                     $(groupToggle).trigger("click");
+        //                     layerToggle.push($(groupToggle).attr("id"));
+        //                 }
+        //                 break;
+        //             case "layer-switcher-group_display":
+        //                 if (needMapComments) {
+        //                     if (!$(groupToggle).prop("checked")) {
+        //                         $(groupToggle).trigger("click");
+        //                         layerToggle.push($(groupToggle).attr("id"));
+        //                     }
+        //                     // Loop through each child in the group
+        //                     $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+        //                         switch ($(c).attr("id")) {
+        //                             case "layer-switcher-item_map_comments":
+        //                                 if (!$(c).prop("checked")) {
+        //                                     $(c).trigger("click");
+        //                                     layerToggle.push($(c).attr("id"));
+        //                                 }
+        //                                 break;
+        //                             default:
+        //                                 if ($(c).prop("checked")) {
+        //                                     $(c).trigger("click");
+        //                                     layerToggle.push($(c).attr("id"));
+        //                                 }
+        //                                 break;
+        //                         }
+        //                     });
+        //                 } else {
+        //                     if ($(groupToggle).prop("checked")) {
+        //                         $(groupToggle).trigger("click");
+        //                         layerToggle.push($(groupToggle).attr("id"));
+        //                     }
+        //                     $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+        //                         if (!$(c).prop("checked")) {
+        //                             $(c).trigger("click");
+        //                             layerToggle.push($(c).attr("id"));
+        //                         }
+        //                     });
+        //                 }
+        //                 break;
+        //             case "layer-switcher-group_map_suggestions":
+        //                 if (needSuggestedSegments) {
+        //                     if (!$(groupToggle).prop("checked")) {
+        //                         $(groupToggle).trigger("click");
+        //                         layerToggle.push($(groupToggle).attr("id"));
+        //                     }
+        //                 } else {
+        //                     if ($(groupToggle).prop("checked")) {
+        //                         $(groupToggle).trigger("click");
+        //                         layerToggle.push($(groupToggle).attr("id"));
+        //                     }
+        //                 }
+        //                 break;
+        //             default:
+        //                 if ($(groupToggle).prop("checked")) {
+        //                     $(groupToggle).trigger("click");
+        //                     layerToggle.push($(groupToggle).attr("id"));
+        //                 }
+        //                 break;
+        //         }
+        //     }
+        // });
+        // // Turn off Road Shield Assistant if currently enabled
+        // if ($('#rsa-enableScript').prop('checked')) {
+        //     $('#rsa-enableScript').trigger('click');
+        //     layerToggle.push('rsa-enableScript');
+        // }
+        // // Turn off Lane Tools if currently enabled
+        // if ($('#lt-ScriptEnabled').prop('checked')) {
+        //     $('#lt-ScriptEnabled').trigger('click');
+        //     layerToggle.push('lt-ScriptEnabled');
+        // }
+        // // Turn off WMEPH Highlighting if currently enabled
+        // if ($('#WMEPH-ColorHighlighting').prop('checked')) {
+        //     $('#WMEPH-ColorHighlighting').trigger('click');
+        //     layerToggle.push('WMEPH-ColorHighlighting');
+        // }
+        // // Turn off Magic if currently enabled because it doesn't respect the overall Display group toggle
+        // if ($('#layer-switcher-item_magic').prop('checked')) {
+        //     $('#layer-switcher-item_magic').trigger('click');
+        //     layerToggle.push('layer-switcher-item_magic');
+        // }
         // Reload road layers
         if (!W.model.actionManager.canUndo()) {
             for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
@@ -1256,8 +1265,8 @@ var WMEWAL;
         log("Debug", "Horizontal span = " + horizontalSpan.toString());
         log("Debug", "Vertical span = " + verticalSpan.toString());
         log("Debug", "Total viewports = " + totalViewports.toString());
-        currentX = topLeft.x - width;
-        currentY = topLeft.y;
+        currentLon = topLeft.x - width;
+        currentLat = topLeft.y;
         pb.show();
         cancelled = false;
         let status;
@@ -1289,13 +1298,13 @@ var WMEWAL;
             else {
                 countViewports += 1;
                 log("Debug", "Count viewports = " + countViewports.toString());
-                currentX += width;
-                if (currentX > bottomRight.x + width) {
+                currentLon += width;
+                if (currentLon > bottomRight.x + width) {
                     log("Debug", "New row");
                     // Start at next row
-                    currentX = topLeft.x;
-                    currentY -= height;
-                    if (currentY < bottomRight.y - height) {
+                    currentLon = topLeft.x;
+                    currentLat -= height;
+                    if (currentLat < bottomRight.y - height) {
                         done = true;
                     }
                 }
@@ -1303,10 +1312,10 @@ var WMEWAL;
                     // Check to see if the new window would be within the boundaries of the original area
                     // Create a geometry object for the window boundaries
                     const points = [];
-                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY + (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY + (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY - (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY - (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon - (width / 2), currentLat + (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon + (width / 2), currentLat + (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon - (width / 2), currentLat - (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon + (width / 2), currentLat - (height / 2)));
                     const lr = new OpenLayers.Geometry.LinearRing(points);
                     const poly = new OpenLayers.Geometry.Polygon([lr]);
                     inGeometry = WMEWAL.areaToScan && WMEWAL.areaToScan.intersects(poly);
@@ -1327,21 +1336,42 @@ var WMEWAL;
     async function moveMap() {
         let abort;
         let retry;
+        let abortOnFailure;
         do {
             abort = false;
+            abortOnFailure = true;
             let retryCount = 0;
             do {
                 retry = false;
                 if (!cancelled) {
                     try {
-                        W.map.setCenter(new OpenLayers.LonLat(currentX, currentY));
+                        var p = onModelReady(false);
+                        W.map.moveTo({ lon: currentLon, lat: currentLat });
+                        // W.map.setCenter(new OpenLayers.LonLat(currentLon, currentLat));
                         try {
-                            await promiseTimeout(10000, onModelReadyWW());
+                            await promiseTimeout(10000, p);
+                            // Check to see if there's anything in segments. If not, try moving the map again
+                            if (needSegments && W.model.segments.getObjectArray().length == 0) {
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
+                            if (needVenues && W.model.venues.getObjectArray().length == 0) {
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
+                            if (needSuggestedSegments && W.model.segmentSuggestions.getObjectArray().length == 0) {
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
                         }
                         catch (e) {
                             log("warning", "moveMap: Timer triggered after map not successfully moved within 10 seconds");
                             retryCount++;
                             retry = true;
+                            abortOnFailure = true;
                         }
                     }
                     catch (e) {
@@ -1354,10 +1384,11 @@ var WMEWAL;
                         });
                         retry = true;
                         retryCount++;
+                        abortOnFailure = true;
                     }
                 }
             } while (retry && retryCount < 5);
-            if (retry) {
+            if (retry && abortOnFailure) {
                 abort = !confirm("Exceeded maximum allowable attempts to move the map. Do you want to continue trying?");
             }
         } while (retry && !abort);
@@ -1371,9 +1402,9 @@ var WMEWAL;
     async function scanExtent() {
         let keepScanning = true;
         if (!cancelled) {
-            const extentSegments = [];
-            const extentVenues = [];
-            const extentSuggestedSegments = [];
+            let extentSegments = [];
+            let extentVenues = [];
+            let extentSuggestedSegments = [];
             // Check to see if the current extent is completely within the area being searched
             // let allIn = true;
             // let vertices = W.map.getExtent().toGeometry().getVertices();
@@ -1383,41 +1414,44 @@ var WMEWAL;
             // log("Debug","Extent is " + (!allIn ? "NOT " : "") + "entirely within area");
             if (needSegments) { // && segments != null) {
                 log("Debug", "scanExtent: Collecting segments");
-                for (let seg in W.model.segments.objects) {
-                    // if (segments.indexOf(seg) === -1) {
-                    const segment = W.model.segments.getObjectById(parseInt(seg));
-                    if (segment != null) {
-                        // segments.push(seg);
-                        extentSegments.push(segment);
-                    }
-                    // }
-                }
+                extentSegments = W.model.segments.getObjectArray();
+                // for (let seg in W.model.segments.objects) {
+                //     // if (segments.indexOf(seg) === -1) {
+                //         const segment = W.model.segments.getObjectById(parseInt(seg));
+                //         if (segment != null) {
+                //             // segments.push(seg);
+                //             extentSegments.push(segment);
+                //         }
+                //     // }
+                // }
                 log("Debug", `scanExtent: Done collecting segments (${extentSegments.length})`);
             }
             if (needVenues) { //} && venues != null) {
                 log("Debug", "scanExtent: Collecting venues");
-                for (let ven in W.model.venues.objects) {
-                    // if (venues.indexOf(ven) === -1) {
-                    const venue = W.model.venues.getObjectById(ven);
-                    if (venue != null) {
-                        // venues.push(ven);
-                        extentVenues.push(venue);
-                    }
-                    // }
-                }
+                extentVenues = W.model.venues.getObjectArray();
+                // for (let ven in W.model.venues.objects) {
+                //     // if (venues.indexOf(ven) === -1) {
+                //         const venue = W.model.venues.getObjectById(ven);
+                //         if (venue != null) {
+                //             // venues.push(ven);
+                //             extentVenues.push(venue);
+                //         }
+                //     // }
+                // }
                 log("Debug", `scanExtent: Done collecting venues (${extentVenues.length})`);
             }
             if (needSuggestedSegments) { // && segments != null) {
                 log("Debug", "scanExtent: Collecting suggested segments");
-                for (let seg in W.model.segmentSuggestions.objects) {
-                    // if (segments.indexOf(seg) === -1) {
-                    const segment = W.model.segmentSuggestions.getObjectById(parseInt(seg));
-                    if (segment != null) {
-                        // segments.push(seg);
-                        extentSuggestedSegments.push(segment);
-                    }
-                    // }
-                }
+                extentSuggestedSegments = W.model.segmentSuggestions.getObjectArray();
+                // for (let seg in W.model.segmentSuggestions.objects) {
+                //     // if (segments.indexOf(seg) === -1) {
+                //         const segment = W.model.segmentSuggestions.getObjectById(parseInt(seg));
+                //         if (segment != null) {
+                //             // segments.push(seg);
+                //             extentSuggestedSegments.push(segment);
+                //         }
+                //     // }
+                // }
                 log("Debug", `scanExtent: Done collecting suggested segments (${extentSuggestedSegments.length})`);
             }
             const promises = [];
