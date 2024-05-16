@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.003
+// @version             2024.05.15.003
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -1593,7 +1593,7 @@ namespace WMEWAL_Streets {
                         direction: determineDirection(s),
                         issues: issues,
                         length: s.getAttribute('length') * (isImperial ? mToFt : 1.0),
-                        lastEditor: lastEditor.getAttribute('userName'),
+                        lastEditor: (lastEditor && lastEditor.getAttribute('userName')) || "",
                         asc: (s.getFlagAttribute('fwdSpeedCamera') || s.getFlagAttribute('revSpeedCamera') ? 'Yes' : 'No'),
                         createdEditor: (createdEditor && createdEditor.getAttribute('userName')) || "",
                         shieldText: ps != null ? ps.getAttribute('signText') || '' : '',

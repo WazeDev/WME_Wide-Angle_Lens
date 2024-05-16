@@ -12,7 +12,7 @@
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
 // @grant               GM_xmlhttpRequest
-// @version             2024.01.25.001
+// @version             2024.05.15.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -692,9 +692,9 @@ namespace WMEWAL {
 
     function getVenueGeometry(venue: WazeNS.Model.Object.Venue): OpenLayers.Geometry {
         if (venue.isPoint()) {
-            return venue.getPointGeometry();
+            return venue.getOLGeometry();
         } else {
-            return venue.getPolygonGeometry();
+            return venue.getOLGeometry();
         }
     }
 
@@ -704,9 +704,9 @@ namespace WMEWAL {
 
     function getMapCommentGeometry(mapComment: WazeNS.Model.Object.MapComment): OpenLayers.Geometry {
         if (mapComment.isPoint()) {
-            return mapComment.getPointGeometry();
+            return mapComment.getOLGeometry();
         } else {
-            return mapComment.getPolygonGeometry();
+            return mapComment.getOLGeometry();
         }
     }
 
@@ -1022,19 +1022,11 @@ namespace WMEWAL {
         });
 
         const mapPromise : Promise<void> = new Promise(resolve => {
-            if (W.hasOwnProperty('vent')) {
-                const operationDone = function () {
-                    resolve();
-                    W.vent.off("operationDone", operationDone);
-                };
-                W.vent.on("operationDone", operationDone);
-            } else {
-                const operationDone = function () {
-                    resolve();
-                    W.app.layout.model.off('operationDone', operationDone);
-                };
-                W.app.layout.model.on('operationDone', operationDone);
-            }
+            const operationDone = function () {
+                resolve();
+                W.app.layout.model.off('operationDone', operationDone);
+            };
+            W.app.layout.model.on('operationDone', operationDone);
         });
 
         // const featuresPromise : Promise<void> = new Promise(resolve => {
@@ -1054,6 +1046,20 @@ namespace WMEWAL {
         }
     };
 
+    async function waitFeaturesLoaded() {
+         var ldf;
+         for (let j=0; j<100; j++) {
+             ldf = W.app.layout.model.attributes.loadingFeatures;
+             if (!ldf) break;
+             //log("debug", "wait for features " + j);
+             await new Promise(r => setTimeout(r,200));
+             }
+         if (!ldf) {
+             await new Promise(r => setTimeout(r,50));
+             //log("debug", "features loaded" );
+         }
+     }
+ 
     function cancelScan(): void {
         cancelled = true;
     }
@@ -1315,131 +1321,131 @@ namespace WMEWAL {
         currentZoom = W.map.zoom;
         layerToggle = [];
 
-        // const groups = $("div.layer-switcher li.group");
-        // groups.each(function (ix, g) {
-        //     const groupToggle = $(g).find("wz-toggle-switch");
-        //     if (groupToggle.length > 0) {
-        //         switch ($(groupToggle).attr("id")) {
-        //             case "layer-switcher-group_places":
-        //                 if (needVenues) {
-        //                     if (!$(groupToggle).prop("checked")) {
-        //                         $(groupToggle).trigger("click");
-        //                         layerToggle.push($(groupToggle).attr("id"));
-        //                     }
-        //                     // Loop through each child in the group
-        //                     $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-        //                         switch ($(c).attr("id")) {
-        //                             case "layer-switcher-item_venues":
-        //                             case "layer-switcher-item_residential_places":
-        //                             case "layer-switcher-item_parking_places":
-        //                                 if (!$(c).prop("checked")) {
-        //                                     $(c).trigger("click");
-        //                                     layerToggle.push($(c).attr("id"));
-        //                                 }
-        //                                 break;
-        //                             default:
-        //                                 if ($(c).prop("checked")) {
-        //                                     $(c).trigger("click");
-        //                                     layerToggle.push($(c).attr("id"));
-        //                                 }
-        //                                 break;
-        //                         }
-        //                     });
-        //                 } else {
-        //                     if ($(groupToggle).prop("checked")) {
-        //                         $(groupToggle).trigger("click");
-        //                         layerToggle.push($(groupToggle).attr("id"));
-        //                     }
-        //                 }
-        //                 break;
-        //             case "layer-switcher-group_road":
-        //                 if ($(groupToggle).prop("checked")) {
-        //                     $(groupToggle).trigger("click");
-        //                     layerToggle.push($(groupToggle).attr("id"));
-        //                 }
-        //                 break;
-        //             case "layer-switcher-group_display":
-        //                 if (needMapComments) {
-        //                     if (!$(groupToggle).prop("checked")) {
-        //                         $(groupToggle).trigger("click");
-        //                         layerToggle.push($(groupToggle).attr("id"));
-        //                     }
-        //                     // Loop through each child in the group
-        //                     $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-        //                         switch ($(c).attr("id")) {
-        //                             case "layer-switcher-item_map_comments":
-        //                                 if (!$(c).prop("checked")) {
-        //                                     $(c).trigger("click");
-        //                                     layerToggle.push($(c).attr("id"));
-        //                                 }
-        //                                 break;
-        //                             default:
-        //                                 if ($(c).prop("checked")) {
-        //                                     $(c).trigger("click");
-        //                                     layerToggle.push($(c).attr("id"));
-        //                                 }
-        //                                 break;
-        //                         }
-        //                     });
-        //                 } else {
-        //                     if ($(groupToggle).prop("checked")) {
-        //                         $(groupToggle).trigger("click");
-        //                         layerToggle.push($(groupToggle).attr("id"));
-        //                     }
-        //                     $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-        //                         if (!$(c).prop("checked")) {
-        //                             $(c).trigger("click");
-        //                             layerToggle.push($(c).attr("id"));
-        //                         }
-        //                     });
-        //                 }
-        //                 break;
-        //             case "layer-switcher-group_map_suggestions":
-        //                 if (needSuggestedSegments) {
-        //                     if (!$(groupToggle).prop("checked")) {
-        //                         $(groupToggle).trigger("click");
-        //                         layerToggle.push($(groupToggle).attr("id"));
-        //                     }
-        //                 } else {
-        //                     if ($(groupToggle).prop("checked")) {
-        //                         $(groupToggle).trigger("click");
-        //                         layerToggle.push($(groupToggle).attr("id"));
-        //                     }
-        //                 }
-        //                 break;
-        //             default:
-        //                 if ($(groupToggle).prop("checked")) {
-        //                     $(groupToggle).trigger("click");
-        //                     layerToggle.push($(groupToggle).attr("id"));
-        //                 }
-        //                 break;
-        //         }
-        //     }
-        // });
+        const groups = $("div.layer-switcher li.group");
+        groups.each(function (ix, g) {
+            const groupToggle = $(g).find("wz-toggle-switch");
+            if (groupToggle.length > 0) {
+                switch ($(groupToggle).attr("id")) {
+                    case "layer-switcher-group_places":
+                        if (needVenues) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                            // Loop through each child in the group
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                switch ($(c).attr("id")) {
+                                    case "layer-switcher-item_venues":
+                                    case "layer-switcher-item_residential_places":
+                                    case "layer-switcher-item_parking_places":
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                    default:
+                                        if ($(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                }
+                            });
+                        } else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                        }
+                        break;
+                    case "layer-switcher-group_road":
+                        if ($(groupToggle).prop("checked")) {
+                            $(groupToggle).trigger("click");
+                            layerToggle.push($(groupToggle).attr("id"));
+                        }
+                        break;
+                    case "layer-switcher-group_display":
+                        if (needMapComments) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                            // Loop through each child in the group
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                switch ($(c).attr("id")) {
+                                    case "layer-switcher-item_map_comments":
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                    default:
+                                        if ($(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                }
+                            });
+                        } else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                if (!$(c).prop("checked")) {
+                                    $(c).trigger("click");
+                                    layerToggle.push($(c).attr("id"));
+                                }
+                            });
+                        }
+                        break;
+                    case "layer-switcher-group_map_suggestions":
+                        if (needSuggestedSegments) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                        } else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                        }
+                        break;
+                    default:
+                        if ($(groupToggle).prop("checked")) {
+                            $(groupToggle).trigger("click");
+                            layerToggle.push($(groupToggle).attr("id"));
+                        }
+                        break;
+                }
+            }
+        });
 
-        // // Turn off Road Shield Assistant if currently enabled
-        // if ($('#rsa-enableScript').prop('checked')) {
-        //     $('#rsa-enableScript').trigger('click');
-        //     layerToggle.push('rsa-enableScript');
-        // }
+        // Turn off Road Shield Assistant if currently enabled
+        if ($('#rsa-enableScript').prop('checked')) {
+            $('#rsa-enableScript').trigger('click');
+            layerToggle.push('rsa-enableScript');
+        }
 
-        // // Turn off Lane Tools if currently enabled
-        // if ($('#lt-ScriptEnabled').prop('checked')) {
-        //     $('#lt-ScriptEnabled').trigger('click');
-        //     layerToggle.push('lt-ScriptEnabled');
-        // }
+        // Turn off Lane Tools if currently enabled
+        if ($('#lt-ScriptEnabled').prop('checked')) {
+            $('#lt-ScriptEnabled').trigger('click');
+            layerToggle.push('lt-ScriptEnabled');
+        }
 
-        // // Turn off WMEPH Highlighting if currently enabled
-        // if ($('#WMEPH-ColorHighlighting').prop('checked')) {
-        //     $('#WMEPH-ColorHighlighting').trigger('click');
-        //     layerToggle.push('WMEPH-ColorHighlighting');
-        // }
+        // Turn off WMEPH Highlighting if currently enabled
+        if ($('#WMEPH-ColorHighlighting').prop('checked')) {
+            $('#WMEPH-ColorHighlighting').trigger('click');
+            layerToggle.push('WMEPH-ColorHighlighting');
+        }
 
-        // // Turn off Magic if currently enabled because it doesn't respect the overall Display group toggle
-        // if ($('#layer-switcher-item_magic').prop('checked')) {
-        //     $('#layer-switcher-item_magic').trigger('click');
-        //     layerToggle.push('layer-switcher-item_magic');
-        // }
+        // Turn off Magic if currently enabled because it doesn't respect the overall Display group toggle
+        if ($('#layer-switcher-item_magic').prop('checked')) {
+            $('#layer-switcher-item_magic').trigger('click');
+            layerToggle.push('layer-switcher-item_magic');
+        }
 
         // Reload road layers
         if (!W.model.actionManager.canUndo()) {
@@ -1574,6 +1580,20 @@ namespace WMEWAL {
                         // W.map.setCenter(new OpenLayers.LonLat(currentLon, currentLat));
                         try {
                             await promiseTimeout(10000, p);
+                            waitFeaturesLoaded();
+                            const ven = W.model.venues.getObjectArray();
+                            const cityc = W.model.cities.getObjectArray().length;
+                            const cntryc = W.model.countries.getObjectArray().length;
+                            const segc = W.model.segments.getObjectArray().length;
+                            const usrc = W.model.users.getObjectArray().length;
+                            log("debug", "venues " + ven.length + " segs " + segc + " cntry " + cntryc + " users " + usrc);
+                            if (usrc < 2 || cntryc == 0) {
+                                log("debug", "user or countries not loaded, retry" );
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
+                            /*
                             // Check to see if there's anything in segments. If not, try moving the map again
                             if (needSegments && W.model.segments.getObjectArray().length == 0) {
                                 retryCount++;
@@ -1591,6 +1611,7 @@ namespace WMEWAL {
                                 retry = true;
                                 abortOnFailure = false;
                             }
+                            */
                         } catch (e) {
                             log("warning","moveMap: Timer triggered after map not successfully moved within 10 seconds");
                             retryCount++;

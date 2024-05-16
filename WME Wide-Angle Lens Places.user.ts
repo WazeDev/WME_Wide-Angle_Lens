@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.003
+// @version             2024.05.15.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -1121,7 +1121,7 @@ namespace WMEWAL_Places {
                             mainCategory: venue.getMainCategory(),
                             name: venue.getAttribute('name'),
                             lockLevel: venue.getLockRank() + 1,
-                            pointGeometry: venue.getPointGeometry(),
+                            pointGeometry: venue.getOLGeometry().getCentroid(),
                             // navigationPoint: venue.getNavigationPoint(),
                             categories: categories,
                             streetID: venue.getAttribute('streetID'),
