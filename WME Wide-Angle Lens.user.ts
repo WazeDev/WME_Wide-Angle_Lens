@@ -2,6 +2,7 @@
 /// <reference path="../typescript-typings/I18n.d.ts" />
 /// <reference path="../typescript-typings/waze.d.ts" />
 /// <reference path="../typescript-typings/globals/jquery/index.d.ts" />
+/// <reference path="../typescript-typings/globals/geojson/index.d.ts" />
 /// <reference path="../typescript-typings/wazewrap.d.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
@@ -28,7 +29,7 @@ declare var unsafeWindow: Window & typeof globalThis;
 namespace WMEWAL {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
@@ -1404,6 +1405,11 @@ namespace WMEWAL {
             }
         });
 
+        // Turn off Issue Tracker //
+        if ($('#layer-switcher-group_issues_tracker').prop('checked')) {
+            $('#layer-switcher-group_issues_tracker').trigger('click');
+            layerToggle.push('layer-switcher-group_issues_tracker');
+        }
         // Turn off Road Shield Assistant if currently enabled
         if ($('#rsa-enableScript').prop('checked')) {
             $('#rsa-enableScript').trigger('click');

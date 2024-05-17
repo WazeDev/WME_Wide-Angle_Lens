@@ -1,6 +1,7 @@
 /// <reference path="../typescript-typings/globals/openlayers/index.d.ts" />
 /// <reference path="../typescript-typings/waze.d.ts" />
 /// <reference path="../typescript-typings/globals/jquery/index.d.ts" />
+/// <reference path="../typescript-typings/globals/geojson/index.d.ts" />
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
@@ -26,7 +27,7 @@
 namespace WMEWAL_Cities {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
@@ -116,6 +117,7 @@ namespace WMEWAL_Cities {
     export let MinimumZoomLevel = 14;
     export const SupportsSegments = true;
     export const SupportsVenues = false;
+    export const SupportsSuggestedSegments = false;
 
     const settingsKey = "WMEWALCitiesSettings";
     const savedSettingsKey = "WMEWALCitiesSavedSettings";
@@ -484,17 +486,8 @@ namespace WMEWAL_Cities {
                 cityPolygons = [];
                 for (let ixFeature = 0; ixFeature < (<OpenLayers.Layer.Vector> layers[0]).features.length; ixFeature++) {
                     const feature = (<OpenLayers.Layer.Vector> layers[0]).features[ixFeature];
-                    let featureName: string = null;
-                    if (feature.style && nullif(feature.style.label, "") !== null) {
-                        featureName = feature.style.label;
-                    } else if (feature.attributes) {
-                        if (nullif(feature.attributes.name, "") !== null) {
-                            featureName = feature.attributes.name;
-                        } else if (nullif(feature.attributes.labelText, "") !== null) {
-                            featureName = feature.attributes.labelText;
-                        }
-                    }
-                    if (featureName !== null) {
+                    const featureName: string = feature.attributes.name;
+                    if (nullif(featureName, "") !== null) {
                         if (r !== null) {
                             log('info',"Checking to see if " + featureName + " matches the city regex.");
                             if (!r.test(featureName)) {
