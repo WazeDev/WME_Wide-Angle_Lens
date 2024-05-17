@@ -18,6 +18,7 @@
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
+// @connect             https://greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.user.js

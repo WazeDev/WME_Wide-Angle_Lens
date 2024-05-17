@@ -12,12 +12,13 @@
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
 // @grant               GM_xmlhttpRequest
-// @version             2023.09.25.003
+// @version             2024.05.17.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40641-wme-wide-angle-lens/code/WME%20Wide-Angle%20Lens.user.js
+// @connect             https://greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.user.js
@@ -182,8 +183,8 @@ var WMEWAL;
     // let venues: Array<string> = null;
     WMEWAL.areaName = null;
     const defaultOutputFields = ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
-    let currentX;
-    let currentY;
+    let currentLon;
+    let currentLat;
     let currentCenter = null;
     let currentZoom = null;
     let layerToggle = null;
@@ -569,10 +570,10 @@ var WMEWAL;
     WMEWAL.IsSegmentInArea = IsSegmentInArea;
     function getVenueGeometry(venue) {
         if (venue.isPoint()) {
-            return venue.getPointGeometry();
+            return venue.getOLGeometry();
         }
         else {
-            return venue.getPolygonGeometry();
+            return venue.getOLGeometry();
         }
     }
     function IsVenueInArea(venue) {
@@ -581,10 +582,10 @@ var WMEWAL;
     WMEWAL.IsVenueInArea = IsVenueInArea;
     function getMapCommentGeometry(mapComment) {
         if (mapComment.isPoint()) {
-            return mapComment.getPointGeometry();
+            return mapComment.getOLGeometry();
         }
         else {
-            return mapComment.getPolygonGeometry();
+            return mapComment.getOLGeometry();
         }
     }
     function IsMapCommentInArea(mapComment) {
@@ -705,7 +706,8 @@ var WMEWAL;
             return function () {
                 const center = settings.SavedAreas[index].geometry.getCentroid();
                 const lonlat = new OpenLayers.LonLat(center.x, center.y);
-                W.map.setCenter(lonlat);
+                W.map.moveTo(lonlat);
+                // W.map.setCenter(lonlat);
             };
         }
         settings.SavedAreas.sort(function (a, b) {
@@ -841,7 +843,7 @@ var WMEWAL;
         return new Promise(resolve => {
             WazeWrap.Model.onModelReady(function () {
                 resolve();
-            }, true, null);
+            }, false, null);
         });
     }
     function onModelReady(now) {
@@ -853,29 +855,43 @@ var WMEWAL;
             W.model.events.register("mergeend", null, mergeend);
         });
         const mapPromise = new Promise(resolve => {
-            if (W.hasOwnProperty('vent')) {
-                const operationDone = function () {
-                    resolve();
-                    W.vent.off("operationDone", operationDone);
-                };
-                W.vent.on("operationDone", operationDone);
-            }
-            else {
-                const operationDone = function () {
-                    resolve();
-                    W.app.layout.model.off('operationDone', operationDone);
-                };
-                W.app.layout.model.on('operationDone', operationDone);
-            }
+            const operationDone = function () {
+                resolve();
+                W.app.layout.model.off('operationDone', operationDone);
+            };
+            W.app.layout.model.on('operationDone', operationDone);
         });
+        // const featuresPromise : Promise<void> = new Promise(resolve => {
+        //     const loadingFeatures = function () {
+        //         resolve();
+        //         W.app.layout.model.off('loadingFeatures', loadingFeatures);
+        //     };
+        //     W.app.layout.model.on('loadingFeatures', loadingFeatures);
+        // });
         if (now && WazeWrap.Util.mapReady() && WazeWrap.Util.modelReady()) {
             return Promise.resolve();
         }
         else {
-            return Promise.all([modelPromise, mapPromise]);
+            return Promise.all([modelPromise, mapPromise]).then(() => {
+                console.log('All promises resolved');
+            });
         }
     }
     ;
+    async function waitFeaturesLoaded() {
+        var ldf;
+        for (let j = 0; j < 100; j++) {
+            ldf = W.app.layout.model.attributes.loadingFeatures;
+            if (!ldf)
+                break;
+            //log("debug", "wait for features " + j);
+            await new Promise(r => setTimeout(r, 200));
+        }
+        if (!ldf) {
+            await new Promise(r => setTimeout(r, 50));
+            //log("debug", "features loaded" );
+        }
+    }
     function cancelScan() {
         cancelled = true;
     }
@@ -927,7 +943,8 @@ var WMEWAL;
         }
         if (currentCenter != null) {
             log("Debug", "Moving back to original location");
-            W.map.setCenter(currentCenter);
+            W.map.moveTo(currentCenter);
+            // W.map.setCenter(currentCenter);
         }
         if (currentZoom != null) {
             log("Debug", "Resetting zoom");
@@ -1256,8 +1273,8 @@ var WMEWAL;
         log("Debug", "Horizontal span = " + horizontalSpan.toString());
         log("Debug", "Vertical span = " + verticalSpan.toString());
         log("Debug", "Total viewports = " + totalViewports.toString());
-        currentX = topLeft.x - width;
-        currentY = topLeft.y;
+        currentLon = topLeft.x - width;
+        currentLat = topLeft.y;
         pb.show();
         cancelled = false;
         let status;
@@ -1289,13 +1306,13 @@ var WMEWAL;
             else {
                 countViewports += 1;
                 log("Debug", "Count viewports = " + countViewports.toString());
-                currentX += width;
-                if (currentX > bottomRight.x + width) {
+                currentLon += width;
+                if (currentLon > bottomRight.x + width) {
                     log("Debug", "New row");
                     // Start at next row
-                    currentX = topLeft.x;
-                    currentY -= height;
-                    if (currentY < bottomRight.y - height) {
+                    currentLon = topLeft.x;
+                    currentLat -= height;
+                    if (currentLat < bottomRight.y - height) {
                         done = true;
                     }
                 }
@@ -1303,10 +1320,10 @@ var WMEWAL;
                     // Check to see if the new window would be within the boundaries of the original area
                     // Create a geometry object for the window boundaries
                     const points = [];
-                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY + (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY + (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX - (width / 2), currentY - (height / 2)));
-                    points.push(new OpenLayers.Geometry.Point(currentX + (width / 2), currentY - (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon - (width / 2), currentLat + (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon + (width / 2), currentLat + (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon - (width / 2), currentLat - (height / 2)));
+                    points.push(new OpenLayers.Geometry.Point(currentLon + (width / 2), currentLat - (height / 2)));
                     const lr = new OpenLayers.Geometry.LinearRing(points);
                     const poly = new OpenLayers.Geometry.Polygon([lr]);
                     inGeometry = WMEWAL.areaToScan && WMEWAL.areaToScan.intersects(poly);
@@ -1327,21 +1344,58 @@ var WMEWAL;
     async function moveMap() {
         let abort;
         let retry;
+        let abortOnFailure;
         do {
             abort = false;
+            abortOnFailure = true;
             let retryCount = 0;
             do {
                 retry = false;
                 if (!cancelled) {
                     try {
-                        W.map.setCenter(new OpenLayers.LonLat(currentX, currentY));
+                        var p = onModelReady(false);
+                        W.map.moveTo({ lon: currentLon, lat: currentLat });
+                        // W.map.setCenter(new OpenLayers.LonLat(currentLon, currentLat));
                         try {
-                            await promiseTimeout(10000, onModelReadyWW());
+                            await promiseTimeout(10000, p);
+                            waitFeaturesLoaded();
+                            const ven = W.model.venues.getObjectArray();
+                            const cityc = W.model.cities.getObjectArray().length;
+                            const cntryc = W.model.countries.getObjectArray().length;
+                            const segc = W.model.segments.getObjectArray().length;
+                            const usrc = W.model.users.getObjectArray().length;
+                            log("debug", "venues " + ven.length + " segs " + segc + " cntry " + cntryc + " users " + usrc);
+                            if (usrc < 2 || cntryc == 0) {
+                                log("debug", "user or countries not loaded, retry");
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
+                            /*
+                            // Check to see if there's anything in segments. If not, try moving the map again
+                            if (needSegments && W.model.segments.getObjectArray().length == 0) {
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
+                            if (needVenues && W.model.venues.getObjectArray().length == 0) {
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
+
+                            if (needSuggestedSegments && W.model.segmentSuggestions.getObjectArray().length == 0) {
+                                retryCount++;
+                                retry = true;
+                                abortOnFailure = false;
+                            }
+                            */
                         }
                         catch (e) {
                             log("warning", "moveMap: Timer triggered after map not successfully moved within 10 seconds");
                             retryCount++;
                             retry = true;
+                            abortOnFailure = true;
                         }
                     }
                     catch (e) {
@@ -1354,10 +1408,11 @@ var WMEWAL;
                         });
                         retry = true;
                         retryCount++;
+                        abortOnFailure = true;
                     }
                 }
             } while (retry && retryCount < 5);
-            if (retry) {
+            if (retry && abortOnFailure) {
                 abort = !confirm("Exceeded maximum allowable attempts to move the map. Do you want to continue trying?");
             }
         } while (retry && !abort);
@@ -1371,9 +1426,9 @@ var WMEWAL;
     async function scanExtent() {
         let keepScanning = true;
         if (!cancelled) {
-            const extentSegments = [];
-            const extentVenues = [];
-            const extentSuggestedSegments = [];
+            let extentSegments = [];
+            let extentVenues = [];
+            let extentSuggestedSegments = [];
             // Check to see if the current extent is completely within the area being searched
             // let allIn = true;
             // let vertices = W.map.getExtent().toGeometry().getVertices();
@@ -1383,41 +1438,44 @@ var WMEWAL;
             // log("Debug","Extent is " + (!allIn ? "NOT " : "") + "entirely within area");
             if (needSegments) { // && segments != null) {
                 log("Debug", "scanExtent: Collecting segments");
-                for (let seg in W.model.segments.objects) {
-                    // if (segments.indexOf(seg) === -1) {
-                    const segment = W.model.segments.getObjectById(parseInt(seg));
-                    if (segment != null) {
-                        // segments.push(seg);
-                        extentSegments.push(segment);
-                    }
-                    // }
-                }
+                extentSegments = W.model.segments.getObjectArray();
+                // for (let seg in W.model.segments.objects) {
+                //     // if (segments.indexOf(seg) === -1) {
+                //         const segment = W.model.segments.getObjectById(parseInt(seg));
+                //         if (segment != null) {
+                //             // segments.push(seg);
+                //             extentSegments.push(segment);
+                //         }
+                //     // }
+                // }
                 log("Debug", `scanExtent: Done collecting segments (${extentSegments.length})`);
             }
             if (needVenues) { //} && venues != null) {
                 log("Debug", "scanExtent: Collecting venues");
-                for (let ven in W.model.venues.objects) {
-                    // if (venues.indexOf(ven) === -1) {
-                    const venue = W.model.venues.getObjectById(ven);
-                    if (venue != null) {
-                        // venues.push(ven);
-                        extentVenues.push(venue);
-                    }
-                    // }
-                }
+                extentVenues = W.model.venues.getObjectArray();
+                // for (let ven in W.model.venues.objects) {
+                //     // if (venues.indexOf(ven) === -1) {
+                //         const venue = W.model.venues.getObjectById(ven);
+                //         if (venue != null) {
+                //             // venues.push(ven);
+                //             extentVenues.push(venue);
+                //         }
+                //     // }
+                // }
                 log("Debug", `scanExtent: Done collecting venues (${extentVenues.length})`);
             }
             if (needSuggestedSegments) { // && segments != null) {
                 log("Debug", "scanExtent: Collecting suggested segments");
-                for (let seg in W.model.segmentSuggestions.objects) {
-                    // if (segments.indexOf(seg) === -1) {
-                    const segment = W.model.segmentSuggestions.getObjectById(parseInt(seg));
-                    if (segment != null) {
-                        // segments.push(seg);
-                        extentSuggestedSegments.push(segment);
-                    }
-                    // }
-                }
+                extentSuggestedSegments = W.model.segmentSuggestions.getObjectArray();
+                // for (let seg in W.model.segmentSuggestions.objects) {
+                //     // if (segments.indexOf(seg) === -1) {
+                //         const segment = W.model.segmentSuggestions.getObjectById(parseInt(seg));
+                //         if (segment != null) {
+                //             // segments.push(seg);
+                //             extentSuggestedSegments.push(segment);
+                //         }
+                //     // }
+                // }
                 log("Debug", `scanExtent: Done collecting suggested segments (${extentSuggestedSegments.length})`);
             }
             const promises = [];
