@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2024.05.15.001
+// @version             2024.05.17.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -788,6 +788,10 @@ var WMEWAL_Places;
             if (venue != null) {
                 const categories = venue.getAttribute('categories');
                 const address = venue.getAddress();
+                if (venue.getAttribute('streetID') && address && address.getCountry() == null) {
+                    log("warn", "no address for streetID " + venue.getAttribute('streetID') + ", venue " + venue.getAttribute('name') + " " + venue.getID());
+                }
+                const houseNum = venue.getAttribute('houseNumber') ?? "";
                 if ((settings.LockLevel == null ||
                     (settings.LockLevelOperation === Operation.Equal && (venue.getAttribute('lockRank') || 0) + 1 === settings.LockLevel) ||
                     (settings.LockLevelOperation === Operation.NotEqual && (venue.getAttribute('lockRank') || 0) + 1 !== settings.LockLevel)) &&
@@ -870,7 +874,7 @@ var WMEWAL_Places;
                     if (settings.NoName && !venue.getAttribute('name')) {
                         issues |= Issue.NoName;
                     }
-                    if (settings.NoHouseNumber && (!address || address.attributes.houseNumber == null)) {
+                    if (settings.NoHouseNumber && houseNum == '') {
                         issues |= Issue.MissingHouseNumber;
                     }
                     if (settings.AdLocked && venue.getAttribute('adLocked')) {
@@ -939,7 +943,7 @@ var WMEWAL_Places;
                             isApproved: venue.isApproved(),
                             city: ((address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) ? address.attributes.city.getAttribute('name') : "No City"),
                             state: ((address && !address.isEmpty() && address.attributes.state) ? address.attributes.state.getAttribute('name') : "No State"),
-                            houseNumber: venue.getAttribute('houseNumber') ?? "",
+                            houseNumber: houseNum,
                             streetName: ((address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.getAttribute('name') : "") || "",
                             lastEditor: lastEditor?.getAttribute('userName') ?? '',
                             createdBy: createdBy?.getAttribute('userName') ?? '',
