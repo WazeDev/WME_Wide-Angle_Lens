@@ -17,6 +17,7 @@
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40643-wme-wide-angle-lens-locks/code/WME%20Wide-Angle%20Lens%20Locks.user.js
+// @connect             https://greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418295-wme-wide-angle-lens-locks-beta/code/WME%20Wide-Angle%20Lens%20Locks.user.js
