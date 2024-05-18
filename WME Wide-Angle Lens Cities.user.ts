@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.002
+// @version             2024.05.17.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -658,7 +658,7 @@ namespace WMEWAL_Cities {
             if (savedSegments.indexOf(s.getID()) === -1) {
                 savedSegments.push(s.getID());
                 const sid = s.getAttribute('primaryStreetID');
-                const address = s.getAddress();
+                const address = s.getAddress(W.model);
                 let thisStreet: IStreet = null;
                 if (sid != null) {
                     thisStreet = extentStreets.find(function (e) {
@@ -736,7 +736,7 @@ namespace WMEWAL_Cities {
                 if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.getAttribute('roadType')) & settings.RoadTypeMask) &&
                     (!settings.EditableByMe || segment.arePropertiesEditable()) &&
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
-                        const address = segment.getAddress();
+                        const address = segment.getAddress(W.model);
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||

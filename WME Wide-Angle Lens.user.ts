@@ -13,7 +13,7 @@
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
 // @grant               GM_xmlhttpRequest
-// @version             2024.05.17.001
+// @version             2024.05.17.002
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
