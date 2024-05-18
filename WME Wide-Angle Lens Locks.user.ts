@@ -10,7 +10,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.002
+// @version             2024.05.17.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -28,7 +28,7 @@ namespace WMEWAL_Locks {
 
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
@@ -688,7 +688,7 @@ namespace WMEWAL_Locks {
                 savedSegments.push(s.getID());
 
                 const sid = s.getAttribute('primaryStreetID');
-                const address = s.getAddress();
+                const address = s.getAddress(W.model);
                 let thisStreet: IStreet = null;
                 if (sid != null) {
                     // let street = W.model.streets.getObjectById(sid);
@@ -761,7 +761,7 @@ namespace WMEWAL_Locks {
                 if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.getAttribute('roadType')) & settings.RoadTypeMask) &&
                     (!settings.EditableByMe || segment.arePropertiesEditable()) &&
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
-                        const address = segment.getAddress();
+                        const address = segment.getAddress(W.model);
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
@@ -800,13 +800,13 @@ namespace WMEWAL_Locks {
                             expectedLockRank = 0;
                             if (settings.RampLockLevel === 7) {
                                 // Find lock rank of every connected segment
-                                const fromSegments = segment.getConnectedSegments("from");
+                                const fromSegments = segment.getConnectedSegments(W.model, "from");
                                 for (let ix = 0; ix < fromSegments.length; ix++) {
                                     if (fromSegments[ix].getAttribute('id') !== segment.getAttribute('id') && (fromSegments[ix].getAttribute('lockRank') || 0) + 1 > expectedLockRank) {
                                         expectedLockRank = (fromSegments[ix].getAttribute('lockRank') || 0) + 1;
                                     }
                                 }
-                                const toSegments = segment.getConnectedSegments("to");
+                                const toSegments = segment.getConnectedSegments(W.model, "to");
                                 for (let ix = 0; ix < toSegments.length; ix++) {
                                     if (toSegments[ix].getAttribute('id') !== segment.getAttribute('id') && (toSegments[ix].getAttribute('lockRank') || 0) + 1 > expectedLockRank) {
                                         expectedLockRank = (toSegments[ix].getAttribute('lockRank') || 0) + 1;

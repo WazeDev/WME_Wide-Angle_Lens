@@ -11,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2024.05.17.001
+// @version             2024.05.17.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -29,7 +29,7 @@ namespace WMEWAL_Places {
 
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
@@ -952,7 +952,7 @@ namespace WMEWAL_Places {
             const venue = venues[ix];
             if (venue != null) {
                 const categories = venue.getAttribute('categories');
-                const address = venue.getAddress();
+                const address = venue.getAddress(W.model);
                 if (venue.getAttribute('streetID') && address && address.getCountry() == null) {
                     log("warn", "no address for streetID " + venue.getAttribute('streetID') + ", venue " + venue.getAttribute('name') + " " + venue.getID());
                 }

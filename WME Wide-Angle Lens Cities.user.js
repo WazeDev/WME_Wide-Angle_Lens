@@ -1,6 +1,7 @@
 /// <reference path="../typescript-typings/globals/openlayers/index.d.ts" />
 /// <reference path="../typescript-typings/waze.d.ts" />
 /// <reference path="../typescript-typings/globals/jquery/index.d.ts" />
+/// <reference path="../typescript-typings/globals/geojson/index.d.ts" />
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
@@ -10,7 +11,7 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.002
+// @version             2024.05.17.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -26,7 +27,7 @@ var WMEWAL_Cities;
 (function (WMEWAL_Cities) {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
         + '</ul>';
@@ -44,6 +45,7 @@ var WMEWAL_Cities;
     WMEWAL_Cities.MinimumZoomLevel = 14;
     WMEWAL_Cities.SupportsSegments = true;
     WMEWAL_Cities.SupportsVenues = false;
+    WMEWAL_Cities.SupportsSuggestedSegments = false;
     const settingsKey = "WMEWALCitiesSettings";
     const savedSettingsKey = "WMEWALCitiesSavedSettings";
     let settings = null;
@@ -377,19 +379,8 @@ var WMEWAL_Cities;
                 cityPolygons = [];
                 for (let ixFeature = 0; ixFeature < layers[0].features.length; ixFeature++) {
                     const feature = layers[0].features[ixFeature];
-                    let featureName = null;
-                    if (feature.style && nullif(feature.style.label, "") !== null) {
-                        featureName = feature.style.label;
-                    }
-                    else if (feature.attributes) {
-                        if (nullif(feature.attributes.name, "") !== null) {
-                            featureName = feature.attributes.name;
-                        }
-                        else if (nullif(feature.attributes.labelText, "") !== null) {
-                            featureName = feature.attributes.labelText;
-                        }
-                    }
-                    if (featureName !== null) {
+                    const featureName = feature.attributes.name;
+                    if (nullif(featureName, "") !== null) {
                         if (r !== null) {
                             log('info', "Checking to see if " + featureName + " matches the city regex.");
                             if (!r.test(featureName)) {
@@ -537,7 +528,7 @@ var WMEWAL_Cities;
             if (savedSegments.indexOf(s.getID()) === -1) {
                 savedSegments.push(s.getID());
                 const sid = s.getAttribute('primaryStreetID');
-                const address = s.getAddress();
+                const address = s.getAddress(W.model);
                 let thisStreet = null;
                 if (sid != null) {
                     thisStreet = extentStreets.find(function (e) {
@@ -613,7 +604,7 @@ var WMEWAL_Cities;
                 if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.getAttribute('roadType')) & settings.RoadTypeMask) &&
                     (!settings.EditableByMe || segment.arePropertiesEditable()) &&
                     (!settings.ExcludeJunctionBoxes || !segment.isInBigJunction())) {
-                    const address = segment.getAddress();
+                    const address = segment.getAddress(W.model);
                     if (state != null) {
                         if (address != null && address.attributes != null && !address.attributes.isEmpty && address.attributes.state != null) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
