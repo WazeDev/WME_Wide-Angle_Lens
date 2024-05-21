@@ -13,7 +13,7 @@
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
 // @grant               GM_xmlhttpRequest
-// @version             2024.05.17.002
+// @version             2024.05.19.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -1371,8 +1371,8 @@ var WMEWAL;
                             const segc = W.model.segments.getObjectArray().length;
                             const usrc = W.model.users.getObjectArray().length;
                             log("debug", "venues " + ven.length + " segs " + segc + " cntry " + cntryc + " users " + usrc);
-                            if (usrc < 2 || cntryc == 0) {
-                                log("debug", "user or countries not loaded, retry");
+                            if (usrc < 2) {
+                                log("warn", "no user data loaded, retry");
                                 retryCount++;
                                 retry = true;
                                 abortOnFailure = false;
