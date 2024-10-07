@@ -8,9 +8,10 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find segments that don't match lock levels
 // @author              vtpearce and crazycaveman
-// @match               *://*.waze.com/*editor*
-// @exclude             *://*.waze.com/user/editor*
-// @version             2024.05.17.002
+// @match               https://*.waze.com/*editor*
+// @exclude             https://*.waze.com/user/editor*
+// @exclude             https://www.waze.com/discuss/*
+// @version             2024.10.07.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0

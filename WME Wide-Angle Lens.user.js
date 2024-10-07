@@ -10,10 +10,11 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
-// @match               *://*.waze.com/*editor*
-// @exclude             *://*.waze.com/user/editor*
+// @match               https://*.waze.com/*editor*
+// @exclude             https://*.waze.com/user/editor*
+// @exclude             https://www.waze.com/discuss/*
 // @grant               GM_xmlhttpRequest
-// @version             2024.05.19.001
+// @version             2024.10.07.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -32,7 +33,7 @@ var WMEWAL;
         + '<li>Fixes for latest WME release</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
-    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+    const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
     const debug = false;
     class ProgressBar {
         root;
@@ -1047,7 +1048,7 @@ var WMEWAL;
         let name;
         if (index == settings.SavedAreas.length) {
             // Scanning current window
-            WMEWAL.areaToScan = W.map.getExtent().toGeometry();
+            WMEWAL.areaToScan = W.map.getOLExtent().toGeometry();
             name = 'Current window';
         }
         else {
@@ -1268,7 +1269,7 @@ var WMEWAL;
         WMEWAL.zoomLevel = minZoomLevel;
         log('info', `Zooming to ${WMEWAL.zoomLevel}`);
         WALMap.zoomTo(WMEWAL.zoomLevel);
-        const extent = W.map.getExtent();
+        const extent = W.map.getOLExtent();
         height = extent.getHeight();
         width = extent.getWidth();
         // Figure out how many horizontal and vertical viewports there are
