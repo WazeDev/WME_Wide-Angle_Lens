@@ -9,16 +9,17 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets whose city doesn't match the boundaries of a polygon layer
 // @author              vtpearce and crazycaveman
-// @match               *://*.waze.com/*editor*
-// @exclude             *://*.waze.com/user/editor*
-// @version             2024.05.17.002
+// @match               https://*.waze.com/*editor*
+// @exclude             https://*.waze.com/user/editor*
+// @exclude             https://www.waze.com/discuss/*
+// @version             2024.10.07.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40642-wme-wide-angle-lens-cities/code/WME%20Wide-Angle%20Lens%20Cities.user.js
-// @connect             https://greasyfork.org
+// @connect             greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418296-wme-wide-angle-lens-cities-beta/code/WME%20Wide-Angle%20Lens%20Cities.user.js

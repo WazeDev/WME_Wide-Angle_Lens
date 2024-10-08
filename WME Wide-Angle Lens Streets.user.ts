@@ -9,16 +9,17 @@
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets that match filter criteria
 // @author              vtpearce and crazycaveman
-// @match               *://*.waze.com/*editor*
-// @exclude             *://*.waze.com/user/editor*
-// @version             2024.05.17.002
+// @match               https://*.waze.com/*editor*
+// @exclude             https://*.waze.com/user/editor*
+// @exclude             https://www.waze.com/discuss/*
+// @version             2024.10.07.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
-// @connect             https://greasyfork.org
+// @connect             greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
 // @downloadURL         https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.user.js
@@ -33,7 +34,6 @@ namespace WMEWAL_Streets {
 
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
-        + '<li>Fixed issue with getting last/creating editor<li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
