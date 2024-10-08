@@ -19,7 +19,7 @@
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
-// @connect             https://greasyfork.org
+// @connect             greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
 // @downloadURL         https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.user.js
