@@ -14,7 +14,7 @@
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
 // @grant               GM_xmlhttpRequest
-// @version             2024.10.07.001
+// @version             2025.03.14.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -34,7 +34,7 @@ namespace WMEWAL {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
-        + '<li>Fixes for latest WME release</li>'
+        + '<li>Fixes for getting stuck in some situations.</li>'
         + '</ul>';
 
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -50,6 +50,8 @@ namespace WMEWAL {
         private streets: number;
         private places: number;
         private mapComments: number;
+        private noData: number;
+        private errLoad: number;
 
         constructor(id: string) {
             this.root = $(id);
@@ -59,6 +61,8 @@ namespace WMEWAL {
             this.streets = null;
             this.places = null;
             this.mapComments = null;
+            this.noData = null;
+            this.errLoad = null;
             this.div.children().hide();
             this.root.children().hide();
         }
@@ -133,6 +137,26 @@ namespace WMEWAL {
             this.updateCounts();
         }
 
+        public addErrCount(noDat: number, erLd: number) {
+            if (noDat != null) {
+                if (this.noData != null) {
+                    this.noData += noDat;
+                }
+                else {
+                    this.noData = noDat;
+                }
+            }
+            if (erLd != null) {
+                if (this.errLoad != null) {
+                    this.errLoad += erLd;
+                }
+                else {
+                    this.errLoad = erLd;
+                }
+            }
+            this.updateCounts();
+        }
+
         public showInfo(show: boolean): void {
             if (show) {
                 this.information.show();
@@ -156,6 +180,12 @@ namespace WMEWAL {
             }
             if (this.mapComments != null) {
                 outputText += (outputText.length > 0 ? ' ' : '') + `MC: ${this.mapComments.toLocaleString()}`;
+            }
+            if (this.noData != null) {
+                outputText += (outputText.length > 0 ? ' ' : '') + `ND: ${this.noData.toLocaleString()}`;
+            }
+            if (this.errLoad != null) {
+                outputText += (outputText.length > 0 ? ' ' : '') + `Er: ${this.errLoad.toLocaleString()}`;
             }
 
             this.counts.text(outputText);
@@ -242,6 +272,11 @@ namespace WMEWAL {
         geometryText?: string;
     }
 
+    export interface IErrLoc {
+        Message: string;
+        Location: string;
+    }
+
     let topLeft: OpenLayers.Geometry.Point = null;
     let bottomRight: OpenLayers.Geometry.Point = null;
 
@@ -281,6 +316,7 @@ namespace WMEWAL {
     let initCount = 0;
     let layerCheckboxAdded = false;
     let WALMap: OpenLayers.Map;
+    let errList: Array<IErrLoc> = [];
 
     function onWmeReady() {
         initCount++;
@@ -457,16 +493,6 @@ namespace WMEWAL {
         await makeTab();
 
         //recreate tab here
-        // Editing mode changed to/from event mode
-
-        if (W.app.modeController) {
-            W.app.modeController.model.bind("change:mode", function (model, modeId) {
-                if (modeId === 0 && $("#wal-tabPane").length === 0) {
-                    log("debug", "Mode changed");
-                    recreateTab();
-                }
-            });
-        }
 
         // Unit switched (imperial/metric)
         if (W.prefs) {
@@ -1107,7 +1133,7 @@ namespace WMEWAL {
         pb.hide();
         pb.showInfo(false);
         pb.info("");
-
+        errList = [];
         areaToScan = null;
 
         // Return to previous state
@@ -1569,6 +1595,17 @@ namespace WMEWAL {
         }
     }
 
+    export function getErrCsvText() {
+        let errstr = '';
+        errList.forEach(item => { errstr += item.Message + ',' + item.Location + '\n' } );
+
+        return errstr;
+    }
+
+    export function writeErrText(win: Window) {
+        errList.forEach(item => { win.document.write(`<tr><td>${item.Message}</td><td><a href='${item.Location}' target='_blank'>Permalink</a></td></tr>\n`)  } );
+    }
+
     async function moveMap(): Promise<ScanStatus> {
         let abort: boolean;
         let retry: boolean;
@@ -1578,6 +1615,8 @@ namespace WMEWAL {
             abort = false;
             abortOnFailure = true;
             let retryCount = 0;
+            const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(currentLon, currentLat);
+            const url = WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, WMEWAL.zoomLevel);
             do {
                 retry = false;
                 if (!cancelled) {
@@ -1595,9 +1634,11 @@ namespace WMEWAL {
                             const usrc = W.model.users.getObjectArray().length;
                             log("debug", "venues " + ven.length + " segs " + segc + " cntry " + cntryc + " users " + usrc);
                             if (usrc < 2) {
-                                log("warn", "no user data loaded, retry" );
+                                log("warn", "SKIP - no data at location " + url);
                                 retryCount++;
-                                retry = true;
+                                errList.push( {Message: 'no data', Location: url} );
+                                pb.addErrCount(1, null);
+                                //retry = true;
                                 abortOnFailure = false;
                             }
                             /*
@@ -1621,8 +1662,10 @@ namespace WMEWAL {
                             */
                         } catch (e) {
                             log("warning","moveMap: Timer triggered after map not successfully moved within 10 seconds");
+                            errList.push( {Message: 'timeout', Location: url} );
+                            pb.addErrCount(null, 1);
                             retryCount++;
-                            retry = true;
+                            //retry = true;
                             abortOnFailure = true;
                         }
                     } catch (e) {
@@ -1633,6 +1676,8 @@ namespace WMEWAL {
                                 resolve();
                             }, 1000);
                         });
+                        errList.push( {Message: 'exception', Location: url} );
+                        pb.addErrCount(null, 1);
                         retry = true;
                         retryCount++;
                         abortOnFailure = true;
