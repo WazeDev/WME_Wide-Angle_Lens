@@ -14,7 +14,7 @@
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
 // @grant               GM_xmlhttpRequest
-// @version             2024.10.07.001
+// @version             2025.03.14.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -30,7 +30,7 @@ var WMEWAL;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Fixes for latest WME release</li>'
+        + '<li>Fixes for getting stuck in some situations.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
@@ -43,6 +43,8 @@ var WMEWAL;
         streets;
         places;
         mapComments;
+        noData;
+        errLoad;
         constructor(id) {
             this.root = $(id);
             this.div = this.root.children('#wal-progressBar');
@@ -51,6 +53,8 @@ var WMEWAL;
             this.streets = null;
             this.places = null;
             this.mapComments = null;
+            this.noData = null;
+            this.errLoad = null;
             this.div.children().hide();
             this.root.children().hide();
         }
@@ -118,6 +122,25 @@ var WMEWAL;
             }
             this.updateCounts();
         }
+        addErrCount(noDat, erLd) {
+            if (noDat != null) {
+                if (this.noData != null) {
+                    this.noData += noDat;
+                }
+                else {
+                    this.noData = noDat;
+                }
+            }
+            if (erLd != null) {
+                if (this.errLoad != null) {
+                    this.errLoad += erLd;
+                }
+                else {
+                    this.errLoad = erLd;
+                }
+            }
+            this.updateCounts();
+        }
         showInfo(show) {
             if (show) {
                 this.information.show();
@@ -140,6 +163,12 @@ var WMEWAL;
             }
             if (this.mapComments != null) {
                 outputText += (outputText.length > 0 ? ' ' : '') + `MC: ${this.mapComments.toLocaleString()}`;
+            }
+            if (this.noData != null) {
+                outputText += (outputText.length > 0 ? ' ' : '') + `ND: ${this.noData.toLocaleString()}`;
+            }
+            if (this.errLoad != null) {
+                outputText += (outputText.length > 0 ? ' ' : '') + `Er: ${this.errLoad.toLocaleString()}`;
             }
             this.counts.text(outputText);
             this.counts.show();
@@ -206,6 +235,7 @@ var WMEWAL;
     let initCount = 0;
     let layerCheckboxAdded = false;
     let WALMap;
+    let errList = [];
     function onWmeReady() {
         initCount++;
         if (WazeWrap && WazeWrap.Ready) {
@@ -373,15 +403,6 @@ var WMEWAL;
         log('log', 'Initialized');
         await makeTab();
         //recreate tab here
-        // Editing mode changed to/from event mode
-        if (W.app.modeController) {
-            W.app.modeController.model.bind("change:mode", function (model, modeId) {
-                if (modeId === 0 && $("#wal-tabPane").length === 0) {
-                    log("debug", "Mode changed");
-                    recreateTab();
-                }
-            });
-        }
         // Unit switched (imperial/metric)
         if (W.prefs) {
             W.prefs.on("change:isImperial", recreateTab);
@@ -934,6 +955,7 @@ var WMEWAL;
         pb.hide();
         pb.showInfo(false);
         pb.info("");
+        errList = [];
         WMEWAL.areaToScan = null;
         // Return to previous state
         if (layerToggle != null) {
@@ -1348,6 +1370,16 @@ var WMEWAL;
             return ScanStatus.Complete;
         }
     }
+    function getErrCsvText() {
+        let errstr = '';
+        errList.forEach(item => { errstr += item.Message + ',' + item.Location + '\n'; });
+        return errstr;
+    }
+    WMEWAL.getErrCsvText = getErrCsvText;
+    function writeErrText(win) {
+        errList.forEach(item => { win.document.write(`<tr><td>${item.Message}</td><td><a href='${item.Location}' target='_blank'>Permalink</a></td></tr>\n`); });
+    }
+    WMEWAL.writeErrText = writeErrText;
     async function moveMap() {
         let abort;
         let retry;
@@ -1356,6 +1388,8 @@ var WMEWAL;
             abort = false;
             abortOnFailure = true;
             let retryCount = 0;
+            const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(currentLon, currentLat);
+            const url = WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, WMEWAL.zoomLevel);
             do {
                 retry = false;
                 if (!cancelled) {
@@ -1373,9 +1407,11 @@ var WMEWAL;
                             const usrc = W.model.users.getObjectArray().length;
                             log("debug", "venues " + ven.length + " segs " + segc + " cntry " + cntryc + " users " + usrc);
                             if (usrc < 2) {
-                                log("warn", "no user data loaded, retry");
+                                log("warn", "SKIP - no data at location " + url);
                                 retryCount++;
-                                retry = true;
+                                errList.push({ Message: 'no data', Location: url });
+                                pb.addErrCount(1, null);
+                                //retry = true;
                                 abortOnFailure = false;
                             }
                             /*
@@ -1400,8 +1436,10 @@ var WMEWAL;
                         }
                         catch (e) {
                             log("warning", "moveMap: Timer triggered after map not successfully moved within 10 seconds");
+                            errList.push({ Message: 'timeout', Location: url });
+                            pb.addErrCount(null, 1);
                             retryCount++;
-                            retry = true;
+                            //retry = true;
                             abortOnFailure = true;
                         }
                     }
@@ -1413,6 +1451,8 @@ var WMEWAL;
                                 resolve();
                             }, 1000);
                         });
+                        errList.push({ Message: 'exception', Location: url });
+                        pb.addErrCount(null, 1);
                         retry = true;
                         retryCount++;
                         abortOnFailure = true;

@@ -11,7 +11,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2024.10.07.001
+// @version             2025.03.14.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -29,7 +29,7 @@ var WMEWAL_Locks;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Fixes for latest WME release</li>'
+        + '<li>Fixes for getting stuck in some situations.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
@@ -988,7 +988,7 @@ var WMEWAL_Locks;
                 }
             }
             if (isCSV) {
-                const csvContent = lineArray.join("\n");
+                const csvContent = lineArray.join("\n") + "\n" + WMEWAL.getErrCsvText();
                 const blobContent = [];
                 if (addBOM) {
                     blobContent.push('\uFEFF');
@@ -1004,6 +1004,7 @@ var WMEWAL_Locks;
                 document.body.removeChild(node);
             }
             if (isTab) {
+                WMEWAL.writeErrText(w);
                 w.document.write("</table></body></html>");
                 w.document.close();
                 w = null;
