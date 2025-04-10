@@ -12,7 +12,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.03.14.001
+// @version             2025.04.10.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -30,12 +30,12 @@ var WMEWAL_Cities;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Fixes for getting stuck in some situations.</li>'
+        + '<li>Update for plugin status.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = "_wmewalCities";
-    const minimumWALVersionRequired = "2023.09.18.001";
+    const minimumWALVersionRequired = "2025.04.10.001";
     let Operation;
     (function (Operation) {
         Operation[Operation["Equal"] = 1] = "Equal";
@@ -513,7 +513,7 @@ var WMEWAL_Cities;
         return new Promise(resolve => {
             setTimeout(function () {
                 const count = scan(segments);
-                resolve({ Streets: count, Places: null, MapComments: null });
+                resolve({ ID: 'City', count });
             }, 0);
         });
     }

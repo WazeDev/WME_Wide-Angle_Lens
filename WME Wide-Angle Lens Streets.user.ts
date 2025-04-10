@@ -12,7 +12,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.03.14.001
+// @version             2025.04.10.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -33,14 +33,15 @@ namespace WMEWAL_Streets {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
-        + '<li>Fixes for getting stuck in some situations.</li>'
+        + '<li>Check repeats yearly on expired restrictions.</li>'
+        + '<li>Update for plugin status.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
     const ctlPrefix = "_wmewalStreets";
 
-    const minimumWALVersionRequired = "2023.09.18.001";
+    const minimumWALVersionRequired = "2025.04.10.001";
 
     enum Direction {
         OneWay = 1,
@@ -1511,11 +1512,11 @@ namespace WMEWAL_Streets {
     }
 
     export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>,
-        suggestedSegments: Array<WazeNS.Model.Object.SegmentSuggestion>): Promise<WMEWAL.IResults> {
+        suggestedSegments: Array<WazeNS.Model.Object.SegmentSuggestion>): Promise<WMEWAL.IResult> {
         return new Promise(resolve => {
             setTimeout(function () {
                 let streets = scan(segments, venues, suggestedSegments);
-                resolve({Streets: streets, Places: null, MapComments: null});
+                resolve({ID: 'S', count: streets});
             }, 0);
         });
     }
@@ -1959,7 +1960,7 @@ namespace WMEWAL_Streets {
                             }
                             if (settings.ExpiredRestrictions) {
                                 for (const r of segment.getDrivingRestrictions()) {
-                                    hasExpiredRestrictions = r.isExpired();
+                                    hasExpiredRestrictions = r.isExpired() && !r.isRepeatsYearly();
                                     if (hasExpiredRestrictions) {
                                         break;
                                     }
