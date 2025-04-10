@@ -14,7 +14,7 @@
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
 // @grant               GM_xmlhttpRequest
-// @version             2025.03.14.001
+// @version             2025.04.10.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -30,7 +30,8 @@ var WMEWAL;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Fixes for getting stuck in some situations.</li>'
+        + '<li>Add Perm Hazards plugin.</li>'
+        + '<li>Update for plugin status.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
@@ -45,16 +46,13 @@ var WMEWAL;
         mapComments;
         noData;
         errLoad;
+        stats;
         constructor(id) {
             this.root = $(id);
             this.div = this.root.children('#wal-progressBar');
             this.information = this.root.children("#wal-info");
             this.counts = this.root.children("#wal-counts");
-            this.streets = null;
-            this.places = null;
-            this.mapComments = null;
-            this.noData = null;
-            this.errLoad = null;
+            this.stats = [];
             this.div.children().hide();
             this.root.children().hide();
         }
@@ -83,61 +81,35 @@ var WMEWAL;
             this.div.children().show();
             this.div.show();
         }
-        setCount(streets, places, mapComments) {
-            if (streets != null) {
-                this.streets = streets;
-            }
-            if (places != null) {
-                this.places = places;
-            }
-            if (mapComments != null) {
-                this.mapComments = mapComments;
-            }
-            this.updateCounts();
-        }
-        addCount(streets, places, mapComments) {
-            if (streets != null) {
-                if (this.streets != null) {
-                    this.streets += streets;
-                }
-                else {
-                    this.streets = streets;
+        setIDCount(id, count) {
+            let item = null;
+            for (let i = 0; i < this.stats.length; i++) {
+                if (this.stats[i].ID == id) {
+                    item = this.stats[i];
+                    break;
                 }
             }
-            if (places != null) {
-                if (this.places != null) {
-                    this.places += places;
-                }
-                else {
-                    this.places = places;
-                }
+            if (item) {
+                item.count = count;
             }
-            if (mapComments != null) {
-                if (this.mapComments != null) {
-                    this.mapComments += mapComments;
-                }
-                else {
-                    this.mapComments = mapComments;
-                }
+            else {
+                this.stats.push({ ID: id, count });
             }
             this.updateCounts();
         }
-        addErrCount(noDat, erLd) {
-            if (noDat != null) {
-                if (this.noData != null) {
-                    this.noData += noDat;
-                }
-                else {
-                    this.noData = noDat;
+        addIDCount(id, add) {
+            let item = null;
+            for (let i = 0; i < this.stats.length; i++) {
+                if (this.stats[i].ID == id) {
+                    item = this.stats[i];
+                    break;
                 }
             }
-            if (erLd != null) {
-                if (this.errLoad != null) {
-                    this.errLoad += erLd;
-                }
-                else {
-                    this.errLoad = erLd;
-                }
+            if (item) {
+                item.count += add;
+            }
+            else {
+                this.stats.push({ ID: id, count: add });
             }
             this.updateCounts();
         }
@@ -155,20 +127,9 @@ var WMEWAL;
         }
         updateCounts() {
             let outputText = "";
-            if (this.streets != null) {
-                outputText += `S: ${this.streets.toLocaleString()}`;
-            }
-            if (this.places != null) {
-                outputText += (outputText.length > 0 ? ' ' : '') + `P: ${this.places.toLocaleString()}`;
-            }
-            if (this.mapComments != null) {
-                outputText += (outputText.length > 0 ? ' ' : '') + `MC: ${this.mapComments.toLocaleString()}`;
-            }
-            if (this.noData != null) {
-                outputText += (outputText.length > 0 ? ' ' : '') + `ND: ${this.noData.toLocaleString()}`;
-            }
-            if (this.errLoad != null) {
-                outputText += (outputText.length > 0 ? ' ' : '') + `Er: ${this.errLoad.toLocaleString()}`;
+            for (let i = 0; i < this.stats.length; i++) {
+                const it = this.stats[i];
+                outputText += (outputText.length > 0 ? ' ' : '') + `${it.ID}: ${it.count.toLocaleString()}`;
             }
             this.counts.text(outputText);
             this.counts.show();
@@ -388,13 +349,13 @@ var WMEWAL;
         css += ".wal-indent { padding-left: 20px }";
         css += ".wal-label { margin-left: 8px; font-weight: normal; margin-bottom: 0px }";
         css += '.wal-check { margin-top: 0px }';
-        css += "#wal-progressBarInfo { display: none; width: 90%; float: left; position: absolute; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; margin-bottom: -100%; background-color: #c9e1e9; z-index: 999; margin: 5px; margin-right: 20px; }";
-        css += ".wal-progressBarBG { margin-top: 2px; margin-bottom: 2px; margin-left: 2px; margin-right: 2px; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; padding-right: 0px; width: 33%; background-color: #93c4d3; border: 3px rgb(147, 196, 211); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; height: 22px;}";
+        css += "#wal-progressBarInfo { display: none; width: 90%; float: left; position: absolute; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; margin-bottom: -100%; background-color: var(--surface_variant_blue); z-index: 999; margin: 5px; margin-right: 20px; }";
+        css += ".wal-progressBarBG { margin-top: 2px; margin-bottom: 2px; margin-left: 2px; margin-right: 2px; padding-bottom: 0px; padding-top: 0px; padding-left: 0px; padding-right: 0px; width: 33%; background-color: var(--background_modal); border: 3px rgb(147, 196, 211); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; height: 22px;}";
         css += ".wal-progressBarFG { float: left; position: relative; bottom: 22px; height: 0px; text-align: center; width: 100% }";
         css += ".wal-textbox { width: 100% }";
         css += '#wal-info { text-align: center }';
         css += '#wal-counts { text-align: center }';
-        css += '#wal-tabPane { font-size: 10pt }';
+        css += '#wal-tabPane { font-size: 10pt; color: var(--content_p1); }';
         css += "#wal-tabPane hr { border: 1px inset; margin-top: 10px; margin-bottom: 10px }";
         css += "#wal-tabPane .tab-pane { margin-left: -15px }";
         css += '#wal-tabPane .tab-pane table { width: 100%; table-layout: fixed }';
@@ -1119,6 +1080,7 @@ var WMEWAL;
         needVenues = false;
         needSuggestedSegments = false;
         let needMapComments = false;
+        let needPHazards = false;
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
                 needSegments = needSegments || plugins[ix].SupportsSegments;
@@ -1126,6 +1088,9 @@ var WMEWAL;
                 needSuggestedSegments = needSuggestedSegments || plugins[ix].SupportsSuggestedSegments;
                 if (plugins[ix].Title === "Map Comments") {
                     needMapComments = true;
+                }
+                if (plugins[ix].Title === "Hazards") {
+                    needPHazards = true;
                 }
             }
         }
@@ -1181,6 +1146,39 @@ var WMEWAL;
                         if ($(groupToggle).prop("checked")) {
                             $(groupToggle).trigger("click");
                             layerToggle.push($(groupToggle).attr("id"));
+                        }
+                        break;
+                    case "layer-switcher-group_permanent_hazards":
+                        if (needPHazards) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                            // Loop through each child in the group
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                switch ($(c).attr("id")) {
+                                    /*case "layer-switcher-item_venues":
+                                    case "layer-switcher-item_residential_places":
+                                    case "layer-switcher-item_parking_places":
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break; */
+                                    default:
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                }
+                            });
+                        }
+                        else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
                         }
                         break;
                     case "layer-switcher-group_display":
@@ -1410,7 +1408,7 @@ var WMEWAL;
                                 log("warn", "SKIP - no data at location " + url);
                                 retryCount++;
                                 errList.push({ Message: 'no data', Location: url });
-                                pb.addErrCount(1, null);
+                                pb.addIDCount('NoData', 1);
                                 //retry = true;
                                 abortOnFailure = false;
                             }
@@ -1437,7 +1435,7 @@ var WMEWAL;
                         catch (e) {
                             log("warning", "moveMap: Timer triggered after map not successfully moved within 10 seconds");
                             errList.push({ Message: 'timeout', Location: url });
-                            pb.addErrCount(null, 1);
+                            pb.addIDCount('Error', 1);
                             retryCount++;
                             //retry = true;
                             abortOnFailure = true;
@@ -1452,7 +1450,7 @@ var WMEWAL;
                             }, 1000);
                         });
                         errList.push({ Message: 'exception', Location: url });
-                        pb.addErrCount(null, 1);
+                        pb.addIDCount('Error', 1);
                         retry = true;
                         retryCount++;
                         abortOnFailure = true;
@@ -1544,7 +1542,7 @@ var WMEWAL;
                 else {
                     const results = pluginResults[ix].value;
                     if (results != null) {
-                        pb.setCount(results.Streets, results.Places, results.MapComments);
+                        pb.setIDCount(results.ID, results.count);
                     }
                 }
             }

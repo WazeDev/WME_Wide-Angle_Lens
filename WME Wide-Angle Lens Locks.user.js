@@ -11,7 +11,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.03.14.001
+// @version             2025.04.10.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -29,12 +29,12 @@ var WMEWAL_Locks;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Fixes for getting stuck in some situations.</li>'
+        + '<li>Update for plugin status.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
     const ctlPrefix = `_wmewalLocks`;
-    const minimumWALVersionRequired = "2023.09.18.001";
+    const minimumWALVersionRequired = "2025.04.10.001";
     let IncludeInOutput;
     (function (IncludeInOutput) {
         IncludeInOutput[IncludeInOutput["Low"] = 1] = "Low";
@@ -561,7 +561,7 @@ var WMEWAL_Locks;
         return new Promise(resolve => {
             setTimeout(function () {
                 const count = scan(segments);
-                resolve({ Streets: count, Places: null, MapComments: null });
+                resolve({ ID: 'Lock', count });
             });
         });
     }
@@ -583,7 +583,8 @@ var WMEWAL_Locks;
                             for (let ixAlt = 0; ixAlt < e.altStreets.length && matches; ixAlt++) {
                                 matches = false;
                                 for (let ixSegAlt = 0; ixSegAlt < address.attributes.altStreets.length && !matches; ixSegAlt++) {
-                                    if (e.altStreets[ixAlt].id === address.attributes.altStreets[ixSegAlt].getAttribute('id')) {
+                                    //if (e.altStreets[ixAlt].id === address.attributes.altStreets[ixSegAlt].getAttribute('id')) {
+                                    if (e.altStreets[ixAlt].id === address.getStreet().getID()) {
                                         matches = true;
                                     }
                                 }

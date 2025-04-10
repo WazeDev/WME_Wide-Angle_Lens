@@ -5,7 +5,7 @@
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
-// @name                WME Wide-Angle Lens Places
+// @name                WME Wide-Angle Lens Hazards
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find place that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -17,28 +17,24 @@
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @updateURL           https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
-// @downloadURL         https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
 // @connect             greasyfork.org
 // ==/UserScript==
-// @updateURL           https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.meta.js
-// @downloadURL         https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.user.js
 
 /*global W, OL, I18n, $, WazeWrap, WMEWAL, OpenLayers */
 
-namespace WMEWAL_Places {
+namespace WMEWAL_Hazards {
 
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
-        + '<li>Update for plugin status.</li>'
+        + '<li>New plugin.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
-    const ctlPrefix = "_wmewalPlaces";
+    const ctlPrefix = "_wmewalHazards";
 
     const minimumWALVersionRequired = "2025.04.10.001";
 
@@ -69,28 +65,25 @@ namespace WMEWAL_Places {
         NoName = 1 << 14
     }
 
-    interface IPlace {
+    interface IHazard {
         id: string;
-        mainCategory: string;
-        categories: Array<string>;
+        phType: string;
+        phTypeNum: string;
+        direction: string;
+        speedLimit: number;
+        scheduleId: string;
+        scheduleText: string;
+        subTypes: Array<string>;
+        subTypeList: string;
         name: string;
-        lockLevel: number;
+        //lockLevel: number;
         pointGeometry: OpenLayers.Geometry.Point;
         // navigationPoint: WazeNS.Model.Object.NavigationPoint;
-        streetID: number;
-        placeType: string;
-        isApproved: boolean;
-        city: string;
-        state: string;
-        houseNumber: string;
+        segmentId: number;
         streetName: string;
+        cityName: string;
         lastEditor: string;
         createdBy: string;
-        url: string;
-        phone: string;
-        issues: number;
-        parkingLotType: string;
-        altNames: Array<string>;
     }
 
     interface IState {
@@ -104,37 +97,19 @@ namespace WMEWAL_Places {
     }
 
     interface ISaveableSettings {
+        HazardTypeMask: number;
         NoName: boolean;
         Regex: string;
         RegexIgnoreCase: boolean;
-        Category: string;
-        CategoryOperation: Operation,
-        NoHouseNumber: boolean;
         State: number;
         StateOperation: Operation;
-        LockLevel: number;
-        LockLevelOperation: Operation;
         EditableByMe: boolean;
-        AdLocked: boolean;
-        UpdateRequests: boolean;
-        PlaceType: string;
-        PendingApproval: boolean;
         CityRegex: string;
         CityRegexIgnoreCase: boolean;
         NoStreet: boolean;
         NoCity: boolean;
         LastModifiedBy: number;
-        UndefStreet: boolean;
         CreatedBy: number;
-        NoExternalProviders: boolean;
-        NoHours: boolean;
-        NoPhoneNumber: boolean;
-        BadPhoneNumberFormat: boolean;
-        NoWebsite: boolean;
-        NoEntryExitPoints: boolean;
-        ParkingLotType: boolean;
-        ParkingLotTypeFilter: string;
-        MissingBrand: boolean;
         IncludeAlt: boolean;
         Created: boolean;
         CreatedOperation: Operation;
@@ -142,8 +117,6 @@ namespace WMEWAL_Places {
         Updated: boolean;
         UpdatedOperation: Operation;
         UpdatedDate: number;
-        WebsiteRegex: string;
-        WebsiteRegexIgnoreCase: boolean;
         StreetRegex: string;
         StreetRegexIgnoreCase: boolean;
     }
@@ -155,19 +128,34 @@ namespace WMEWAL_Places {
         Name: string;
         Setting: ISaveableSettings;
     }
+    export enum HazardType {
+        Unknown = 0,
+        Speedbump = 1,
+        Topes = 2,
+        Tollbooth = 4,
+        SharpCurve = 8,
+        ComplexIntersection = 16,
+        ForkinRoad = 32,
+        LanesMerging = 64,
+        PedCrossing = 128,
+        SchoolZone = 256,
+        Cameras = 512,
+        RRCrossing = 1024,
+    }
 
-    const pluginName = "WMEWAL-Places";
+    const pluginName = "WMEWAL-Hazards";
 
-    export const Title = "Places";
-    export const MinimumZoomLevel = 17;
+    export const Title = "Hazards";
+    export const MinimumZoomLevel = 15;
     export const SupportsSegments = false;
     export const SupportsVenues = true;
 
-    const settingsKey = "WMEWALPlacesSettings";
-    const savedSettingsKey = "WMEWALPlacesSavedSettings";
+    const settingsKey = "WMEWALHazardsSettings";
+    const savedSettingsKey = "WMEWALHazardsSavedSettings";
     let settings: ISettings = null;
     let savedSettings: Array<ISavedSetting> = [];
-    let places: Array<IPlace>;
+    //let places: Array<IPlace>;
+    let hazards: Array<IHazard>;
     let nameRegex: RegExp = null;
     let cityRegex: RegExp = null;
     let websiteRegex: RegExp = null;
@@ -180,7 +168,13 @@ namespace WMEWAL_Places {
     let createdByName: string;
     let initCount = 0;
     let detectIssues = false;
-    let savedVenues: Array<string>
+    let haveNames = false;
+    let haveSpeeds = false;
+    let haveSubtypes = false;
+    let haveScheds = false;
+    let haveStreets = false;
+    //let savedVenues: Array<string>
+    let savedHazards: Array<string>;
 
     function onWmeReady() {
         initCount++;
@@ -250,7 +244,67 @@ namespace WMEWAL_Places {
         log('log',"Initialized");
 
         WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, updateText, greasyForkPage, wazeForumThread);
-        WMEWAL.RegisterPlugIn(WMEWAL_Places);
+        WMEWAL.RegisterPlugIn(WMEWAL_Hazards);
+    }
+    export function TranslateHazardType(wazeHazardType: number): string {
+        return I18n.t("permanent_hazards.type." + wazeHazardType.toString());
+    }
+
+    export function HazardTypeBitmaskToWazeHazardType(hazardType: HazardType): number {
+        switch (hazardType) {
+            case HazardType.Speedbump:
+                return 1;
+            case HazardType.Topes:
+                return 2;
+            case HazardType.Tollbooth:
+                return 3;
+            case HazardType.SharpCurve:
+                return 4;
+            case HazardType.ComplexIntersection:
+                return 5;
+            case HazardType.ForkinRoad:
+                return 6;
+            case HazardType.LanesMerging:
+                return 7;
+            case HazardType.PedCrossing:
+                return 8;
+            case HazardType.SchoolZone:
+                return 9;
+            case HazardType.Cameras:
+                return 10;
+            case HazardType.RRCrossing:
+                return 11;
+            default:
+                return 0;
+        }
+    }
+    export function WazeHazardTypeToHazardTypeBitmask(hazardType: number): HazardType {
+        switch (hazardType) {
+            case 1:
+                return HazardType.Speedbump
+            case 2:
+                return HazardType.Topes;
+            case 3:
+                return HazardType.Tollbooth;
+            case 4:
+                return HazardType.SharpCurve;
+            case 5:
+                return HazardType.ComplexIntersection;
+            case 6:
+                return HazardType.ForkinRoad;
+            case 7:
+                return HazardType.LanesMerging;
+            case 8:
+                return HazardType.PedCrossing;
+            case 9:
+                return HazardType.SchoolZone;
+            case 10:
+                return HazardType.Cameras;
+            case 11:
+                return HazardType.RRCrossing;
+            default:
+                return HazardType.Unknown;
+        }
     }
 
     export function GetTab(): string {
@@ -266,12 +320,13 @@ namespace WMEWAL_Places {
             `<button class='btn btn-primary' style='margin-left: 4px;' id='${ctlPrefix}DeleteSetting' title='Delete'>Delete</button></td></tr>`;
         html += `<tr><td style='border-top: 1px solid'><button class='btn btn-primary' style='margin-top: 6px;margin-bottom: 6px' id='${ctlPrefix}Reset' title='Reset'>Reset</button></td></tr>`;
 
-        html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Output Options</td></tr>";
+/*        html += "<tr><td class='wal-heading' style='border-top: 1px solid'>Output Options</td></tr>";
         html += `<tr><td class='wal-indent'><input type='checkbox' id='${ctlPrefix}IncludeAlt' class='wal-check' name='${ctlPrefix}IncludeAlt'>` +
             `<label for='${ctlPrefix}IncludeAlt' class='wal-label'>Include Alt Names</label></td></tr>`
+            */
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'><b>Filters (All of these)</b></td></tr>";
-        html += "<tr><td><b>Category:</b></td></tr>";
+/*        html += "<tr><td><b>Category:</b></td></tr>";
         html += `<tr><td class='wal-indent'><select id='${ctlPrefix}CategoryOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
             "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option>" +
@@ -291,7 +346,45 @@ namespace WMEWAL_Places {
 
         html += "<option value='" + rpp + "'>" + I18n.t("venues.categories." + rpp) + "</option>";
         html += "</select></td></tr>";
-        html += "<tr><td><b>Lock Level:</b></td></tr>" +
+        */
+        /*Speedbump = 1,
+        Topes = 2,
+        Tollbooth = 4,
+        SharpCurve = 8,
+        ComplexIntersection = 16,
+        ForkinRoad = 32,
+        LanesMerging = 64,
+        PedCrossing = 128,
+        SchoolZone = 256,
+        Cameras = 512,
+        RRCrossing = 1024,*/
+        html += "<tr><td class='wal-indent'>" +
+            `<button id='${ctlPrefix}HazardTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
+            `<button id='${ctlPrefix}HazardTypeClear' class='btn btn-primary' title='Clear'>Clear</button>` +
+            `<div><input type='checkbox' checked='checked' id='${ctlPrefix}HazardTypeSpeedbump' data-group='${ctlPrefix}HazardType' value='${HazardType.Speedbump}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeSpeedbump' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.Speedbump))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeTopes' data-group='${ctlPrefix}HazardType' value='${HazardType.Topes}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeTopes' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.Topes))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeTollbooth' data-group='${ctlPrefix}HazardType' value='${HazardType.Tollbooth}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeTollbooth' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.Tollbooth))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeSharpCurve' data-group='${ctlPrefix}HazardType' value='${HazardType.SharpCurve}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeSharpCurve' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.SharpCurve))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeComplexIntersection' data-group='${ctlPrefix}HazardType' value='${HazardType.ComplexIntersection}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeComplexIntersection' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.ComplexIntersection))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeForkinRoad' data-group='${ctlPrefix}HazardType' value='${HazardType.ForkinRoad}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeForkinRoad' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.ForkinRoad))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeLanesMerging' data-group='${ctlPrefix}HazardType' value='${HazardType.LanesMerging}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeLanesMerging' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.LanesMerging))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypePedCrossing' data-group='${ctlPrefix}HazardType' value='${HazardType.PedCrossing}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypePedCrossing' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.PedCrossing))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeSchoolZone' data-group='${ctlPrefix}HazardType' value='${HazardType.SchoolZone}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeSchoolZone' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.SchoolZone))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeCameras' data-group='${ctlPrefix}HazardType' value='${HazardType.Cameras}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeCameras' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.Cameras))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeRRCrossing' data-group='${ctlPrefix}HazardType' value='${HazardType.RRCrossing}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeRRCrossing' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.RRCrossing))}</label></div>` +
+            "</td></tr>";
+        /*html += "<tr><td><b>Lock Level:</b></td></tr>" +
             "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}LockLevelOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
@@ -305,8 +398,8 @@ namespace WMEWAL_Places {
             "<option value='5'>5</option>" +
             "<option value='6'>6</option>" +
             "<option value='7'>7</option>" +
-            "</select></td></tr>";
-        html += "<tr><td><b>Name RegEx</b></td></tr>";
+            "</select></td></tr>"; */
+/*        html += "<tr><td><b>Name RegEx</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<input type='text' id='${ctlPrefix}Name' class='wal-textbox'/><br/>` +
             `<input id='${ctlPrefix}IgnoreCase' class='wal-check' type='checkbox'/>` +
@@ -324,7 +417,8 @@ namespace WMEWAL_Places {
         html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}Website' class='wal-textbox'/><br/>` +
             `<input id='${ctlPrefix}WebsiteIgnoreCase' class='wal-check' type='checkbox'/>` +
             `<label for='${ctlPrefix}WebsiteIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
-        html += "<tr><td><b>State:</b></td></tr>";
+            */
+/*        html += "<tr><td><b>State:</b></td></tr>";
         html += "<tr><td style='padding-left:20px'>" +
             `<select id='${ctlPrefix}StateOp'>` +
             "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
@@ -336,6 +430,7 @@ namespace WMEWAL_Places {
             "<option value='area'>" + I18n.t("edit.venue.type.area") + "</option>" +
             "<option value='point'>" + I18n.t("edit.venue.type.point") + "</option>" +
             "</select></td></tr>";
+            */
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}CreatedBy'></select></td></tr>`;
@@ -362,7 +457,7 @@ namespace WMEWAL_Places {
             "</td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<input id='${ctlPrefix}UpdatedDate' type='date'/> <input id='${ctlPrefix}UpdatedTime' type='time'/></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}Editable' class='wal-check' type='checkbox'/>` +
+        /*html += `<tr><td><input id='${ctlPrefix}Editable' class='wal-check' type='checkbox'/>` +
             `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
         html += `<tr><td><input id='${ctlPrefix}ParkingLotType' class='wal-check' type='checkbox'/>` +
             `<label for='${ctlPrefix}ParkingLotType' class='wal-label'>`;
@@ -370,12 +465,12 @@ namespace WMEWAL_Places {
             "<option value='PRIVATE'>" + I18n.t("edit.venue.parking.types.parkingType.PRIVATE") + "</option>" +
             "<option value='PUBLIC'>" + I18n.t("edit.venue.parking.types.parkingType.PUBLIC") + "</option>" +
             "<option value='RESTRICTED'>" + I18n.t("edit.venue.parking.types.parkingType.RESTRICTED") + "</option>" +
-            "</select></label></td></tr>";
+            "</select></label></td></tr>"; */
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
         html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoName'/>` +
             `<label for='${ctlPrefix}NoName' class='wal-label'>No Name</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
+/*        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
             `<label for='${ctlPrefix}NoHouseNumber' class='wal-label'>Missing House Number</label></td></tr>`;
         html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoStreet'/>` +
             `<label for='${ctlPrefix}NoStreet' class='wal-label'>Missing Street</label></td></tr>`;
@@ -403,6 +498,7 @@ namespace WMEWAL_Places {
             `<label for='${ctlPrefix}NoEntryExitPoints' class='wal-label'>No Entry/Exit Points</label></td></tr>`;
         html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}MissingBrand' />` +
             `<label for='${ctlPrefix}MissingBrand' class='wal-label'>Missing Brand (GS)</label></td></tr>`;
+            */
 
         html += "</tbody></table>"
         return html;
@@ -422,6 +518,12 @@ namespace WMEWAL_Places {
         });
         $(`#${ctlPrefix}CreatedBy`).on("focus", function() {
             updateUsers($(`#${ctlPrefix}CreatedBy`))
+        });
+        $(`#${ctlPrefix}HazardTypeAny`).on("click", function () {
+            $(`input[data-group=${ctlPrefix}HazardType]`).prop("checked", true);
+        });
+        $(`#${ctlPrefix}HazardTypeClear`).on("click", function () {
+            $(`input[data-group=${ctlPrefix}HazardType]`).prop("checked", false);
         });
         $(`#${ctlPrefix}LoadSetting`).on("click", loadSetting);
         $(`#${ctlPrefix}SaveSetting`).on("click", saveSetting);
@@ -523,7 +625,19 @@ namespace WMEWAL_Places {
 
     function updateUI(): void {
         // $(`#${ctlPrefix}OutputTo`).val(settings.OutputTo);
-        $(`#${ctlPrefix}CategoryOp`).val(settings.CategoryOperation || Operation.Equal);
+        $(`#${ctlPrefix}HazardTypeSpeedbump`).prop("checked", settings.HazardTypeMask & HazardType.Speedbump);
+        $(`#${ctlPrefix}HazardTypeTopes`).prop("checked", settings.HazardTypeMask & HazardType.Topes);
+        $(`#${ctlPrefix}HazardTypeTollbooth`).prop("checked", settings.HazardTypeMask & HazardType.Tollbooth);
+        $(`#${ctlPrefix}HazardTypeSharpCurve`).prop("checked", settings.HazardTypeMask & HazardType.SharpCurve);
+        $(`#${ctlPrefix}HazardTypeComplexIntersection`).prop("checked", settings.HazardTypeMask & HazardType.ComplexIntersection);
+        $(`#${ctlPrefix}HazardTypeForkinRoad`).prop("checked", settings.HazardTypeMask & HazardType.ForkinRoad);
+        $(`#${ctlPrefix}HazardTypeLanesMerging`).prop("checked", settings.HazardTypeMask & HazardType.LanesMerging);
+        $(`#${ctlPrefix}HazardTypePedCrossing`).prop("checked", settings.HazardTypeMask & HazardType.PedCrossing);
+        $(`#${ctlPrefix}HazardTypeSchoolZone`).prop("checked", settings.HazardTypeMask & HazardType.SchoolZone);
+        $(`#${ctlPrefix}HazardTypeCameras`).prop("checked", settings.HazardTypeMask & HazardType.Cameras);
+        $(`#${ctlPrefix}HazardTypeRRCrossing`).prop("checked", settings.HazardTypeMask & HazardType.RRCrossing);
+
+/*        $(`#${ctlPrefix}CategoryOp`).val(settings.CategoryOperation || Operation.Equal);
         $(`#${ctlPrefix}Category`).val(settings.Category);
         $(`#${ctlPrefix}LockLevel`).val(settings.LockLevel);
         $(`#${ctlPrefix}LockLevelOp`).val(settings.LockLevelOperation || Operation.Equal);
@@ -543,9 +657,10 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}PendingApproval`).prop("checked", settings.PendingApproval);
         $(`#${ctlPrefix}NoStreet`).prop("checked", settings.NoStreet);
         $(`#${ctlPrefix}NoCity`).prop("checked", settings.NoCity);
+        */
         $(`#${ctlPrefix}LastModifiedBy`).val(settings.LastModifiedBy);
         $(`#${ctlPrefix}CreatedBy`).val(settings.CreatedBy);
-        $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
+/*        $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
         $(`#${ctlPrefix}NoHours`).prop("checked", settings.NoHours);
         $(`#${ctlPrefix}NoPhoneNumber`).prop("checked", settings.NoPhoneNumber);
         $(`#${ctlPrefix}BadPhoneNumberFormat`).prop("checked", settings.BadPhoneNumberFormat);
@@ -555,6 +670,7 @@ namespace WMEWAL_Places {
         $(`#${ctlPrefix}ParkingLotTypeFilter`).val(settings.ParkingLotTypeFilter);
         $(`#${ctlPrefix}MissingBrand`).prop("checked", settings.MissingBrand);
         $(`#${ctlPrefix}IncludeAlt`).prop("checked", settings.IncludeAlt);
+        */
         $(`#${ctlPrefix}Created`).prop("checked", settings.Created);
         $(`#${ctlPrefix}CreatedOp`).val(settings.CreatedOperation);
         if (settings.CreatedDate != null) {
@@ -579,10 +695,11 @@ namespace WMEWAL_Places {
             $(`#${ctlPrefix}UpdatedDate`).val("");
             $(`#${ctlPrefix}UpdatedTime`).val("");
         }
-        $(`#${ctlPrefix}Website`).val(settings.WebsiteRegex || "");
+/*        $(`#${ctlPrefix}Website`).val(settings.WebsiteRegex || "");
         $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked", settings.WebsiteRegexIgnoreCase);
         $(`#${ctlPrefix}Street`).val(settings.StreetRegex || "");
         $(`#${ctlPrefix}StreetIgnoreCase`).prop("checked", settings.StreetRegexIgnoreCase);
+        */
     }
 
     function loadSetting(): void {
@@ -631,14 +748,6 @@ namespace WMEWAL_Places {
             }
         }
 
-        if (nullif(s.WebsiteRegex, "") !== null) {
-            try {
-                r = (s.WebsiteRegexIgnoreCase ? new RegExp(s.WebsiteRegex, "i") : new RegExp(s.WebsiteRegex));
-            } catch (error) {
-                addMessage("Website RegEx is invalid");
-            }
-        }
-
         if (nullif(s.StreetRegex, "") !== null) {
             try {
                 r = (s.StreetRegexIgnoreCase ? new RegExp(s.StreetRegex, "i") : new RegExp(s.StreetRegex));
@@ -647,10 +756,10 @@ namespace WMEWAL_Places {
             }
         }
 
-        const selectedState = $(`#${ctlPrefix}State`).val();
+/*        const selectedState = $(`#${ctlPrefix}State`).val();
         if (nullif(selectedState, "") !== null && s.State === null) {
             addMessage("Invalid state selection");
-        }
+        } */
 
         const selectedModifiedUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedModifiedUser, "") !== null && s.LastModifiedBy === null) {
@@ -660,19 +769,6 @@ namespace WMEWAL_Places {
         const selectedCreatedUser = $(`#${ctlPrefix}CreatedBy`).val();
         if (nullif(selectedCreatedUser, "") !== null && s.CreatedBy === null) {
             addMessage("Invalid created user");
-        }
-
-        if (s.ParkingLotType) {
-            if (nullif(s.ParkingLotTypeFilter, "") === null) {
-                addMessage("Please select a parking lot type");
-            }
-            if (cat !== "" && cat !== "PARKING_LOT") {
-                addMessage("When filtering on parking lot type, category must be parking lot.");
-            }
-        }
-
-        if (s.MissingBrand && cat !== "" && cat !== "GAS_STATION" && cat !== "CAR_SERVICES") {
-            addMessage("Invalid category selected if checking for missing gas station brand");
         }
 
         if (s.Created && s.CreatedDate === null) {
@@ -724,37 +820,19 @@ namespace WMEWAL_Places {
 
     function getSettings(): ISaveableSettings {
         const s: ISaveableSettings = {
+            HazardTypeMask: 0,
             NoName: $(`#${ctlPrefix}NoName`).prop("checked"),
             Regex: null,
             RegexIgnoreCase: $(`#${ctlPrefix}IgnoreCase`).prop("checked"),
-            CategoryOperation: parseInt($(`#${ctlPrefix}CategoryOp`).val()),
-            Category: null,
-            NoHouseNumber: $(`#${ctlPrefix}NoHouseNumber`).prop("checked"),
             State: null,
             StateOperation: parseInt($(`#${ctlPrefix}StateOp`).val()),
-            LockLevel: null,
-            LockLevelOperation: parseInt($(`#${ctlPrefix}LockLevelOp`).val()),
             EditableByMe: $(`#${ctlPrefix}Editable`).prop("checked"),
-            AdLocked: $(`#${ctlPrefix}AdLocked`).prop("checked"),
-            UndefStreet: $(`#${ctlPrefix}UndefStreet`).prop("checked"),
-            UpdateRequests: $(`#${ctlPrefix}UpdateRequests`).prop("checked"),
-            PlaceType: null,
-            PendingApproval: $(`#${ctlPrefix}PendingApproval`).prop("checked"),
             CityRegex: null,
             CityRegexIgnoreCase: $(`#${ctlPrefix}CityIgnoreCase`).prop("checked"),
             NoStreet: $(`#${ctlPrefix}NoStreet`).prop("checked"),
             NoCity: $(`#${ctlPrefix}NoCity`).prop("checked"),
             LastModifiedBy: null,
             CreatedBy: null,
-            NoExternalProviders: $(`#${ctlPrefix}NoExternalProviders`).prop("checked"),
-            NoHours: $(`#${ctlPrefix}NoHours`).prop("checked"),
-            NoPhoneNumber: $(`#${ctlPrefix}NoPhoneNumber`).prop("checked"),
-            BadPhoneNumberFormat: $(`#${ctlPrefix}BadPhoneNumberFormat`).prop("checked"),
-            NoWebsite: $(`#${ctlPrefix}NoWebsite`).prop("checked"),
-            NoEntryExitPoints: $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked"),
-            ParkingLotType: $(`#${ctlPrefix}ParkingLotType`).prop("checked"),
-            ParkingLotTypeFilter: $(`#${ctlPrefix}ParkingLotTypeFilter`).val(),
-            MissingBrand: $(`#${ctlPrefix}MissingBrand`).prop("checked"),
             IncludeAlt: $(`#${ctlPrefix}IncludeAlt`).prop("checked"),
             Created: $(`#${ctlPrefix}Created`).prop("checked"),
             CreatedOperation: parseInt($(`#${ctlPrefix}CreatedOp`).val()),
@@ -762,17 +840,17 @@ namespace WMEWAL_Places {
             Updated: $(`#${ctlPrefix}Updated`).prop("checked"),
             UpdatedOperation: parseInt($(`#${ctlPrefix}UpdatedOp`).val()),
             UpdatedDate: null,
-            WebsiteRegex: null,
-            WebsiteRegexIgnoreCase: $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked"),
             StreetRegex: null,
             StreetRegexIgnoreCase: $(`#${ctlPrefix}StreetIgnoreCase`).prop("checked")
         };
 
+        $(`input[data-group=${ctlPrefix}HazardType]:checked`).each(function (ix, e) {
+            s.HazardTypeMask = s.HazardTypeMask | parseInt((<HTMLInputElement> e).value);
+        });
+
         s.Regex = nullif($(`#${ctlPrefix}Name`).val(), "");
 
         s.CityRegex = nullif($(`#${ctlPrefix}City`).val(), "");
-
-        s.WebsiteRegex = nullif($(`#${ctlPrefix}Website`).val(), "");
 
         s.StreetRegex = nullif($(`#${ctlPrefix}Street`).val(), "");
 
@@ -800,15 +878,6 @@ namespace WMEWAL_Places {
             }
         }
 
-        const selectedLockLevel = $(`#${ctlPrefix}LockLevel`).val();
-        if (selectedLockLevel != null && selectedLockLevel.length > 0) {
-            s.LockLevel = parseInt(selectedLockLevel);
-        }
-
-        s.PlaceType = nullif($(`#${ctlPrefix}Type`).val(), "");
-
-        s.Category = nullif($(`#${ctlPrefix}Category`).val(), "");
-
         let createdDate: string = $(`#${ctlPrefix}CreatedDate`).val();
         if (createdDate && createdDate.length > 0) {
             const createdTime: string = $(`#${ctlPrefix}CreatedTime`).val();
@@ -830,8 +899,6 @@ namespace WMEWAL_Places {
             }
             s.UpdatedDate = (new Date(updatedDate)).getTime();
         }
-
-
         return s;
     }
 
@@ -850,9 +917,14 @@ namespace WMEWAL_Places {
 
     export function ScanStarted(): boolean {
         let allOk = validateSettings();
-        places = [];
-        savedVenues = [];
-
+        hazards = [];
+        savedHazards = [];
+        haveNames = false;
+        haveSpeeds = false;
+        haveSubtypes = false;
+        haveScheds = false;
+        haveStreets = false;
+    
         if (allOk) {
             settings = getSettings();
 
@@ -866,12 +938,6 @@ namespace WMEWAL_Places {
                 cityRegex = (settings.CityRegexIgnoreCase ? new RegExp(settings.CityRegex, "i") : new RegExp(settings.CityRegex));
             } else {
                 cityRegex = null;
-            }
-
-            if (nullif(settings.WebsiteRegex, "") !== null) {
-                websiteRegex = (settings.WebsiteRegexIgnoreCase ? new RegExp(settings.WebsiteRegex, "i") : new RegExp(settings.WebsiteRegex));
-            } else {
-                websiteRegex = null;
             }
 
             if (nullif(settings.StreetRegex, "") !== null) {
@@ -905,20 +971,8 @@ namespace WMEWAL_Places {
             }
 
             detectIssues = settings.NoName ||
-                settings.NoHouseNumber ||
                 settings.NoStreet ||
-                settings.NoCity ||
-                settings.AdLocked ||
-                settings.UpdateRequests ||
-                settings.PendingApproval ||
-                settings.UndefStreet ||
-                settings.NoExternalProviders ||
-                settings.NoHours ||
-                settings.NoPhoneNumber ||
-                settings.BadPhoneNumberFormat ||
-                settings.NoWebsite ||
-                settings.NoEntryExitPoints ||
-                settings.MissingBrand;
+                settings.NoCity;
 
             updateSettings();
         }
@@ -930,58 +984,36 @@ namespace WMEWAL_Places {
         return new Promise(resolve => {
             setTimeout(function () {
                 const count = scan(segments, venues);
-                resolve({ID: 'P', count });
+                resolve({ID: 'PH', count});
             });
         });
     }
 
     function scan(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): number {
-        function checkCategory(categories: string[], category: string, operation: Operation): boolean {
-            const match = categories.find(function (e) {
-                return e.localeCompare(category) === 0;
-            });
-            if (typeof match === "undefined" || match == null || match.length === 0) {
-                return operation === Operation.NotEqual;
-            }
-            return operation === Operation.Equal;
-        }
 
-        const validPhoneRegex = new RegExp("\\(\\d\\d\\d\\) \\d\\d\\d-\\d\\d\\d\\d");
-
-        for (let ix = 0; ix < venues.length; ix++) {
-            const venue = venues[ix];
-            if (venue != null) {
-                const categories = venue.getAttribute('categories');
-                const address = venue.getAddress(W.model);
-                if (venue.getAttribute('streetID') && address && address.getCountry() == null) {
-                    log("warn", "no address for streetID " + venue.getAttribute('streetID') + ", venue " + venue.getAttribute('name') + " " + venue.getID());
-                }
-                const houseNum = venue.getAttribute('houseNumber') ?? "";
-                if ((settings.LockLevel == null ||
-                    (settings.LockLevelOperation === Operation.Equal && (venue.getAttribute('lockRank') || 0) + 1 === settings.LockLevel) ||
-                    (settings.LockLevelOperation === Operation.NotEqual && (venue.getAttribute('lockRank') || 0) + 1 !== settings.LockLevel)) &&
-                    (!settings.EditableByMe || venue.arePropertiesEditable() || venue.areUpdateRequestsEditable()) &&
-                    (settings.PlaceType == null || (settings.PlaceType === "point" && venue.isPoint() && !venue.is2D()) || (settings.PlaceType === "area" && !venue.isPoint() && venue.is2D())) &&
-                    (nameRegex == null || nameRegex.test(venue.getAttribute('name'))) &&
+        for (let h in W.model.permanentHazards.objects) {
+            const phazard = W.model.permanentHazards.getObjectById(Number(h));
+            if (phazard != null) {
+                if ((WazeHazardTypeToHazardTypeBitmask(phazard.getAttribute('type')) & settings.HazardTypeMask) && 
+                    //(!settings.EditableByMe || phazard.arePropertiesEditable() || phazard.areUpdateRequestsEditable()) &&
+                    (nameRegex == null || nameRegex.test(phazard.getAttribute('name'))) &&
                     (!settings.Created ||
-                        (settings.CreatedOperation === Operation.LessThan && venue.getAttribute('createdOn') < settings.CreatedDate) ||
-                        (settings.CreatedOperation === Operation.LessThanOrEqual && venue.getAttribute('createdOn') <= settings.CreatedDate) ||
-                        (settings.CreatedOperation === Operation.GreaterThanOrEqual && venue.getAttribute('createdOn') >= settings.CreatedDate) ||
-                        (settings.CreatedOperation === Operation.GreaterThan && venue.getAttribute('createdOn') > settings.CreatedDate)) &&
+                        (settings.CreatedOperation === Operation.LessThan && phazard.getAttribute('createdOn') < settings.CreatedDate) ||
+                        (settings.CreatedOperation === Operation.LessThanOrEqual && phazard.getAttribute('createdOn') <= settings.CreatedDate) ||
+                        (settings.CreatedOperation === Operation.GreaterThanOrEqual && phazard.getAttribute('createdOn') >= settings.CreatedDate) ||
+                        (settings.CreatedOperation === Operation.GreaterThan && phazard.getAttribute('createdOn') > settings.CreatedDate)) &&
                     (!settings.Updated ||
-                        (settings.UpdatedOperation === Operation.LessThan && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) < settings.UpdatedDate) ||
-                        (settings.UpdatedOperation === Operation.LessThanOrEqual && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) <= settings.UpdatedDate) ||
-                        (settings.UpdatedOperation === Operation.GreaterThanOrEqual && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) >= settings.UpdatedDate) ||
-                        (settings.UpdatedOperation === Operation.GreaterThan && (venue.getAttribute('updatedOn') || venue.getAttribute('createdOn')) > settings.UpdatedDate)) &&
+                        (settings.UpdatedOperation === Operation.LessThan && (phazard.getAttribute('updatedOn') || phazard.getAttribute('createdOn')) < settings.UpdatedDate) ||
+                        (settings.UpdatedOperation === Operation.LessThanOrEqual && (phazard.getAttribute('updatedOn') || phazard.getAttribute('createdOn')) <= settings.UpdatedDate) ||
+                        (settings.UpdatedOperation === Operation.GreaterThanOrEqual && (phazard.getAttribute('updatedOn') || phazard.getAttribute('createdOn')) >= settings.UpdatedDate) ||
+                        (settings.UpdatedOperation === Operation.GreaterThan && (phazard.getAttribute('updatedOn') || phazard.getAttribute('createdOn')) > settings.UpdatedDate)) &&
                     ((settings.CreatedBy === null) ||
-                        (venue.getCreatedBy() === settings.CreatedBy)) &&
+                        (phazard.getCreatedBy() === settings.CreatedBy)) &&
                     ((settings.LastModifiedBy === null) ||
-                        ((venue.getUpdatedBy() ?? venue.getCreatedBy()) === settings.LastModifiedBy)) &&
-                    (websiteRegex === null ||
-                        websiteRegex.test(venue.getAttribute('url')))) {
+                        ((phazard.getUpdatedBy() ?? phazard.getCreatedBy()) === settings.LastModifiedBy))  ) {
 
                     let issues = 0;
-
+/*
                     if (state != null) {
                         if (address && !address.isEmpty() && address.attributes.state) {
                             if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
@@ -992,7 +1024,7 @@ namespace WMEWAL_Places {
                             continue;
                         }
                     }
-
+*/
                     // if (settings.LastModifiedBy != null) {
                     //     if (venue.getAttribute('updatedBy') != null) {
                     //         if (venue.getAttribute('updatedBy') !== settings.LastModifiedBy) {
@@ -1008,13 +1040,7 @@ namespace WMEWAL_Places {
                     //         continue;
                     //     }
                     // }
-
-                    if (settings.Category != null) {
-                        if (!checkCategory(categories, settings.Category, settings.CategoryOperation)) {
-                            continue;
-                        }
-                    }
-
+/*
                     let regExMatched = false;
                     if (cityRegex != null) {
                         regExMatched = false;
@@ -1036,72 +1062,8 @@ namespace WMEWAL_Places {
                         }
                     }
 
-                    if (settings.ParkingLotType) {
-                        // Don't pay attention if we don't have a parking lot type
-                        if (!venue.getAttribute('categoryAttributes').PARKING_LOT ||
-                            venue.getAttribute('categoryAttributes').PARKING_LOT.parkingType !== settings.ParkingLotTypeFilter) {
-                            continue;
-                        }
-                    }
-
                     if (settings.NoName && !venue.getAttribute('name')) {
                         issues |= Issue.NoName;
-                    }
-
-                    if (settings.NoHouseNumber && houseNum == '') {
-                        issues |= Issue.MissingHouseNumber;
-                    }
-
-                    if (settings.AdLocked && venue.getAttribute('adLocked')) {
-                        issues |= Issue.AdLocked;
-                    }
-
-                    if (settings.UndefStreet && typeof W.model.streets.objects[venue.getAttribute('streetID')] === 'undefined') {
-                        issues |= Issue.UndefStreet;
-                    }
-
-                    if (settings.UpdateRequests && venue.hasOpenUpdateRequests()) {
-                        issues |= Issue.HasUpdateRequests;
-                    }
-
-                    if (settings.PendingApproval && !venue.isApproved()) {
-                        issues |= Issue.PendingApproval;
-                    }
-
-                    if (settings.NoStreet && (!address || address.isEmpty() || address.isEmptyStreet())) {
-                        issues |= Issue.MissingStreet;
-                    }
-
-                    if (settings.NoCity && (!address || address.isEmpty() || !address.getCity() || address.getCity().isEmpty())) {
-                        issues |= Issue.NoCity;
-                    }
-
-                    if (settings.NoExternalProviders && (!venue.getAttribute('externalProviderIDs') || venue.getAttribute('externalProviderIDs').length === 0)) {
-                        issues |= Issue.NoExternalProviders;
-                    }
-
-                    if (settings.NoHours && (!venue.getAttribute('openingHours') || venue.getAttribute('openingHours').length === 0)) {
-                        issues |= Issue.NoHours;
-                    }
-
-                    if (settings.NoPhoneNumber && !venue.getAttribute('phone')) {
-                        issues |= Issue.NoPhoneNumber;
-                    }
-
-                    if (settings.BadPhoneNumberFormat && (venue.getAttribute('phone') && !validPhoneRegex.test(venue.getAttribute('phone')))) {
-                        issues |= Issue.BadPhoneNumberFormat;
-                    }
-
-                    if (settings.NoWebsite && !venue.getAttribute('url')) {
-                        issues |= Issue.NoWebsite;
-                    }
-
-                    if (settings.NoEntryExitPoints && (!venue.getAttribute('entryExitPoints') || venue.getAttribute('entryExitPoints').length === 0)) {
-                        issues |= Issue.NoEntryExitPoints;
-                    }
-
-                    if (settings.MissingBrand && checkCategory(categories, "GAS_STATION", Operation.Equal) && venue.getAttribute('brand') === null) {
-                        issues |= Issue.MissingBrand;
                     }
 
                     if (detectIssues && issues === 0) {
@@ -1109,56 +1071,98 @@ namespace WMEWAL_Places {
                         continue;
                     }
 
-                    if (!WMEWAL.IsVenueInArea(venue)) {
-                        continue;
-                    }
-
+*/
                     // Don't add it if we've already done so
-                    if (savedVenues.indexOf(venue.getID()) === -1) {
-                        savedVenues.push(venue.getID());
-                        const lastEditorID = venue.getUpdatedBy() ?? venue.getCreatedBy();
+                    if (savedHazards.indexOf(phazard.getID()) === -1) {
+                        savedHazards.push(phazard.getID());
+                        const lastEditorID = phazard.getUpdatedBy() ?? phazard.getCreatedBy();
                         const lastEditor = W.model.users.getObjectById(lastEditorID);
-                        const createdByID = venue.getCreatedBy();
+                        const createdByID = phazard.getCreatedBy();
                         const createdBy = W.model.users.getObjectById(createdByID);
-                        const place: IPlace = {
-                            id: venue.getAttribute('id'),
-                            mainCategory: venue.getMainCategory(),
-                            name: venue.getAttribute('name'),
-                            lockLevel: venue.getLockRank() + 1,
-                            pointGeometry: venue.getOLGeometry().getCentroid(),
-                            // navigationPoint: venue.getNavigationPoint(),
-                            categories: categories,
-                            streetID: venue.getAttribute('streetID'),
-                            placeType: ((venue.isPoint() && !venue.is2D()) ? I18n.t("edit.venue.type.point") : I18n.t("edit.venue.type.area")),
-                            isApproved: venue.isApproved(),
-                            city: ((address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) ? address.attributes.city.getAttribute('name') : "No City"),
-                            state: ((address && !address.isEmpty() && address.attributes.state) ? address.attributes.state.getAttribute('name') : "No State"),
-                            houseNumber: houseNum,
-                            streetName: ((address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.getAttribute('name') : "") || "",
+                        const direction = phazard.getAttribute('direction');
+                        var speedLimit = phazard.getAttribute('speedLimit');
+                        if (W.model.isImperial) { speedLimit = Math.round(speedLimit * 0.621371); }
+                        const scheduleId = phazard.getAttribute('scheduleId');
+                        var scheduleText = '';
+                        if (scheduleId) {
+                            const sch = W.model.schedules.getObjectById(scheduleId);
+                            // It appears the schedules are not automatically loaded into the model when the map is moved.
+                            // So this seems to not usually get any data. It possible to request a specific schedule, not sure if that will be added here.
+                            if (sch) {
+                                scheduleText = sch.attributes.type;
+                                if (scheduleText == 'PUBLIC') {
+                                    scheduleText = sch.attributes.name;
+                                }
+                            }
+                            else {
+                                scheduleText = scheduleId.substring(scheduleId.length-12);
+                            }
+                        }
+                        const subTypes = phazard.getAttribute('subTypes');
+                        var subTypeList = '';
+                        if (subTypes.length > 0) {
+                            subTypeList = subTypes.join().replace("_LANE", "").replace("MOBILE_", "");
+                        }
+                        const segmentId = phazard.getAttribute('segmentId');
+                        var streetName = '';
+                        var cityName = '';
+                        if (segmentId) {
+                            const s = W.model.segments.getObjectById(segmentId);
+                            const address = s.getAddress(W.model);
+                            streetName = (address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.getAttribute('name') : "";
+                            cityName = (address && !address.isEmpty()) ? address.getCityName() : "";
+                            if (address.getCity().isEmpty()) {
+                                const alt = address.attributes.altStreets;
+                                for (var i = 0; i < alt.length; i++) { 
+                                    const a = alt[i];
+                                    if (!a.getCity().isEmpty()) {
+                                        cityName = a.getCityName();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        const phTypeNum = phazard.getAttribute('type');
+                        const hazard: IHazard = {
+                            id: phazard.getAttribute('id'),
+                            phTypeNum,
+                            phType: I18n.t("permanent_hazards.type." + phTypeNum.toString()),
+                            direction,
+                            speedLimit,
+                            scheduleId,
+                            scheduleText,
+                            subTypes,
+                            subTypeList,
+                            streetName,
+                            cityName,
+                            name: phazard.getAttribute('name'),
+                            pointGeometry: phazard.getOLGeometry().getCentroid(),
+                            segmentId,
                             lastEditor: lastEditor?.getAttribute('userName') ?? '',
                             createdBy: createdBy?.getAttribute('userName') ?? '',
-                            url: venue.getAttribute('url') ?? "",
-                            phone: venue.getAttribute('phone') ?? "",
-                            issues: issues,
-                            parkingLotType: (venue.getAttribute('categoryAttributes').PARKING_LOT && venue.getAttribute('categoryAttributes').PARKING_LOT.parkingType && I18n.t("edit.venue.parking.types.parkingType." + venue.getAttribute('categoryAttributes').PARKING_LOT.parkingType)) || "",
-                            altNames: [...venue.getAttribute('aliases')]
+                            //issues: issues,
                         };
-
-                        places.push(place);
+                        if (hazard.name) haveNames = true;
+                        if (hazard.speedLimit > 0) haveSpeeds = true;
+                        if (hazard.subTypes.length > 0) haveSubtypes = true;
+                        if (hazard.scheduleId) haveScheds = true;
+                        if (hazard.streetName) haveStreets = true;
+                    
+                        hazards.push(hazard);
                     }
                 }
             }
         }
 
-        return places.length;
+        return hazards.length;
     }
 
     export function ScanComplete(): void {
-        if (places.length === 0) {
-            alert(pluginName + ": No places found.");
+        if (hazards.length === 0) {
+            alert(pluginName + ": No hazards found.");
         } else {
-            places.sort(function (a, b) {
-                return a.name.localeCompare(b.name);
+            hazards.sort(function (a, b) {
+                return a.phType.localeCompare(b.phType);
             });
 
             const isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
@@ -1167,7 +1171,7 @@ namespace WMEWAL_Places {
             const outputFields = WMEWAL.outputFields ?? ['CreatedEditor','LastEditor','LockLevel','Lat','Lon'];
             const includeCreatedBy = outputFields.indexOf('CreatedEditor') > -1 || settings.CreatedBy !== null;
             const includeLastUpdatedBy = outputFields.indexOf('LastEditor') > -1 || settings.LastModifiedBy !== null;
-            const includeLockLevel = outputFields.indexOf('LockLevel') > -1 || settings.LockLevel !== null;
+            //const includeLockLevel = outputFields.indexOf('LockLevel') > -1 || settings.LockLevel !== null;
             const includeLat = outputFields.indexOf('Lat') > -1;
             const includeLon = outputFields.indexOf('Lon') > -1;
 
@@ -1177,20 +1181,18 @@ namespace WMEWAL_Places {
             let fileName: string;
             if (isCSV) {
                 lineArray = [];
-                // (settings.undefStreet ? "Street ID," : "")
-                columnArray = ["Name"];
-                if (settings.IncludeAlt) {
-                    columnArray.push("Alt Names");
-                }
-                columnArray.push("Categories","City","State");
-                if (includeLockLevel) {
-                    columnArray.push("Lock Level");
-                }
-                columnArray.push("Type","Street","House Number");
+                columnArray = ["Type"];
+                if (haveNames) { columnArray.push("Name"); }
                 if (detectIssues) {
                     columnArray.push("Issues");
                 }
-                columnArray.push("Website","Phone Number","Parking Lot Type");
+                if (haveSubtypes) { columnArray.push("SubTypes"); }
+                if (haveSpeeds) { columnArray.push("Speed"); }
+                if (haveScheds) { columnArray.push("Sched ID"); }
+                if (haveStreets) { columnArray.push("Street"); }
+                if (haveStreets) { columnArray.push("City"); }
+
+
                 if (includeCreatedBy) {
                     columnArray.push("Created By");
                 }
@@ -1205,7 +1207,7 @@ namespace WMEWAL_Places {
                 }
                 columnArray.push("Permalink");
                 lineArray.push(columnArray);
-                fileName = "Places_" + WMEWAL.areaName;
+                fileName = "Hazards_" + WMEWAL.areaName;
                 fileName += ".csv";
             }
 
@@ -1215,15 +1217,21 @@ namespace WMEWAL_Places {
 
             if (isTab) {
                 w = window.open();
-                w.document.write("<html><head><title>Places</title></head><body>");
+                w.document.write("<html><head><title>Hazards</title></head><body>");
                 w.document.write("<h3>Area: " + WMEWAL.areaName + "</h3>");
                 w.document.write("<h4>Filters</h4>");
-                if (settings.Category != null) {
-                    w.document.write(`<div>Category: ${getOperationText(settings.CategoryOperation)}${I18n.t("venues.categories." + settings.Category)}</div>`);
+                w.document.write("<div>Hazard Type: ");
+                let comma = "";
+                for (let rt in HazardType) {
+                    if (HazardType.hasOwnProperty(rt)) {
+                        const mask = parseInt(rt);
+                        if (!isNaN(mask) && settings.HazardTypeMask & mask) {
+                            w.document.write(comma + TranslateHazardType(HazardTypeBitmaskToWazeHazardType(mask)));
+                            comma = ", ";
+                        }
+                    }
                 }
-                if (settings.LockLevel != null) {
-                    w.document.write(`<div>Lock Level ${getOperationText(settings.LockLevelOperation)}${settings.LockLevel.toString()}</div>`);
-                }
+                w.document.write('</div>');
                 if (settings.Regex != null) {
                     w.document.write(`<div>Name matches: ${settings.Regex}`);
                     if (settings.RegexIgnoreCase) {
@@ -1231,7 +1239,7 @@ namespace WMEWAL_Places {
                     }
                     w.document.write('</div>');
                 }
-                if (streetRegex != null) {
+/*                if (streetRegex != null) {
                     w.document.write(`<div>Street Name matches: ${settings.StreetRegex}`);
                     if (settings.StreetRegexIgnoreCase) {
                         w.document.write(" (ignoring case)");
@@ -1245,11 +1253,9 @@ namespace WMEWAL_Places {
                     }
                     w.document.write('</div>');
                 }
+                    */
                 if (stateName != null) {
                     w.document.write(`<div>State ${getOperationText(settings.StateOperation)}${stateName}</div>`);
-                }
-                if (settings.PlaceType != null) {
-                    w.document.write(`<div>Type ${I18n.t("edit.venue.type." + settings.PlaceType)}</div>`);
                 }
                 if (settings.LastModifiedBy != null) {
                     w.document.write(`<div>Last modified by ${lastModifiedByName}</div>`);
@@ -1259,9 +1265,6 @@ namespace WMEWAL_Places {
                 }
                 if (settings.EditableByMe) {
                     w.document.write('<div>Editable by me</div>');
-                }
-                if (settings.ParkingLotType) {
-                    w.document.write(`<div>Parking lot type: ${settings.ParkingLotTypeFilter}</div>`);
                 }
                 if (settings.Created) {
                     w.document.write('<div>Created ');
@@ -1310,62 +1313,16 @@ namespace WMEWAL_Places {
                 if (settings.NoName) {
                     w.document.write("<div>No Name</div>");
                 }
-                if (settings.NoHouseNumber) {
-                    w.document.write("<div>Missing house number</div>");
-                }
-                if (settings.NoStreet) {
-                    w.document.write("<div>Missing street</div>");
-                }
-                if (settings.NoCity) {
-                    w.document.write("<div>Missing city</div>");
-                }
-                if (settings.AdLocked) {
-                    w.document.write("<div>Ad locked</div>");
-                }
-                if (settings.UpdateRequests) {
-                    w.document.write("<div>Has update requests</div>");
-                }
-                if (settings.PendingApproval) {
-                    w.document.write("<div>Pending approval</div>");
-                }
-                if (settings.UndefStreet) {
-                    w.document.write("<div>Undefined street ID</div>")
-                }
-                if (settings.NoExternalProviders) {
-                    w.document.write("<div>No external provider links</div>");
-                }
-                if (settings.NoHours) {
-                    w.document.write("<div>No hours</div>");
-                }
-                if (settings.NoPhoneNumber) {
-                    w.document.write("<div>No phone number</div>");
-                }
-                if (settings.BadPhoneNumberFormat) {
-                    w.document.write("<div>Bad phone number format</div>");
-                }
-                if (settings.NoWebsite) {
-                    w.document.write("<div>No website</div>");
-                }
-                if (settings.NoEntryExitPoints) {
-                    w.document.write("<div>No entry/exit points</div>");
-                }
-                if (settings.MissingBrand) {
-                    w.document.write("<div>Missing brand</div>");
-                }
-
-                w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><thead><tr><th>Name</th>");
-                if (settings.IncludeAlt) {
-                    w.document.write("<th>Alt Names</th>");
-                }
-                w.document.write("<th>Categories</th><th>City</th><th>State</th>");
-                if (includeLockLevel) {
-                    w.document.write("<th>Lock Level</th>");
-                }
-                w.document.write("<th>Type</th><th>Street</th><th>House Number</th>");
+                w.document.write("<table style='border-collapse: separate; border-spacing: 8px 0px'><thead><tr><th>Type</th>");
+                if (haveNames) { w.document.write("<th>Name</th>"); }
                 if (detectIssues) {
                     w.document.write("<th>Issues</th>");
                 }
-                w.document.write("<th>Website</th><th>Phone Number</th><th>Parking Lot Type</th>");
+                if (haveSubtypes) { w.document.write("<th>SubTypes</th>"); }
+                if (haveSpeeds) { w.document.write("<th>Speed</th>"); }
+                if (haveScheds) { w.document.write("<th>Sched ID</th>"); }
+                if (haveStreets) { w.document.write("<th>Street</th><th>City</th>"); }
+                
                 if (includeCreatedBy) {
                     w.document.write("<th>Created By</th>");
                 }
@@ -1381,42 +1338,35 @@ namespace WMEWAL_Places {
                 w.document.write("<th>Permalink</th></tr><thead><tbody>");
             }
 
-            for (let ixPlace = 0; ixPlace < places.length; ixPlace++) {
-                const place = places[ixPlace];
-                const plPlace = getPlacePL(place);
-                const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
-                let categories: String = "";
-                for (let ixCategory = 0; ixCategory < place.categories.length; ixCategory++) {
-                    if (ixCategory > 0) {
-                        categories += ", ";
-                    }
-                    categories += I18n.t("venues.categories." + place.categories[ixCategory]);
-                }
-                if (isCSV) {
-                    // (settings.undefStreet ? `${place.streetID},` : "")
-                    // columnArray = [`"${place.name}"`, `"${categories}"`, `"${place.city}"`, `"${place.state}"`, place.lockLevel.toString(),
-                    //     place.placeType, (place.adLocked ? "Yes" : "No"), (place.hasOpenUpdateRequests ? "Yes" : "No"), (place.isApproved ? "No" : "Yes"),
-                    //     `"${place.streetName}"`, `"${place.houseNumber}"`, (place.hasExternalProvider ? "Yes" : "No"), `"${place.url}"`, `"${place.phone}"`,
-                    //     (place.hasHours ? "Yes" : "No"), `"${place.lastEditor}"`, latlon.lat.toString(), latlon.lon.toString(), `"${plPlace}"`];
-                    columnArray = [`"${place.name}"`];
-                    if (settings.IncludeAlt) {
-                        columnArray.push(`"${place.altNames.join(',')}"`);
-                    }
+            for (let ixHazard = 0; ixHazard < hazards.length; ixHazard++) {
+                const ahazard = hazards[ixHazard];
+                const plPlace = getHazardPL(ahazard);
+                const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(ahazard.pointGeometry.x, ahazard.pointGeometry.y);
+                const tName = (ahazard.name == null) ? "" : ahazard.name;
+                const tSpeed = (ahazard.speedLimit > 0) ? ahazard.speedLimit.toString() : "";
 
-                    columnArray.push(`"${categories}"`, `"${place.city}"`, `"${place.state}"`);
-                    if (includeLockLevel) {
-                        columnArray.push(place.lockLevel.toString());
-                    }
-                    columnArray.push(place.placeType, `"${place.streetName}"`, `"${place.houseNumber}"`);
+                if (isCSV) {
+                    columnArray = [`"${ahazard.phType}"`];
+                    if (haveNames) { columnArray.push(tName); }
+                    
                     if (detectIssues) {
-                        columnArray.push(`"${getIssues(place.issues)}"`);
+                        //columnArray.push(`"${getIssues(ahazard.issues)}"`);
                     }
-                    columnArray.push(`"${place.url}"`, `"${place.phone}"`, `"${place.parkingLotType}"`);
+                    if (haveSubtypes) { 
+                        columnArray.push(ahazard.subTypeList); 
+                    }
+                    if (haveSpeeds) { columnArray.push(tSpeed); }
+                    if (haveScheds) { columnArray.push(ahazard.scheduleText); }
+                    if (haveStreets) { 
+                        columnArray.push(ahazard.streetName);
+                        columnArray.push(ahazard.cityName);
+                     }
+
                     if (includeCreatedBy) {
-                        columnArray.push(`"${place.createdBy}"`);
+                        columnArray.push(`"${ahazard.createdBy}"`);
                     }
                     if (includeLastUpdatedBy) {
-                        columnArray.push(`"${place.lastEditor}"`);
+                        columnArray.push(`"${ahazard.lastEditor}"`);
                     }
                     if (includeLat) {
                         columnArray.push(latlon.lat.toString());
@@ -1428,33 +1378,30 @@ namespace WMEWAL_Places {
                     lineArray.push(columnArray);
                 }
                 if (isTab) {
-                    w.document.write(`<tr><td>${place.name}</td>`);
-                    if (settings.IncludeAlt) {
-                        w.document.write(`<td>${place.altNames.join(", ")}</td>`);
-                    }
-                    w.document.write(`<td>${categories}</td>`);
-                    w.document.write(`<td>${place.city}</td>`);
-                    w.document.write(`<td>${place.state}</td>`);
-                    if (includeLockLevel) {
-                        w.document.write(`<td>${place.lockLevel.toString()}</td>`);
-                    }
-                    w.document.write(`<td>${place.placeType}</td>`);
-                    w.document.write(`<td>${place.streetName}</td>`);
-                    w.document.write(`<td>${place.houseNumber}</td>`);
+                    w.document.write(`<tr><td>${ahazard.phType}</td>`);
+                    if (haveNames) { w.document.write(`<td>${tName}</td>`); }
                     if (detectIssues) {
-                        w.document.write(`<td>${getIssues(place.issues)}</td>`);
+                        //w.document.write(`<td>${getIssues(ahazard.issues)}</td>`);
                     }
-                    // w.document.write(`<td>${place.adLocked ? "Yes" : "No"}</td>`);
-                    // w.document.write(`<td>${place.hasOpenUpdateRequests ? "Yes" : "No"}</td>`);
-                    // w.document.write(`<td>${place.isApproved ? "No" : "Yes"}</td>`);
-                    w.document.write(`<td>${place.url === "" ? place.url : `<a href="${/^http/.test(place.url) ? '' : 'http://'}${place.url}">${place.url}</a>`}</td>`);
-                    w.document.write(`<td>${place.phone}</td>`)
-                    w.document.write(`<td>${place.parkingLotType}</td>`)
+                    if (haveSubtypes) {
+                        w.document.write(`<td>${ahazard.subTypeList}</td>`);
+                    }
+                    if (haveSpeeds) {
+                        w.document.write(`<td>${tSpeed}</td>`);
+                    }
+                    if (haveScheds) {
+                        w.document.write(`<td>${ahazard.scheduleText}</td>`);
+                    }
+                    if (haveStreets) { 
+                        w.document.write(`<td>${ahazard.streetName}</td>`);
+                        w.document.write(`<td>${ahazard.cityName}</td>`);
+                    }
+
                     if (includeCreatedBy) {
-                        w.document.write(`<td>${place.createdBy}</td>`);
+                        w.document.write(`<td>${ahazard.createdBy}</td>`);
                     }
                     if (includeLastUpdatedBy) {
-                        w.document.write(`<td>${place.lastEditor}</td>`);
+                        w.document.write(`<td>${ahazard.lastEditor}</td>`);
                     }
                     if (includeLat) {
                         w.document.write(`<td>${latlon.lat.toString()}</td>`);
@@ -1490,8 +1437,8 @@ namespace WMEWAL_Places {
             }
         }
 
-        places = null;
-        savedVenues = null;
+        hazards = null;
+        savedHazards = null;
     }
 
     export function ScanCancelled(): void {
@@ -1500,37 +1447,19 @@ namespace WMEWAL_Places {
 
     function initSettings(): void {
         settings = {
+            HazardTypeMask: 2047,
             NoName: false,
             Regex: null,
             RegexIgnoreCase: true,
-            Category: null,
-            CategoryOperation: Operation.Equal,
-            NoHouseNumber: false,
             State: null,
             StateOperation: Operation.Equal,
-            LockLevel: null,
-            LockLevelOperation: Operation.Equal,
             EditableByMe: true,
-            AdLocked: false,
-            UpdateRequests: false,
-            PlaceType: null,
-            PendingApproval: false,
             CityRegex: null,
             CityRegexIgnoreCase: true,
             NoStreet: false,
             NoCity: false,
             LastModifiedBy: null,
             CreatedBy: null,
-            UndefStreet: false,
-            NoExternalProviders: false,
-            NoHours: false,
-            NoPhoneNumber: false,
-            BadPhoneNumberFormat: false,
-            NoWebsite: false,
-            NoEntryExitPoints: false,
-            ParkingLotType: false,
-            ParkingLotTypeFilter: null,
-            MissingBrand: false,
             IncludeAlt: false,
             Created: false,
             CreatedOperation: Operation.GreaterThanOrEqual,
@@ -1538,8 +1467,6 @@ namespace WMEWAL_Places {
             Updated: false,
             UpdatedOperation: Operation.GreaterThanOrEqual,
             UpdatedDate: null,
-            WebsiteRegex: null,
-            WebsiteRegexIgnoreCase: true,
             StreetRegex: null,
             StreetRegexIgnoreCase: true
         };
@@ -1566,49 +1493,6 @@ namespace WMEWAL_Places {
 
             if (!settings.hasOwnProperty("LastModifiedBy")) {
                 settings.LastModifiedBy = null;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("NoExternalProviders")) {
-                settings.NoExternalProviders = false;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("NoHours")) {
-                settings.NoHours = false;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("NoPhoneNumber")) {
-                settings.NoPhoneNumber = false;
-            }
-
-            if (!settings.hasOwnProperty("BadPhoneNumberFormat")) {
-                settings.BadPhoneNumberFormat = false;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("NoWebsite")) {
-                settings.NoWebsite = false;
-            }
-
-            if (!settings.hasOwnProperty("NoEntryExitPoints")) {
-                settings.NoEntryExitPoints = false;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("ParkingLotType")) {
-                settings.ParkingLotType = false;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("ParkingLotTypeFilter")) {
-                settings.ParkingLotTypeFilter = null;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("MissingBrand")) {
-                settings.MissingBrand = false;
                 upd = true;
             }
 
@@ -1647,16 +1531,6 @@ namespace WMEWAL_Places {
                 upd = true;
             }
 
-            if (!settings.hasOwnProperty("WebsiteRegex")) {
-                settings.WebsiteRegex = null;
-                upd = true;
-            }
-
-            if (!settings.hasOwnProperty("WebsiteRegexIgnoreCase")) {
-                settings.WebsiteRegexIgnoreCase = true;
-                upd = true;
-            }
-
             if (!settings.hasOwnProperty("StreetRegex")) {
                 settings.StreetRegex = null;
                 upd = true;
@@ -1681,9 +1555,10 @@ namespace WMEWAL_Places {
         return upd;
     }
 
-    function getPlacePL(place: IPlace): string {
-        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(place.pointGeometry.x, place.pointGeometry.y);
-        return WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, 5) + "&mode=0&venues=" + place.id;
+    //https://waze.com/en-US/editor?env=usa&lat=41.12872&lon=-81.87867&zoomLevel=18&permanentHazards=140620
+    function getHazardPL(haz: IHazard): string {
+        const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(haz.pointGeometry.x, haz.pointGeometry.y);
+        return WMEWAL.GenerateBasePL(latlon.lat, latlon.lon, 18) + "&permanentHazards=" + haz.id;
     }
 
     function getIssues(issues: number): string {

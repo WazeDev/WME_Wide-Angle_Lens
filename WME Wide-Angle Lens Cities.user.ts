@@ -12,7 +12,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.03.14.001
+// @version             2025.04.10.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -32,14 +32,14 @@ namespace WMEWAL_Cities {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
-        + '<li>Fixes for getting stuck in some situations.</li>'
+        + '<li>Update for plugin status.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40642';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
 
     const ctlPrefix = "_wmewalCities";
 
-    const minimumWALVersionRequired = "2023.09.18.001";
+    const minimumWALVersionRequired = "2025.04.10.001";
 
     enum Operation {
         Equal = 1,
@@ -635,13 +635,13 @@ namespace WMEWAL_Cities {
         return allOk;
     }
 
-    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResults> {
+    export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResult> {
         log("debug", "ScanExtent: started.");
 
         return new Promise(resolve => {
             setTimeout(function () {
                 const count = scan(segments);
-                resolve({Streets: count, Places: null, MapComments: null});
+                resolve({ID: 'City', count });
             }, 0);
         });
     }
