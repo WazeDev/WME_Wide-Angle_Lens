@@ -7,16 +7,18 @@
 // ==UserScript==
 // @name                WME Wide-Angle Lens Hazards
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
-// @description         Find place that match filter criteria
+// @description         Find permanent hazards
 // @author              vtpearce and crazycaveman
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.04.10.001
+// @version             2025.04.10.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @downloadURL         https://greasyfork.org/en/scripts/532474-wme-wide-angle-lens-hazards/code/WME%20Wide-Angle%20Lens%20Hazards.user.js
+// @updateURL           https://greasyfork.org/en/scripts/532474-wme-wide-angle-lens-hazards/code/WME%20Wide-Angle%20Lens%20Hazards.meta.js
 // @connect             greasyfork.org
 // ==/UserScript==
 
