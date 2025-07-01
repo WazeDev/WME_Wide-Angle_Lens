@@ -12,7 +12,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.04.10.001
+// @version             2025.06.30.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -33,6 +33,7 @@ namespace WMEWAL_Streets {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
+        + '<li>Enables road closures if hasRoadClosure is checked.</li>'
         + '<li>Check repeats yearly on expired restrictions.</li>'
         + '<li>Update for plugin status.</li>'
         + '</ul>';
@@ -280,6 +281,7 @@ namespace WMEWAL_Streets {
     export let SupportsSegments = true;
     export let SupportsVenues = false;
     export let SupportsSuggestedSegments = true;
+    export let SupportsClosures = false;
 
     const settingsKey = "WMEWALStreetsSettings";
     const savedSettingsKey = "WMEWALStreetsSavedSettings";
@@ -1474,6 +1476,7 @@ namespace WMEWAL_Streets {
 
             SupportsSuggestedSegments = (settings.SuggestedSegmentsOperation == 0 || settings.SuggestedSegmentsOperation == 1);
             SupportsSegments = (settings.SuggestedSegmentsOperation == 1 || settings.SuggestedSegmentsOperation == 2);
+            SupportsClosures = settings.HasClosures;
 
             detectIssues = settings.NoSpeedLimit
                 || settings.HasTimeBasedRestrictions
