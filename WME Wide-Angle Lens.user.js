@@ -14,7 +14,7 @@
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
 // @grant               GM_xmlhttpRequest
-// @version             2025.04.10.001
+// @version             2025.06.30.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -30,6 +30,7 @@ var WMEWAL;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
+        + '<li>Add support for road closure layer.</li>'
         + '<li>Add Perm Hazards plugin.</li>'
         + '<li>Update for plugin status.</li>'
         + '</ul>';
@@ -180,6 +181,7 @@ var WMEWAL;
     let currentCenter = null;
     let currentZoom = null;
     let layerToggle = null;
+    let needClosures = false;
     let needSegments = false;
     let needVenues = false;
     let needSuggestedSegments = false;
@@ -1076,6 +1078,7 @@ var WMEWAL;
             pb.hide();
             return;
         }
+        needClosures = false;
         needSegments = false;
         needVenues = false;
         needSuggestedSegments = false;
@@ -1083,6 +1086,7 @@ var WMEWAL;
         let needPHazards = false;
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
+                needClosures = needClosures || plugins[ix].SupportsClosures;
                 needSegments = needSegments || plugins[ix].SupportsSegments;
                 needVenues = needVenues || plugins[ix].SupportsVenues;
                 needSuggestedSegments = needSuggestedSegments || plugins[ix].SupportsSuggestedSegments;
@@ -1143,9 +1147,34 @@ var WMEWAL;
                         }
                         break;
                     case "layer-switcher-group_road":
-                        if ($(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
+                        if (needClosures) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                            // Loop through each child in the group
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                switch ($(c).attr("id")) {
+                                    case "layer-switcher-item_closures":
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                    default:
+                                        if ($(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                }
+                            });
+                        }
+                        else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
                         }
                         break;
                     case "layer-switcher-group_permanent_hazards":
