@@ -12,7 +12,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.04.10.001
+// @version             2025.06.30.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -30,6 +30,7 @@ var WMEWAL_Streets;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
+        + '<li>Enables road closures if hasRoadClosure is checked.</li>'
         + '<li>Check repeats yearly on expired restrictions.</li>'
         + '<li>Update for plugin status.</li>'
         + '</ul>';
@@ -125,6 +126,7 @@ var WMEWAL_Streets;
     WMEWAL_Streets.SupportsSegments = true;
     WMEWAL_Streets.SupportsVenues = false;
     WMEWAL_Streets.SupportsSuggestedSegments = true;
+    WMEWAL_Streets.SupportsClosures = false;
     const settingsKey = "WMEWALStreetsSettings";
     const savedSettingsKey = "WMEWALStreetsSavedSettings";
     let settings = null;
@@ -1244,6 +1246,7 @@ var WMEWAL_Streets;
             }
             WMEWAL_Streets.SupportsSuggestedSegments = (settings.SuggestedSegmentsOperation == 0 || settings.SuggestedSegmentsOperation == 1);
             WMEWAL_Streets.SupportsSegments = (settings.SuggestedSegmentsOperation == 1 || settings.SuggestedSegmentsOperation == 2);
+            WMEWAL_Streets.SupportsClosures = settings.HasClosures;
             detectIssues = settings.NoSpeedLimit
                 || settings.HasTimeBasedRestrictions
                 || settings.HasTimeBasedTurnRestrictions
