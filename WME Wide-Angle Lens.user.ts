@@ -34,6 +34,7 @@ namespace WMEWAL {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
+        + '<li>Add support for road closure layer.</li>'
         + '<li>Add Perm Hazards plugin.</li>'
         + '<li>Update for plugin status.</li>'
         + '</ul>';
@@ -196,6 +197,7 @@ namespace WMEWAL {
         SupportsSegments: boolean;
         SupportsSuggestedSegments?: boolean;
         SupportsVenues: boolean;
+        SupportsClosures?: boolean;
         GetTab(): string;
         TabLoaded(): void;
         ScanExtent(segments: Array<WazeNS.Model.Object.Segment>,
@@ -260,6 +262,7 @@ namespace WMEWAL {
     let currentCenter: OpenLayers.LonLat = null;
     let currentZoom: number = null;
     let layerToggle: Array<string> = null;
+    let needClosures = false;
     let needSegments = false;
     let needVenues = false;
     let needSuggestedSegments = false;
@@ -1279,7 +1282,7 @@ namespace WMEWAL {
             pb.hide();
             return;
         }
-
+        needClosures = false;
         needSegments = false;
         needVenues = false;
         needSuggestedSegments = false;
@@ -1287,6 +1290,7 @@ namespace WMEWAL {
         let needPHazards = false;
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
+                needClosures = needClosures || plugins[ix].SupportsClosures;
                 needSegments = needSegments || plugins[ix].SupportsSegments;
                 needVenues = needVenues || plugins[ix].SupportsVenues;
                 needSuggestedSegments = needSuggestedSegments || plugins[ix].SupportsSuggestedSegments;
@@ -1351,9 +1355,33 @@ namespace WMEWAL {
                         }
                         break;
                     case "layer-switcher-group_road":
-                        if ($(groupToggle).prop("checked")) {
-                            $(groupToggle).trigger("click");
-                            layerToggle.push($(groupToggle).attr("id"));
+                        if (needClosures) {
+                            if (!$(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
+                            // Loop through each child in the group
+                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                                switch ($(c).attr("id")) {
+                                    case "layer-switcher-item_closures":
+                                        if (!$(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                    default:
+                                        if ($(c).prop("checked")) {
+                                            $(c).trigger("click");
+                                            layerToggle.push($(c).attr("id"));
+                                        }
+                                        break;
+                                }
+                            });
+                        } else {
+                            if ($(groupToggle).prop("checked")) {
+                                $(groupToggle).trigger("click");
+                                layerToggle.push($(groupToggle).attr("id"));
+                            }
                         }
                         break;
                     case "layer-switcher-group_permanent_hazards":
