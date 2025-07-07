@@ -14,7 +14,7 @@
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
 // @grant               GM_xmlhttpRequest
-// @version             2025.06.30.001
+// @version             2025.04.10.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
