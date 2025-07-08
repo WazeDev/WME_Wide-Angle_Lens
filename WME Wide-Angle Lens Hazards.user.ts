@@ -8,11 +8,11 @@
 // @name                WME Wide-Angle Lens Hazards
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find permanent hazards
-// @author              vtpearce and crazycaveman
+// @author              DaveaCincy  (based on Places plugin by vtpearce and crazycaveman)
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.04.10.002
+// @version             2025.07.07.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -50,21 +50,9 @@ namespace WMEWAL_Hazards {
     }
 
     enum Issue {
-        MissingHouseNumber = 1 << 0,
-        MissingStreet = 1 << 1,
-        AdLocked = 1 << 2,
-        HasUpdateRequests = 1 << 3,
-        PendingApproval = 1 << 4,
-        UndefStreet = 1 << 5,
-        NoExternalProviders = 1 << 6,
-        NoHours = 1 << 7,
-        NoEntryExitPoints = 1 << 8,
-        MissingBrand = 1 << 9,
-        NoPhoneNumber = 1 << 10,
-        BadPhoneNumberFormat = 1 << 11,
-        NoWebsite = 1 << 12,
-        NoCity = 1 << 13,
-        NoName = 1 << 14
+        MissingStreet = 1 << 0,
+        NoCity = 1 << 1,
+        NoName = 1 << 2
     }
 
     interface IHazard {
@@ -1568,47 +1556,11 @@ namespace WMEWAL_Hazards {
         if (issues & Issue.NoName) {
             issuesList.push("No name");
         }
-        if (issues & Issue.AdLocked) {
-            issuesList.push("Ad locked");
-        }
-        if (issues & Issue.HasUpdateRequests) {
-            issuesList.push("Has update requests");
-        }
-        if (issues & Issue.MissingHouseNumber) {
-            issuesList.push("Missing house number");
-        }
         if (issues & Issue.MissingStreet) {
             issuesList.push("Missing street");
         }
         if (issues & Issue.NoCity) {
             issuesList.push("No City");
-        }
-        if (issues & Issue.NoExternalProviders) {
-            issuesList.push("No external provider IDs");
-        }
-        if (issues & Issue.PendingApproval) {
-            issuesList.push("Pending approval");
-        }
-        if (issues & Issue.UndefStreet) {
-            issuesList.push("Undefined street ID");
-        }
-        if (issues & Issue.NoHours) {
-            issuesList.push("No hours");
-        }
-        if (issues & Issue.NoPhoneNumber) {
-            issuesList.push("No phone number");
-        }
-        if (issues & Issue.BadPhoneNumberFormat) {
-            issuesList.push("Bad phone number format");
-        }
-        if (issues & Issue.NoHours) {
-            issuesList.push("No website");
-        }
-        if (issues & Issue.NoEntryExitPoints) {
-            issuesList.push("No entry/exit points");
-        }
-        if (issues & Issue.MissingBrand) {
-            issuesList.push("Missing brand");
         }
 
         if (issuesList.length === 0) {

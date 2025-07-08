@@ -14,7 +14,7 @@
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
 // @grant               GM_xmlhttpRequest
-// @version             2025.06.30.001
+// @version             2025.07.07.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -35,8 +35,7 @@ namespace WMEWAL {
 
     const updateText = '<ul>'
         + '<li>Add support for road closure layer.</li>'
-        + '<li>Add Perm Hazards plugin.</li>'
-        + '<li>Update for plugin status.</li>'
+        + '<li>Fix check/uncheck of layers.</li>'
         + '</ul>';
 
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -1329,7 +1328,7 @@ namespace WMEWAL {
                                 layerToggle.push($(groupToggle).attr("id"));
                             }
                             // Loop through each child in the group
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                            $(g).find("ul > li > div > wz-checkbox").each(function (ixChild, c) {
                                 switch ($(c).attr("id")) {
                                     case "layer-switcher-item_venues":
                                     case "layer-switcher-item_residential_places":
@@ -1361,7 +1360,7 @@ namespace WMEWAL {
                                 layerToggle.push($(groupToggle).attr("id"));
                             }
                             // Loop through each child in the group
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                            $(g).find("ul > li > div > wz-checkbox").each(function (ixChild, c) {
                                 switch ($(c).attr("id")) {
                                     case "layer-switcher-item_closures":
                                         if (!$(c).prop("checked")) {
@@ -1391,22 +1390,10 @@ namespace WMEWAL {
                                 layerToggle.push($(groupToggle).attr("id"));
                             }
                             // Loop through each child in the group
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-                                switch ($(c).attr("id")) {
-                                    /*case "layer-switcher-item_venues":
-                                    case "layer-switcher-item_residential_places":
-                                    case "layer-switcher-item_parking_places":
-                                        if (!$(c).prop("checked")) {
-                                            $(c).trigger("click");
-                                            layerToggle.push($(c).attr("id"));
-                                        }
-                                        break; */
-                                    default:
-                                        if (!$(c).prop("checked")) {
-                                            $(c).trigger("click");
-                                            layerToggle.push($(c).attr("id"));
-                                        }
-                                        break;
+                            $(g).find("ul > li > div > wz-checkbox").each(function (ixChild, c) {
+                                if (!$(c).prop("checked")) {
+                                    $(c).trigger("click");
+                                    layerToggle.push($(c).attr("id"));
                                 }
                             });
                         } else {
@@ -1423,7 +1410,7 @@ namespace WMEWAL {
                                 layerToggle.push($(groupToggle).attr("id"));
                             }
                             // Loop through each child in the group
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
+                            $(g).find("ul > li > div > wz-checkbox").each(function (ixChild, c) {
                                 switch ($(c).attr("id")) {
                                     case "layer-switcher-item_map_comments":
                                         if (!$(c).prop("checked")) {
@@ -1444,12 +1431,12 @@ namespace WMEWAL {
                                 $(groupToggle).trigger("click");
                                 layerToggle.push($(groupToggle).attr("id"));
                             }
-                            $(g).find("ul > li > wz-checkbox").each(function (ixChild, c) {
-                                if (!$(c).prop("checked")) {
+                            /*$(g).find("ul > li > div > wz-checkbox").each(function (ixChild, c) {
+                                if ($(c).prop("checked")) {
                                     $(c).trigger("click");
                                     layerToggle.push($(c).attr("id"));
                                 }
-                            });
+                            });*/
                         }
                         break;
                     case "layer-switcher-group_map_suggestions":

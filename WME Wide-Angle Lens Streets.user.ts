@@ -12,7 +12,7 @@
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.06.30.001
+// @version             2025.07.07.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -34,8 +34,6 @@ namespace WMEWAL_Streets {
 
     const updateText = '<ul>'
         + '<li>Enables road closures if hasRoadClosure is checked.</li>'
-        + '<li>Check repeats yearly on expired restrictions.</li>'
-        + '<li>Update for plugin status.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';

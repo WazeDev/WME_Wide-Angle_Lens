@@ -8,11 +8,11 @@
 // @name                WME Wide-Angle Lens Hazards
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find permanent hazards
-// @author              vtpearce and crazycaveman
+// @author              DaveaCincy  (based on Places plugin by vtpearce and crazycaveman)
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.04.10.002
+// @version             2025.07.07.001
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -45,21 +45,9 @@ var WMEWAL_Hazards;
     })(Operation || (Operation = {}));
     let Issue;
     (function (Issue) {
-        Issue[Issue["MissingHouseNumber"] = 1] = "MissingHouseNumber";
-        Issue[Issue["MissingStreet"] = 2] = "MissingStreet";
-        Issue[Issue["AdLocked"] = 4] = "AdLocked";
-        Issue[Issue["HasUpdateRequests"] = 8] = "HasUpdateRequests";
-        Issue[Issue["PendingApproval"] = 16] = "PendingApproval";
-        Issue[Issue["UndefStreet"] = 32] = "UndefStreet";
-        Issue[Issue["NoExternalProviders"] = 64] = "NoExternalProviders";
-        Issue[Issue["NoHours"] = 128] = "NoHours";
-        Issue[Issue["NoEntryExitPoints"] = 256] = "NoEntryExitPoints";
-        Issue[Issue["MissingBrand"] = 512] = "MissingBrand";
-        Issue[Issue["NoPhoneNumber"] = 1024] = "NoPhoneNumber";
-        Issue[Issue["BadPhoneNumberFormat"] = 2048] = "BadPhoneNumberFormat";
-        Issue[Issue["NoWebsite"] = 4096] = "NoWebsite";
-        Issue[Issue["NoCity"] = 8192] = "NoCity";
-        Issue[Issue["NoName"] = 16384] = "NoName";
+        Issue[Issue["MissingStreet"] = 1] = "MissingStreet";
+        Issue[Issue["NoCity"] = 2] = "NoCity";
+        Issue[Issue["NoName"] = 4] = "NoName";
     })(Issue || (Issue = {}));
     let HazardType;
     (function (HazardType) {
@@ -1437,47 +1425,11 @@ var WMEWAL_Hazards;
         if (issues & Issue.NoName) {
             issuesList.push("No name");
         }
-        if (issues & Issue.AdLocked) {
-            issuesList.push("Ad locked");
-        }
-        if (issues & Issue.HasUpdateRequests) {
-            issuesList.push("Has update requests");
-        }
-        if (issues & Issue.MissingHouseNumber) {
-            issuesList.push("Missing house number");
-        }
         if (issues & Issue.MissingStreet) {
             issuesList.push("Missing street");
         }
         if (issues & Issue.NoCity) {
             issuesList.push("No City");
-        }
-        if (issues & Issue.NoExternalProviders) {
-            issuesList.push("No external provider IDs");
-        }
-        if (issues & Issue.PendingApproval) {
-            issuesList.push("Pending approval");
-        }
-        if (issues & Issue.UndefStreet) {
-            issuesList.push("Undefined street ID");
-        }
-        if (issues & Issue.NoHours) {
-            issuesList.push("No hours");
-        }
-        if (issues & Issue.NoPhoneNumber) {
-            issuesList.push("No phone number");
-        }
-        if (issues & Issue.BadPhoneNumberFormat) {
-            issuesList.push("Bad phone number format");
-        }
-        if (issues & Issue.NoHours) {
-            issuesList.push("No website");
-        }
-        if (issues & Issue.NoEntryExitPoints) {
-            issuesList.push("No entry/exit points");
-        }
-        if (issues & Issue.MissingBrand) {
-            issuesList.push("Missing brand");
         }
         if (issuesList.length === 0) {
             return "None";
