@@ -6,13 +6,15 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Places
+// @version             2026.04.22.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find place that match filter criteria
 // @author              vtpearce and crazycaveman
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.07.07.001
+// @exclude             https://www.waze.com/editor/sdk/*
+// @exclude             https://beta.waze.com/editor/sdk/*
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -33,10 +35,10 @@ namespace WMEWAL_Places {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
-        + '<li>Update for plugin status.</li>'
+        + '<li>Compatibilty release.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
-    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+    const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
 
     const ctlPrefix = "_wmewalPlaces";
 
