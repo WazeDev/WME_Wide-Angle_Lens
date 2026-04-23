@@ -1,3 +1,4 @@
+"use strict";
 /// <reference path="../typescript-typings/globals/openlayers/index.d.ts" />
 /// <reference path="../typescript-typings/I18n.d.ts" />
 /// <reference path="../typescript-typings/waze.d.ts" />
@@ -5,16 +6,19 @@
 /// <reference path="../typescript-typings/globals/geojson/index.d.ts" />
 /// <reference path="../typescript-typings/wazewrap.d.ts" />
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
+/// <reference path="../node_modules/wme-sdk-typings/index.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
+// @version             2026.04.22.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
+// @exclude             https://www.waze.com/editor/sdk/*
+// @exclude             https://beta.waze.com/editor/sdk/*
 // @grant               GM_xmlhttpRequest
-// @version             2025.07.07.001
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -24,14 +28,17 @@
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418291-wme-wide-angle-lens-beta/code/WME%20Wide-Angle%20Lens.user.js
+//Object.defineProperty(exports, "__esModule", { value: true });
+/* global W, OL, $, WazeWrap, OpenLayers, I18n */
 var WMEWAL;
 (function (WMEWAL) {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
+    const scriptName = GM_info.script.name;
+    const scriptId = 'wmewal';
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Add support for road closure layer.</li>'
-        + '<li>Fix check/uncheck of layers.</li>'
+        + '<li>Updates for WazeWrap changes.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
@@ -41,11 +48,6 @@ var WMEWAL;
         div;
         information;
         counts;
-        streets;
-        places;
-        mapComments;
-        noData;
-        errLoad;
         stats;
         constructor(id) {
             this.root = $(id);
@@ -174,6 +176,7 @@ var WMEWAL;
     // let segments: Array<string> = null;
     // let venues: Array<string> = null;
     WMEWAL.areaName = null;
+    WMEWAL.alwaysLoadClosures = false;
     const defaultOutputFields = ['CreatedEditor', 'LastEditor', 'LockLevel', 'Lat', 'Lon'];
     let currentLon;
     let currentLat;
@@ -187,41 +190,33 @@ var WMEWAL;
     let cancelled = false;
     let totalViewports;
     let countViewports;
-    let mapReady = false;
-    let modelReady = false;
+    //let mapReady = false;
+    //let modelReady = false;
     let settings = null;
     let plugins = [];
     const settingsKey = "WMEWAL_Settings";
     const layerName = "WMEWAL_Areas";
+    const layerCheckbox = "Wide-Angle Lens Areas";
     let pb = null;
-    let initCount = 0;
+    //let initCount = 0;
     let layerCheckboxAdded = false;
     let WALMap;
     let errList = [];
-    function onWmeReady() {
-        initCount++;
-        if (WazeWrap && WazeWrap.Ready) {
-            log('debug', 'WazeWrap ready.');
-            init();
-        }
-        else {
-            if (initCount < 60) {
-                log('debug', 'WazeWrap not ready. Trying again...');
-                setTimeout(onWmeReady, 1000);
+    const sandboxed = typeof unsafeWindow !== 'undefined';
+    const pageWindow = sandboxed ? unsafeWindow : window;
+    pageWindow.SDK_INITIALIZED.then(() => {
+        WMEWAL.sdk = pageWindow.getWmeSdk({ scriptId, scriptName });
+        WMEWAL.sdk.Events.once({ eventName: 'wme-ready' }).then(async () => {
+            for (let initCount = 1; initCount <= 100; initCount++) {
+                if (WazeWrap?.Ready)
+                    return init();
+                else if (initCount === 1)
+                    console.log('WAL: Waiting for WazeWrap...');
+                await new Promise(r => setTimeout(r, 200));
             }
-            else {
-                log('error', 'WazeWrap not ready. Giving up.');
-            }
-        }
-    }
-    function bootstrap() {
-        if (W?.userscripts?.state.isReady) {
-            onWmeReady();
-        }
-        else {
-            document.addEventListener('wme-ready', onWmeReady, { once: true });
-        }
-    }
+            console.error('WAL: WazeWrap loading failed. Giving up.');
+        });
+    });
     function loadScriptUpdateMonitor() {
         let updateMonitor;
         try {
@@ -233,8 +228,6 @@ var WMEWAL;
         }
     }
     async function init() {
-        const sandboxed = typeof unsafeWindow !== 'undefined';
-        const pageWindow = sandboxed ? unsafeWindow : window;
         const walAvailable = pageWindow.WMEWAL;
         loadScriptUpdateMonitor();
         if (typeof (Storage) !== "undefined") {
@@ -356,9 +349,8 @@ var WMEWAL;
         css += ".wal-textbox { width: 100% }";
         css += '#wal-info { text-align: center }';
         css += '#wal-counts { text-align: center }';
-        css += '#wal-tabPane { font-size: 10pt; color: var(--content_p1); }';
+        css += '#wal-tabPane { font-size: 10pt; color: var(--content_p1); margin-left: 4px; margin-bottom:4px; }';
         css += "#wal-tabPane hr { border: 1px inset; margin-top: 10px; margin-bottom: 10px }";
-        css += "#wal-tabPane .tab-pane { margin-left: -15px }";
         css += '#wal-tabPane .tab-pane table { width: 100%; table-layout: fixed }';
         style.innerHTML = css;
         document.body.appendChild(style);
@@ -378,13 +370,9 @@ var WMEWAL;
             window.WMEWAL = WMEWAL;
     }
     async function makeTab() {
-        const { tabLabel, tabPane } = W.userscripts.registerSidebarTab('WMEWAL');
+        const { tabLabel, tabPane } = await WMEWAL.sdk.Sidebar.registerScriptTab();
         tabLabel.innerText = 'WAL';
         tabLabel.title = 'Wide-Angle Lens';
-        // const userTabs = $("#user-info");
-        // const navTabs = $("ul.nav-tabs", userTabs).filter(":first");
-        // const tabContent = $(".tab-content", userTabs).filter(":first");
-        // navTabs.append("<li><a href='#sidepanel-wme-wal' data-toggle='tab'>WAL</a></li>");
         const tab = $("<div id='wal-tabPane'><h4>Wide-Angle Lens <span style='font-size:11px;'>v" + SCRIPT_VERSION + "</span></h4></div>");
         // const addon = $("").appendTo(tab);
         const pbi = $("<div/>").attr("id", "wal-progressBarInfo").addClass("wal-ProgressBarInfo").appendTo(tab);
@@ -444,7 +432,6 @@ var WMEWAL;
             outputField.attr('selected', 'selected');
         }
         tabPane.innerHTML = $(tab)[0].outerHTML;
-        await W.userscripts.waitForElementConnected(tabPane);
         $("#_wmewalScanOutputTo").val(settings.OutputTo || "csv");
         WMEWAL.outputTo = parseOutputTo(settings.OutputTo || "csv");
         $('#_wmewalAddBOM').prop('checked', settings.AddBOM);
@@ -481,8 +468,8 @@ var WMEWAL;
     }
     async function recreateTab() {
         log("Debug", "Tab stuff");
-        W.userscripts.removeSidebarTab('WMEWAL');
-        await makeTab();
+        //W.userscripts.removeSidebarTab('WMEWAL');
+        //await makeTab();
         plugins.forEach(function (plugin) {
             log("Debug", "Running for plugin: " + plugin.Title);
             updatePluginList();
@@ -584,7 +571,6 @@ var WMEWAL;
             maLayer = new OpenLayers.Layer.Vector(layerName, {});
             I18n.translations[I18n.currentLocale()].layers.name[layerName] = "Wide-Angle Lens Areas";
             W.map.addLayer(maLayer);
-            // W.map.addUniqueLayer(maLayer);
             maLayer.setVisibility(settings.showLayer);
         }
         maLayer.removeAllFeatures({
@@ -610,11 +596,14 @@ var WMEWAL;
         }
         maLayer.addFeatures(features);
         if (!layerCheckboxAdded) {
-            WazeWrap.Interface.AddLayerCheckbox("display", "Wide-Angle Lens Areas", settings.showLayer, function (checked) {
-                maLayer.setVisibility(checked);
-                settings.showLayer = checked;
-                updateSettings();
-            });
+            WMEWAL.sdk.LayerSwitcher.addLayerCheckbox({ name: layerCheckbox, isChecked: settings.showLayer });
+            WMEWAL.sdk.Events.on({ eventName: 'wme-layer-checkbox-toggled', eventHandler: (evt) => {
+                    if (evt.name === layerCheckbox) {
+                        maLayer.setVisibility(evt.checked);
+                        settings.showLayer = evt.checked;
+                        updateSettings();
+                    }
+                } });
             layerCheckboxAdded = true;
         }
     }
@@ -806,76 +795,29 @@ var WMEWAL;
         topLeft = new OpenLayers.Geometry.Point(bounds.left, bounds.top);
         bottomRight = new OpenLayers.Geometry.Point(bounds.right, bounds.bottom);
     }
-    // function onOperationDone(context: any): void {
-    //     log("Debug","onOperationDone started");
-    //     // Handle situation where onOperationDone is triggered twice.
-    //     if (!cancelled) {
-    //         scanExtent()
-    //             .done(function () {
-    //                 log("Debug","scanExtent deferred done.");
-    //                 let progress = Math.floor(countViewports / totalViewports * 100);
-    //                 pb.update(progress);
-    //                 moveToNextLocation();
-    //             })
-    //             .fail(function() {
-    //                 log("Debug","scanExtent deferred failed.");
-    //                 alert("There was a problem with one of the plugins and the scan is being canceled.");
-    //                 cancel();
-    //             });
-    //     }
-    // }
-    function onModelReadyWW() {
-        return new Promise(resolve => {
-            WazeWrap.Model.onModelReady(function () {
-                resolve();
-            }, false, null);
-        });
-    }
-    function onModelReady(now) {
-        const modelPromise = new Promise(resolve => {
-            const mergeend = function () {
-                resolve();
-                W.model.events.unregister("mergeend", null, mergeend);
-            };
-            W.model.events.register("mergeend", null, mergeend);
-        });
-        const mapPromise = new Promise(resolve => {
-            const operationDone = function () {
-                resolve();
-                W.app.layout.model.off('operationDone', operationDone);
-            };
-            W.app.layout.model.on('operationDone', operationDone);
-        });
-        // const featuresPromise : Promise<void> = new Promise(resolve => {
-        //     const loadingFeatures = function () {
-        //         resolve();
-        //         W.app.layout.model.off('loadingFeatures', loadingFeatures);
-        //     };
-        //     W.app.layout.model.on('loadingFeatures', loadingFeatures);
-        // });
-        if (now && WazeWrap.Util.mapReady() && WazeWrap.Util.modelReady()) {
-            return Promise.resolve();
-        }
-        else {
-            return Promise.all([modelPromise, mapPromise]).then(() => {
-                console.log('All promises resolved');
-            });
-        }
-    }
-    ;
     async function waitFeaturesLoaded() {
-        var ldf;
-        for (let j = 0; j < 100; j++) {
-            ldf = W.app.layout.model.attributes.loadingFeatures;
-            if (!ldf)
-                break;
-            //log("debug", "wait for features " + j);
-            await new Promise(r => setTimeout(r, 200));
-        }
-        if (!ldf) {
-            await new Promise(r => setTimeout(r, 50));
-            //log("debug", "features loaded" );
-        }
+        var count = 1;
+        return new Promise(function (resolve) {
+            var interval = setInterval(function () {
+                const ldf = W.app.attributes.loadingFeatures; // SDK - need access to this status
+                const pend = W.app.attributes.pendingOperations.length;
+                console.debug('WAL - pendingOps: ' + pend + ' ldf: ' + ldf);
+                count++;
+                //if (pend > 0) {
+                //    console.debug('WAL - pending: ' + W.app.attributes.pendingOperations.join());
+                //}
+                if (!ldf && pend == 0) {
+                    clearInterval(interval);
+                    resolve(null);
+                }
+                else if (count > 100) {
+                    clearInterval(interval);
+                    ;
+                    console.warn('WAL - timeout waiting for features loaded');
+                    resolve(null);
+                }
+            }, 100);
+        });
     }
     function cancelScan() {
         cancelled = true;
@@ -1077,7 +1019,7 @@ var WMEWAL;
             pb.hide();
             return;
         }
-        needClosures = false;
+        needClosures = WMEWAL.alwaysLoadClosures;
         needSegments = false;
         needVenues = false;
         needSuggestedSegments = false;
@@ -1408,12 +1350,12 @@ var WMEWAL;
                 retry = false;
                 if (!cancelled) {
                     try {
-                        var p = onModelReady(false);
-                        W.map.moveTo({ lon: currentLon, lat: currentLat });
-                        // W.map.setCenter(new OpenLayers.LonLat(currentLon, currentLat));
+                        //var p = onModelReady(false);
+                        //const lonLat = { lat: +lat, lon: +lon };
+                        WMEWAL.sdk.Map.setMapCenter({ lonLat: latlon });
+                        let p = waitFeaturesLoaded();
                         try {
                             await promiseTimeout(10000, p);
-                            waitFeaturesLoaded();
                             const ven = W.model.venues.getObjectArray();
                             const cityc = W.model.cities.getObjectArray().length;
                             const cntryc = W.model.countries.getObjectArray().length;
@@ -2234,6 +2176,4 @@ var WMEWAL;
         };
         return LZString;
     })();
-    /* tslint:enable */
-    bootstrap();
 })(WMEWAL || (WMEWAL = {}));

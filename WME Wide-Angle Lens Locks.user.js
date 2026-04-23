@@ -5,13 +5,15 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Locks
+// @version             2026.04.22.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find segments that don't match lock levels
 // @author              vtpearce and crazycaveman
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.07.07.001
+// @exclude             https://www.waze.com/editor/sdk/*
+// @exclude             https://beta.waze.com/editor/sdk/*
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -29,10 +31,10 @@ var WMEWAL_Locks;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Update for plugin status.</li>'
+        + '<li>Compatibility release.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40643';
-    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+    const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
     const ctlPrefix = `_wmewalLocks`;
     const minimumWALVersionRequired = "2025.04.10.001";
     let IncludeInOutput;

@@ -6,13 +6,15 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Streets
+// @version             2026.04.22.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets that match filter criteria
 // @author              vtpearce and crazycaveman
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.07.07.001
+// @exclude             https://www.waze.com/editor/sdk/*
+// @exclude             https://beta.waze.com/editor/sdk/*
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -30,10 +32,10 @@ var WMEWAL_Streets;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>Enables road closures if hasRoadClosure is checked.</li>'
+        + '<li>Includes TTS Override text if has TTS is checked.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
-    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+    const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
     const ctlPrefix = "_wmewalStreets";
     const minimumWALVersionRequired = "2025.04.10.001";
     let Direction;
@@ -153,6 +155,8 @@ var WMEWAL_Streets;
     const mToFt = 3.28084;
     let isImperial;
     let includeShields;
+    let segTTSOver;
+    let scanHasTTS;
     function onWmeReady() {
         initCount++;
         if (WazeWrap && WazeWrap.Ready && typeof (WMEWAL) !== 'undefined' && WMEWAL && WMEWAL.RegisterPlugIn) {
@@ -1143,6 +1147,7 @@ var WMEWAL_Streets;
         streets = [];
         roundabouts = [];
         savedSegments = [];
+        scanHasTTS = false;
         const allOk = validateSettings();
         if (allOk) {
             settings = getSettings();
@@ -1364,7 +1369,8 @@ var WMEWAL_Streets;
                         shieldText: ps != null ? ps.getAttribute('signText') || '' : '',
                         shieldDirection: ps != null ? ps.getAttribute('direction') || '' : '',
                         type: 'segment',
-                        rejectionReason: null
+                        rejectionReason: null,
+                        ttsOverrides: ''
                     };
                     if (settings.IncludeAltNames) {
                         if (s.getAttribute('streetIDs') != null) {
@@ -1398,6 +1404,7 @@ var WMEWAL_Streets;
                     type: 'segment'
                 });
                 thisStreet.geometries.addComponents([s.getAttribute('geometry').clone()]);
+                thisStreet.ttsOverrides += segTTSOver;
             }
         }
         function addSuggestedSegment(s) {
@@ -1430,7 +1437,8 @@ var WMEWAL_Streets;
                     shieldText: '',
                     shieldDirection: '',
                     type: 'suggestedsegment',
-                    rejectionReason: s.getAttribute('rejectionReason')
+                    rejectionReason: s.getAttribute('rejectionReason'),
+                    ttsOverrides: ''
                 };
                 thisStreet.segments.push({
                     id: s.getID(),
@@ -1447,6 +1455,7 @@ var WMEWAL_Streets;
                 segment = segments[ix];
                 if (segment != null) {
                     const attr = segment.getFlagAttributes();
+                    segTTSOver = '';
                     if ((WMEWAL.WazeRoadTypeToRoadTypeBitmask(segment.getAttribute('roadType')) & settings.RoadTypeMask) &&
                         (settings.LockLevel == null ||
                             (settings.LockLevelOperation === Operation.Equal && (segment.getAttribute('lockRank') || 0) + 1 === settings.LockLevel) ||
@@ -1901,7 +1910,9 @@ var WMEWAL_Streets;
                                         }
                                         if (settings.TITTS &&
                                             nullif(tg.getTTS(), '') !== null) {
+                                            segTTSOver += tg.getTTS() + ' | ';
                                             hasTTS = true;
+                                            scanHasTTS = true;
                                         }
                                         if (settings.TIExit &&
                                             tg.getExitSigns().length > 0) {
@@ -2157,6 +2168,9 @@ var WMEWAL_Streets;
                 }
                 if (detectIssues) {
                     columnArray.push("Issues");
+                }
+                if (scanHasTTS) {
+                    columnArray.push("TTS Overrides");
                 }
                 if (includeCreatedBy) {
                     columnArray.push('Created By');
@@ -2604,6 +2618,9 @@ var WMEWAL_Streets;
                 if (detectIssues) {
                     w.document.write("<th>Issues</th>");
                 }
+                if (scanHasTTS) {
+                    w.document.write(`<th>TTS Overrides</th>`);
+                }
                 if (includeCreatedBy) {
                     w.document.write('<th>Created By</th>');
                 }
@@ -2629,6 +2646,9 @@ var WMEWAL_Streets;
                         const segment = street.segments[ixSeg];
                         const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(segment.center.x, segment.center.y);
                         const plSeg = getSegmentPL(segment);
+                        if (scanHasTTS && street.ttsOverrides.endsWith(' | ')) {
+                            street.ttsOverrides = street.ttsOverrides.slice(0, street.ttsOverrides.length - 3);
+                        }
                         if (isCSV) {
                             columnArray = [getStreetName(street)];
                             if (includeAltNames) {
@@ -2654,6 +2674,9 @@ var WMEWAL_Streets;
                             }
                             if (detectIssues) {
                                 columnArray.push(`"${getIssues(street.issues)}"`);
+                            }
+                            if (scanHasTTS) {
+                                columnArray.push(`"${street.ttsOverrides}"`);
                             }
                             if (includeCreatedBy) {
                                 columnArray.push(`"${street.createdEditor ?? ''}"`);
@@ -2699,6 +2722,9 @@ var WMEWAL_Streets;
                             if (detectIssues) {
                                 w.document.write(`<td>${getIssues(street.issues)}</td>`);
                             }
+                            if (scanHasTTS) {
+                                w.document.write(`<td>${street.ttsOverrides}</td>`);
+                            }
                             if (includeCreatedBy) {
                                 w.document.write(`<td>${street.createdEditor ?? ''}</td>`);
                             }
@@ -2721,6 +2747,9 @@ var WMEWAL_Streets;
                 else {
                     const latlon = OpenLayers.Layer.SphericalMercator.inverseMercator(street.center.x, street.center.y);
                     const plStreet = getStreetPL(street);
+                    if (scanHasTTS && street.ttsOverrides.endsWith(' | ')) {
+                        street.ttsOverrides = street.ttsOverrides.slice(0, street.ttsOverrides.length - 3);
+                    }
                     let altNames = "";
                     for (let ixAlt = 0; ixAlt < street.altStreets.length; ixAlt++) {
                         if (ixAlt > 0) {
@@ -2756,6 +2785,9 @@ var WMEWAL_Streets;
                         }
                         if (detectIssues) {
                             columnArray.push(`"${getIssues(street.issues)}"`);
+                        }
+                        if (scanHasTTS) {
+                            columnArray.push(`"${street.ttsOverrides}"`);
                         }
                         if (includeCreatedBy) {
                             columnArray.push(`"${street.createdEditor ?? ''}"`);
@@ -2800,6 +2832,9 @@ var WMEWAL_Streets;
                         }
                         if (detectIssues) {
                             w.document.write(`<td>${getIssues(street.issues)}</td>`);
+                        }
+                        if (scanHasTTS) {
+                            w.document.write(`<td>${street.ttsOverrides}</td>`);
                         }
                         if (includeCreatedBy) {
                             w.document.write(`<td>${street.createdEditor ?? ''}</td>`);

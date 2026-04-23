@@ -6,13 +6,15 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Hazards
+// @version             2026.04.22.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find permanent hazards
 // @author              DaveaCincy  (based on Places plugin by vtpearce and crazycaveman)
 // @match               https://*.waze.com/*editor*
 // @exclude             https://*.waze.com/user/editor*
 // @exclude             https://www.waze.com/discuss/*
-// @version             2025.07.07.001
+// @exclude             https://www.waze.com/editor/sdk/*
+// @exclude             https://beta.waze.com/editor/sdk/*
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
@@ -22,7 +24,7 @@
 // @connect             greasyfork.org
 // ==/UserScript==
 
-/*global W, OL, I18n, $, WazeWrap, WMEWAL, OpenLayers */
+/*global W, I18n, $, WazeWrap, WMEWAL, OpenLayers */
 
 namespace WMEWAL_Hazards {
 
@@ -31,10 +33,10 @@ namespace WMEWAL_Hazards {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
-        + '<li>New plugin.</li>'
+        + '<li>Add Traffic Light hazards.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
-    const wazeForumThread = 'https://www.waze.com/forum/viewtopic.php?t=206376';
+    const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
 
     const ctlPrefix = "_wmewalHazards";
 
@@ -131,6 +133,8 @@ namespace WMEWAL_Hazards {
         SchoolZone = 256,
         Cameras = 512,
         RRCrossing = 1024,
+        TrafficLight = 2048,
+        TLandSigns = 4096
     }
 
     const pluginName = "WMEWAL-Hazards";
@@ -138,7 +142,7 @@ namespace WMEWAL_Hazards {
     export const Title = "Hazards";
     export const MinimumZoomLevel = 15;
     export const SupportsSegments = false;
-    export const SupportsVenues = true;
+    export const SupportsVenues = false;
 
     const settingsKey = "WMEWALHazardsSettings";
     const savedSettingsKey = "WMEWALHazardsSavedSettings";
@@ -163,7 +167,6 @@ namespace WMEWAL_Hazards {
     let haveSubtypes = false;
     let haveScheds = false;
     let haveStreets = false;
-    //let savedVenues: Array<string>
     let savedHazards: Array<string>;
 
     function onWmeReady() {
@@ -264,6 +267,10 @@ namespace WMEWAL_Hazards {
                 return 10;
             case HazardType.RRCrossing:
                 return 11;
+            case HazardType.TrafficLight:
+                return 12;
+            case HazardType.TLandSigns:
+                return 13;
             default:
                 return 0;
         }
@@ -292,6 +299,10 @@ namespace WMEWAL_Hazards {
                 return HazardType.Cameras;
             case 11:
                 return HazardType.RRCrossing;
+            case 12:
+                return HazardType.TrafficLight;
+            case 13:
+                return HazardType.TLandSigns;
             default:
                 return HazardType.Unknown;
         }
@@ -316,27 +327,7 @@ namespace WMEWAL_Hazards {
             */
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'><b>Filters (All of these)</b></td></tr>";
-/*        html += "<tr><td><b>Category:</b></td></tr>";
-        html += `<tr><td class='wal-indent'><select id='${ctlPrefix}CategoryOp'>` +
-            "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
-            "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option>" +
-            "</select>";
-        html += `<select id='${ctlPrefix}Category'>` +
-            "<option value=''></option>";
 
-        for (let topIx = 0; topIx < W.Config.venues.categories.length; topIx++) {
-            const topCategory = W.Config.venues.categories[topIx];
-            html += ("<option value='" + topCategory + "'>" + I18n.t("venues.categories." + topCategory) + "</option>");
-            const subCategories = W.Config.venues.subcategories[topCategory];
-            for (let subIx = 0; subIx < subCategories.length; subIx++) {
-                const subCategory = W.Config.venues.subcategories[topCategory][subIx];
-                html += ("<option value='" + subCategory + "'>--" + I18n.t("venues.categories." + subCategory) + "</option>");
-            }
-        }
-
-        html += "<option value='" + rpp + "'>" + I18n.t("venues.categories." + rpp) + "</option>";
-        html += "</select></td></tr>";
-        */
         /*Speedbump = 1,
         Topes = 2,
         Tollbooth = 4,
@@ -347,7 +338,10 @@ namespace WMEWAL_Hazards {
         PedCrossing = 128,
         SchoolZone = 256,
         Cameras = 512,
-        RRCrossing = 1024,*/
+        RRCrossing = 1024,
+        TrafficLight = 2048,
+        TLandSigns = 4096
+*/
         html += "<tr><td class='wal-indent'>" +
             `<button id='${ctlPrefix}HazardTypeAny' class='btn btn-primary' style='margin-right: 8px' title='Any'>Any</button>` +
             `<button id='${ctlPrefix}HazardTypeClear' class='btn btn-primary' title='Clear'>Clear</button>` +
@@ -373,54 +367,12 @@ namespace WMEWAL_Hazards {
             `<label for='${ctlPrefix}HazardTypeCameras' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.Cameras))}</label></div>` +
             `<div><input type='checkbox' id='${ctlPrefix}HazardTypeRRCrossing' data-group='${ctlPrefix}HazardType' value='${HazardType.RRCrossing}' class='wal-check'/>` +
             `<label for='${ctlPrefix}HazardTypeRRCrossing' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.RRCrossing))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeTrafficLight' data-group='${ctlPrefix}HazardType' value='${HazardType.TrafficLight}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeTrafficLight' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.TrafficLight))}</label></div>` +
+            `<div><input type='checkbox' id='${ctlPrefix}HazardTypeTLandSigns' data-group='${ctlPrefix}HazardType' value='${HazardType.TLandSigns}' class='wal-check'/>` +
+            `<label for='${ctlPrefix}HazardTypeTLandSigns' class='wal-label'>${TranslateHazardType(HazardTypeBitmaskToWazeHazardType(HazardType.TLandSigns))}</label></div>` +
             "</td></tr>";
-        /*html += "<tr><td><b>Lock Level:</b></td></tr>" +
-            "<tr><td class='wal-indent'>" +
-            `<select id='${ctlPrefix}LockLevelOp'>` +
-            "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
-            "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option></select>" +
-            `<select id='${ctlPrefix}LockLevel'>` +
-            "<option value=''></option>" +
-            "<option value='1'>1</option>" +
-            "<option value='2'>2</option>" +
-            "<option value='3'>3</option>" +
-            "<option value='4'>4</option>" +
-            "<option value='5'>5</option>" +
-            "<option value='6'>6</option>" +
-            "<option value='7'>7</option>" +
-            "</select></td></tr>"; */
-/*        html += "<tr><td><b>Name RegEx</b></td></tr>";
-        html += "<tr><td class='wal-indent'>" +
-            `<input type='text' id='${ctlPrefix}Name' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}IgnoreCase' class='wal-check' type='checkbox'/>` +
-            `<label for='${ctlPrefix}IgnoreCase' class='wal-indent'>Ignore case</label></td>`;
-        html += "<tr><td><b>Street RegEx</b></td></tr>";
-        html += "<tr><td class='wal-indent'>" +
-            `<input type='text' id='${ctlPrefix}Street' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}StreetIgnoreCase' class='wal-check' type='checkbox'/>` +
-            `<label for='${ctlPrefix}StreetIgnoreCase' class='wal-indent'>Ignore case</label></td>`;
-        html += "<tr><td><b>City RegEx:</b></td></tr>";
-        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}City' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}CityIgnoreCase' class='wal-check' type='checkbox'/>` +
-            `<label for='${ctlPrefix}CityIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
-        html += "<tr><td><b>Website RegEx:</b></td></tr>";
-        html += `<tr><td class='wal-indent'><input type='text' id='${ctlPrefix}Website' class='wal-textbox'/><br/>` +
-            `<input id='${ctlPrefix}WebsiteIgnoreCase' class='wal-check' type='checkbox'/>` +
-            `<label for='${ctlPrefix}WebsiteIgnoreCase' style='margin-left: 8px'>Ignore case</label></td></tr>`;
-            */
-/*        html += "<tr><td><b>State:</b></td></tr>";
-        html += "<tr><td style='padding-left:20px'>" +
-            `<select id='${ctlPrefix}StateOp'>` +
-            "<option value='" + Operation.Equal.toString() + "' selected='selected'>=</option>" +
-            "<option value='" + Operation.NotEqual.toString() + "'>&lt;&gt;</option></select>" +
-            `<select id='${ctlPrefix}State'></select>`;
-        html += "<tr><td><b>Type:</b></td></tr>" +
-            `<tr><td class='wal-indent'><select id='${ctlPrefix}Type'>` +
-            "<option value=''></option>" +
-            "<option value='area'>" + I18n.t("edit.venue.type.area") + "</option>" +
-            "<option value='point'>" + I18n.t("edit.venue.type.point") + "</option>" +
-            "</select></td></tr>";
-            */
+
         html += "<tr><td><b>Created By:</b></td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<select id='${ctlPrefix}CreatedBy'></select></td></tr>`;
@@ -447,48 +399,10 @@ namespace WMEWAL_Hazards {
             "</td></tr>";
         html += "<tr><td class='wal-indent'>" +
             `<input id='${ctlPrefix}UpdatedDate' type='date'/> <input id='${ctlPrefix}UpdatedTime' type='time'/></td></tr>`;
-        /*html += `<tr><td><input id='${ctlPrefix}Editable' class='wal-check' type='checkbox'/>` +
-            `<label for='${ctlPrefix}Editable' class='wal-label'>Editable by me</label></td></tr>`;
-        html += `<tr><td><input id='${ctlPrefix}ParkingLotType' class='wal-check' type='checkbox'/>` +
-            `<label for='${ctlPrefix}ParkingLotType' class='wal-label'>`;
-        html += `Parking Lot Type: <select id='${ctlPrefix}ParkingLotTypeFilter'>` +
-            "<option value='PRIVATE'>" + I18n.t("edit.venue.parking.types.parkingType.PRIVATE") + "</option>" +
-            "<option value='PUBLIC'>" + I18n.t("edit.venue.parking.types.parkingType.PUBLIC") + "</option>" +
-            "<option value='RESTRICTED'>" + I18n.t("edit.venue.parking.types.parkingType.RESTRICTED") + "</option>" +
-            "</select></label></td></tr>"; */
 
         html += "<tr><td class='wal-heading' style='border-top: 1px solid; padding-top: 4px'>Issues (Any of these)</td></tr>";
         html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoName'/>` +
             `<label for='${ctlPrefix}NoName' class='wal-label'>No Name</label></td></tr>`;
-/*        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoHouseNumber'/>` +
-            `<label for='${ctlPrefix}NoHouseNumber' class='wal-label'>Missing House Number</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoStreet'/>` +
-            `<label for='${ctlPrefix}NoStreet' class='wal-label'>Missing Street</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoCity'/>` +
-            `<label for='${ctlPrefix}NoCity' class='wal-label'>Missing City</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}AdLocked'/>` +
-            `<label for='${ctlPrefix}AdLocked' class='wal-label'>Ad Locked</label></td></tr>`;
-        html += `<tr><td ><input class='wal-check' type='checkbox' id='${ctlPrefix}UpdateRequests'/>` +
-            `<label for='${ctlPrefix}UpdateRequests' class='wal-label'>Has Update Requests</label></td></tr>`;
-        html += `<tr><td ><input class='wal-check' type='checkbox' id='${ctlPrefix}PendingApproval'/>` +
-            `<label for='${ctlPrefix}PendingApproval' class='wal-label'>Pending Approval</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}UndefStreet' />` +
-            `<label for='${ctlPrefix}UndefStreet' class='wal-label' title='Street ID not found in W.model.streets.objects, possibly as a result of a cities form Merge or Delete'>Undefined Street ID</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoExternalProviders' />` +
-            `<label for='${ctlPrefix}NoExternalProviders' class='wal-label'>No External Provider Links</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoHours' />` +
-            `<label for='${ctlPrefix}NoHours' class='wal-label'>No Hours</label></td></tr>`;
-            html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoWebsite' />` +
-            `<label for='${ctlPrefix}NoWebsite' class='wal-label'>No Website</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoPhoneNumber' />` +
-            `<label for='${ctlPrefix}NoPhoneNumber' class='wal-label'>No Phone Number</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}BadPhoneNumberFormat' />` +
-            `<label for='${ctlPrefix}BadPhoneNumberFormat' class='wal-label'>Bad Phone Number Format</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}NoEntryExitPoints' />` +
-            `<label for='${ctlPrefix}NoEntryExitPoints' class='wal-label'>No Entry/Exit Points</label></td></tr>`;
-        html += `<tr><td><input class='wal-check' type='checkbox' id='${ctlPrefix}MissingBrand' />` +
-            `<label for='${ctlPrefix}MissingBrand' class='wal-label'>Missing Brand (GS)</label></td></tr>`;
-            */
 
         html += "</tbody></table>"
         return html;
@@ -626,41 +540,12 @@ namespace WMEWAL_Hazards {
         $(`#${ctlPrefix}HazardTypeSchoolZone`).prop("checked", settings.HazardTypeMask & HazardType.SchoolZone);
         $(`#${ctlPrefix}HazardTypeCameras`).prop("checked", settings.HazardTypeMask & HazardType.Cameras);
         $(`#${ctlPrefix}HazardTypeRRCrossing`).prop("checked", settings.HazardTypeMask & HazardType.RRCrossing);
+        $(`#${ctlPrefix}HazardTypeTrafficLight`).prop("checked", settings.HazardTypeMask & HazardType.TrafficLight);
+        $(`#${ctlPrefix}HazardTypeTLandSigns`).prop("checked", settings.HazardTypeMask & HazardType.TLandSigns);
 
-/*        $(`#${ctlPrefix}CategoryOp`).val(settings.CategoryOperation || Operation.Equal);
-        $(`#${ctlPrefix}Category`).val(settings.Category);
-        $(`#${ctlPrefix}LockLevel`).val(settings.LockLevel);
-        $(`#${ctlPrefix}LockLevelOp`).val(settings.LockLevelOperation || Operation.Equal);
-        $(`#${ctlPrefix}NoName`).prop("checked", settings.NoName);
-        $(`#${ctlPrefix}Name`).val(settings.Regex || "");
-        $(`#${ctlPrefix}IgnoreCase`).prop("checked", settings.RegexIgnoreCase);
-        $(`#${ctlPrefix}City`).val(settings.CityRegex || "");
-        $(`#${ctlPrefix}CityIgnoreCase`).prop("checked", settings.CityRegexIgnoreCase);
-        $(`#${ctlPrefix}State`).val(settings.State);
-        $(`#${ctlPrefix}StateOp`).val(settings.StateOperation || Operation.Equal);
-        $(`#${ctlPrefix}Type`).val(settings.PlaceType);
-        $(`#${ctlPrefix}Editable`).prop("checked", settings.EditableByMe);
-        $(`#${ctlPrefix}NoHouseNumber`).prop("checked", settings.NoHouseNumber);
-        $(`#${ctlPrefix}UndefStreet`).prop("checked", settings.UndefStreet);
-        $(`#${ctlPrefix}AdLocked`).prop("checked", settings.AdLocked);
-        $(`#${ctlPrefix}UpdateRequests`).prop("checked", settings.UpdateRequests);
-        $(`#${ctlPrefix}PendingApproval`).prop("checked", settings.PendingApproval);
-        $(`#${ctlPrefix}NoStreet`).prop("checked", settings.NoStreet);
-        $(`#${ctlPrefix}NoCity`).prop("checked", settings.NoCity);
-        */
         $(`#${ctlPrefix}LastModifiedBy`).val(settings.LastModifiedBy);
         $(`#${ctlPrefix}CreatedBy`).val(settings.CreatedBy);
-/*        $(`#${ctlPrefix}NoExternalProviders`).prop("checked", settings.NoExternalProviders);
-        $(`#${ctlPrefix}NoHours`).prop("checked", settings.NoHours);
-        $(`#${ctlPrefix}NoPhoneNumber`).prop("checked", settings.NoPhoneNumber);
-        $(`#${ctlPrefix}BadPhoneNumberFormat`).prop("checked", settings.BadPhoneNumberFormat);
-        $(`#${ctlPrefix}NoWebsite`).prop("checked", settings.NoWebsite);
-        $(`#${ctlPrefix}NoEntryExitPoints`).prop("checked", settings.NoEntryExitPoints);
-        $(`#${ctlPrefix}ParkingLotType`).prop("checked", settings.ParkingLotType);
-        $(`#${ctlPrefix}ParkingLotTypeFilter`).val(settings.ParkingLotTypeFilter);
-        $(`#${ctlPrefix}MissingBrand`).prop("checked", settings.MissingBrand);
-        $(`#${ctlPrefix}IncludeAlt`).prop("checked", settings.IncludeAlt);
-        */
+
         $(`#${ctlPrefix}Created`).prop("checked", settings.Created);
         $(`#${ctlPrefix}CreatedOp`).val(settings.CreatedOperation);
         if (settings.CreatedDate != null) {
@@ -685,11 +570,6 @@ namespace WMEWAL_Hazards {
             $(`#${ctlPrefix}UpdatedDate`).val("");
             $(`#${ctlPrefix}UpdatedTime`).val("");
         }
-/*        $(`#${ctlPrefix}Website`).val(settings.WebsiteRegex || "");
-        $(`#${ctlPrefix}WebsiteIgnoreCase`).prop("checked", settings.WebsiteRegexIgnoreCase);
-        $(`#${ctlPrefix}Street`).val(settings.StreetRegex || "");
-        $(`#${ctlPrefix}StreetIgnoreCase`).prop("checked", settings.StreetRegexIgnoreCase);
-        */
     }
 
     function loadSetting(): void {
@@ -745,11 +625,6 @@ namespace WMEWAL_Hazards {
                 addMessage("Street RegEx is invalid");
             }
         }
-
-/*        const selectedState = $(`#${ctlPrefix}State`).val();
-        if (nullif(selectedState, "") !== null && s.State === null) {
-            addMessage("Invalid state selection");
-        } */
 
         const selectedModifiedUser = $(`#${ctlPrefix}LastModifiedBy`).val();
         if (nullif(selectedModifiedUser, "") !== null && s.LastModifiedBy === null) {
@@ -1003,54 +878,9 @@ namespace WMEWAL_Hazards {
                         ((phazard.getUpdatedBy() ?? phazard.getCreatedBy()) === settings.LastModifiedBy))  ) {
 
                     let issues = 0;
-/*
-                    if (state != null) {
-                        if (address && !address.isEmpty() && address.attributes.state) {
-                            if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
-                                settings.StateOperation === Operation.NotEqual && address.attributes.state.getAttribute('id') === state.getAttribute('id')) {
-                                continue;
-                            }
-                        } else if (settings.StateOperation === Operation.Equal) {
-                            continue;
-                        }
-                    }
-*/
-                    // if (settings.LastModifiedBy != null) {
-                    //     if (venue.getAttribute('updatedBy') != null) {
-                    //         if (venue.getAttribute('updatedBy') !== settings.LastModifiedBy) {
-                    //             continue;
-                    //         }
-                    //     } else if (venue.getAttribute('createdBy') !== settings.LastModifiedBy) {
-                    //         continue;
-                    //     }
-                    // }
 
-                    // if (settings.CreatedBy != null) {
-                    //     if (venue.getAttribute('createdBy') !== settings.CreatedBy) {
-                    //         continue;
-                    //     }
-                    // }
 /*
-                    let regExMatched = false;
-                    if (cityRegex != null) {
-                        regExMatched = false;
-                        if (address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) {
-                            regExMatched = cityRegex.test(address.attributes.city.getAttribute('name'));
-                        }
-                        if (!regExMatched) {
-                            continue;
-                        }
-                    }
 
-                    if (streetRegex != null) {
-                        regExMatched = false;
-                        if (address && !address.isEmpty() && !address.isEmptyStreet()) {
-                            regExMatched = streetRegex.test(address.attributes.street.getAttribute('name'));
-                        }
-                        if (!regExMatched) {
-                            continue;
-                        }
-                    }
 
                     if (settings.NoName && !venue.getAttribute('name')) {
                         issues |= Issue.NoName;
@@ -1155,8 +985,8 @@ namespace WMEWAL_Hazards {
                 return a.phType.localeCompare(b.phType);
             });
 
-            const isCSV = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV);
-            const isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab);
+            let isCSV: boolean = (WMEWAL.outputTo & WMEWAL.OutputTo.CSV) != 0;
+            const isTab = (WMEWAL.outputTo & WMEWAL.OutputTo.Tab) != 0;
             const addBOM = WMEWAL.addBOM ?? false;
             const outputFields = WMEWAL.outputFields ?? ['CreatedEditor','LastEditor','LockLevel','Lat','Lon'];
             const includeCreatedBy = outputFields.indexOf('CreatedEditor') > -1 || settings.CreatedBy !== null;
@@ -1167,8 +997,14 @@ namespace WMEWAL_Hazards {
 
             let lineArray: Array<Array<string>>;
             let columnArray: Array<string>;
-            let w: Window;
+            let w: Window | null = null;
             let fileName: string;
+            if (isTab) {
+                w = window.open();
+                if (!w || !w.document) {
+                    isCSV = true; // force CSV if popup-blocker
+                }
+            }
             if (isCSV) {
                 lineArray = [];
                 columnArray = ["Type"];
@@ -1205,8 +1041,8 @@ namespace WMEWAL_Hazards {
                 return operation === Operation.NotEqual ? "does not equal " : "equals ";
             }
 
-            if (isTab) {
-                w = window.open();
+            if (isTab && w && w.document) {
+                // w = window.open();
                 w.document.write("<html><head><title>Hazards</title></head><body>");
                 w.document.write("<h3>Area: " + WMEWAL.areaName + "</h3>");
                 w.document.write("<h4>Filters</h4>");
@@ -1229,21 +1065,7 @@ namespace WMEWAL_Hazards {
                     }
                     w.document.write('</div>');
                 }
-/*                if (streetRegex != null) {
-                    w.document.write(`<div>Street Name matches: ${settings.StreetRegex}`);
-                    if (settings.StreetRegexIgnoreCase) {
-                        w.document.write(" (ignoring case)");
-                    }
-                    w.document.write('</div>');
-                }
-                if (cityRegex != null) {
-                    w.document.write(`<div>City Name matches: ${settings.CityRegex}`);
-                    if (settings.CityRegexIgnoreCase) {
-                        w.document.write(" (ignoring case)");
-                    }
-                    w.document.write('</div>');
-                }
-                    */
+
                 if (stateName != null) {
                     w.document.write(`<div>State ${getOperationText(settings.StateOperation)}${stateName}</div>`);
                 }
