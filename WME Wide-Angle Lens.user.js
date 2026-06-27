@@ -974,7 +974,7 @@ var WMEWAL;
         let name;
         if (index == settings.SavedAreas.length) {
             // Scanning current window
-            WMEWAL.areaToScan = W.map.getOLExtent().toGeometry();
+            WMEWAL.areaToScan = W.map.getOLMap().getExtent().toGeometry();
             name = 'Current window';
         }
         else {
@@ -1226,8 +1226,10 @@ var WMEWAL;
         }
         // Reload road layers
         if (!W.model.actionManager.canUndo()) {
-            for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
-                W.map.roadLayers[ix].redraw(true);
+            if (W.map.roadLayers) {
+                for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
+                    W.map.roadLayers[ix].redraw(true);
+                }
             }
             if (typeof W.controller.reloadData === "function") {
                 W.controller.reloadData();
@@ -1247,7 +1249,7 @@ var WMEWAL;
         WMEWAL.zoomLevel = minZoomLevel;
         log('info', `Zooming to ${WMEWAL.zoomLevel}`);
         WALMap.zoomTo(WMEWAL.zoomLevel);
-        const extent = W.map.getOLExtent();
+        const extent = W.map.getOLMap().getExtent();
         height = extent.getHeight();
         width = extent.getWidth();
         // Figure out how many horizontal and vertical viewports there are

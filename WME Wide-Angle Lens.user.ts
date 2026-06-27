@@ -1161,7 +1161,7 @@ namespace WMEWAL {
         let name: string;
         if (index == settings.SavedAreas.length) {
             // Scanning current window
-            areaToScan = <OpenLayers.Geometry.Collection> W.map.getOLExtent().toGeometry();
+            areaToScan = <OpenLayers.Geometry.Collection> W.map.getOLMap().getExtent().toGeometry();
             name = 'Current window';
         } else {
             areaToScan = <OpenLayers.Geometry.Collection> settings.SavedAreas[index].geometry;
@@ -1429,8 +1429,10 @@ namespace WMEWAL {
 
         // Reload road layers
         if (!W.model.actionManager.canUndo()) {
-            for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
-                W.map.roadLayers[ix].redraw(true);
+            if (W.map.roadLayers) {
+                for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
+                    W.map.roadLayers[ix].redraw(true);
+                }
             }
             if (typeof W.controller.reloadData === "function") {
                 W.controller.reloadData();
@@ -1452,7 +1454,7 @@ namespace WMEWAL {
         log('info', `Zooming to ${zoomLevel}`);
         WALMap.zoomTo(zoomLevel);
 
-        const extent = W.map.getOLExtent();
+        const extent = W.map.getOLMap().getExtent();
         height = extent.getHeight();
         width = extent.getWidth();
 
