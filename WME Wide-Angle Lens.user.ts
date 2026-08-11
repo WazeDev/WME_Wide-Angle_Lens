@@ -8,7 +8,7 @@
 /// <reference path="../node_modules/wme-sdk-typings/index.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
-// @version             2026.04.22.001
+// @version             2026.08.11.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
@@ -1207,7 +1207,13 @@ namespace WMEWAL {
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
                 pb.info("Initializing plugin " + plugins[ix].Title);
-                allOk = allOk && plugins[ix].ScanStarted();
+                try {
+                    allOk = allOk && plugins[ix].ScanStarted();
+                } catch (e) {
+                    log("error", `ScanStarted for plugin ${plugins[ix].Title} threw an exception`, e);
+                    alert(`Error initializing plugin ${plugins[ix].Title}. See console for details.`);
+                    allOk = false;
+                }
             }
         }
 

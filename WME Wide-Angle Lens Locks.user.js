@@ -5,7 +5,7 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Locks
-// @version             2026.04.22.001
+// @version             2026.08.11.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find segments that don't match lock levels
 // @author              vtpearce and crazycaveman
@@ -562,7 +562,12 @@ var WMEWAL_Locks;
     function ScanExtent(segments, venues) {
         return new Promise(resolve => {
             setTimeout(function () {
-                const count = scan(segments);
+                let count = 0;
+                try {
+                    count = scan(segments);
+                } catch (e) {
+                    log('error', 'ScanExtent: scan() threw an exception', e);
+                }
                 resolve({ ID: 'Lock', count });
             });
         });

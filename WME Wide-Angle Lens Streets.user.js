@@ -6,7 +6,7 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Streets
-// @version             2026.04.22.001
+// @version             2026.08.11.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -1287,7 +1287,12 @@ var WMEWAL_Streets;
     function ScanExtent(segments, venues, suggestedSegments) {
         return new Promise(resolve => {
             setTimeout(function () {
-                let streets = scan(segments, venues, suggestedSegments);
+                let streets = 0;
+                try {
+                    streets = scan(segments, venues, suggestedSegments);
+                } catch (e) {
+                    log('error', 'ScanExtent: scan() threw an exception', e);
+                }
                 resolve({ ID: 'S', count: streets });
             }, 0);
         });
@@ -3130,7 +3135,7 @@ var WMEWAL_Streets;
             ExpiredRestrictions: false,
             SuggestedSegmentsOperation: 2,
             SuggestedSegments: false,
-            SuggestedSegmentsStatus: 2
+            SuggestedSegmentsStatus: 0
         };
     }
     function updateProperties() {
@@ -3422,11 +3427,11 @@ var WMEWAL_Streets;
             }
             if (!settings.hasOwnProperty('SuggestedSegments')) {
                 settings.SuggestedSegments = false;
-                settings.SuggestedSegmentsStatus = 2;
+                settings.SuggestedSegmentsStatus = 0;
                 upd = true;
             }
-            if (!settings.hasOwnProperty('SuggestedSegmentsStatus')) {
-                settings.SuggestedSegmentsStatus = 2;
+            if (!settings.hasOwnProperty('SuggestedSegmentsStatus') || (settings.SuggestedSegmentsStatus !== 0 && settings.SuggestedSegmentsStatus !== 1)) {
+                settings.SuggestedSegmentsStatus = 0;
                 upd = true;
             }
             if (settings.hasOwnProperty("OutputTo")) {

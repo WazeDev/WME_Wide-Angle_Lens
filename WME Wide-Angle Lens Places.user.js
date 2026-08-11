@@ -6,7 +6,7 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Places
-// @version             2026.04.22.001
+// @version             2026.08.11.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find place that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -768,7 +768,12 @@ var WMEWAL_Places;
     function ScanExtent(segments, venues) {
         return new Promise(resolve => {
             setTimeout(function () {
-                const count = scan(segments, venues);
+                let count = 0;
+                try {
+                    count = scan(segments, venues);
+                } catch (e) {
+                    log('error', 'ScanExtent: scan() threw an exception', e);
+                }
                 resolve({ ID: 'P', count });
             });
         });
