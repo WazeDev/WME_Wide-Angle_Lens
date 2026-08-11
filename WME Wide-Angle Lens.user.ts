@@ -8,7 +8,7 @@
 /// <reference path="../node_modules/wme-sdk-typings/index.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
-// @version             2026.04.22.001
+// @version             2026.08.11.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
@@ -1161,7 +1161,7 @@ namespace WMEWAL {
         let name: string;
         if (index == settings.SavedAreas.length) {
             // Scanning current window
-            areaToScan = <OpenLayers.Geometry.Collection> W.map.getOLExtent().toGeometry();
+            areaToScan = <OpenLayers.Geometry.Collection> W.map.getOLMap().getExtent().toGeometry();
             name = 'Current window';
         } else {
             areaToScan = <OpenLayers.Geometry.Collection> settings.SavedAreas[index].geometry;
@@ -1207,7 +1207,13 @@ namespace WMEWAL {
         for (let ix = 0; ix < plugins.length; ix++) {
             if (plugins[ix].Active) {
                 pb.info("Initializing plugin " + plugins[ix].Title);
-                allOk = allOk && plugins[ix].ScanStarted();
+                try {
+                    allOk = allOk && plugins[ix].ScanStarted();
+                } catch (e) {
+                    log("error", `ScanStarted for plugin ${plugins[ix].Title} threw an exception`, e);
+                    alert(`Error initializing plugin ${plugins[ix].Title}. See console for details.`);
+                    allOk = false;
+                }
             }
         }
 
@@ -1429,8 +1435,10 @@ namespace WMEWAL {
 
         // Reload road layers
         if (!W.model.actionManager.canUndo()) {
-            for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
-                W.map.roadLayers[ix].redraw(true);
+            if (W.map.roadLayers) {
+                for (let ix = 0; ix < W.map.roadLayers.length; ix++) {
+                    W.map.roadLayers[ix].redraw(true);
+                }
             }
             if (typeof W.controller.reloadData === "function") {
                 W.controller.reloadData();
@@ -1452,7 +1460,7 @@ namespace WMEWAL {
         log('info', `Zooming to ${zoomLevel}`);
         WALMap.zoomTo(zoomLevel);
 
-        const extent = W.map.getOLExtent();
+        const extent = W.map.getOLMap().getExtent();
         height = extent.getHeight();
         width = extent.getWidth();
 

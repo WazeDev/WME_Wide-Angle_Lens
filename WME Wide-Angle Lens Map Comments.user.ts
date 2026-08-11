@@ -6,7 +6,7 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Map Comments
-// @version             2026.04.22.001
+// @version             2026.08.11.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find map comments that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -585,7 +585,12 @@ namespace WMEWAL_MapComments {
     export function ScanExtent(segments: Array<WazeNS.Model.Object.Segment>, venues: Array<WazeNS.Model.Object.Venue>): Promise<WMEWAL.IResult> {
         return new Promise(resolve => {
             setTimeout(function () {
-                let count = scan(segments, venues);
+                let count = 0;
+                try {
+                    count = scan(segments, venues);
+                } catch (e) {
+                    log('error', 'ScanExtent: scan() threw an exception', e);
+                }
                 resolve({ID: 'MC', count});
             }, 0);
         });

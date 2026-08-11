@@ -6,7 +6,7 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Places
-// @version             2026.04.22.001
+// @version             2026.08.11.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find place that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -178,13 +178,13 @@ var WMEWAL_Places;
             "</select>";
         html += `<select id='${ctlPrefix}Category'>` +
             "<option value=''></option>";
-        for (let topIx = 0; topIx < W.Config.venues.categories.length; topIx++) {
-            const topCategory = W.Config.venues.categories[topIx];
-            html += ("<option value='" + topCategory + "'>" + I18n.t("venues.categories." + topCategory) + "</option>");
-            const subCategories = W.Config.venues.subcategories[topCategory];
-            for (let subIx = 0; subIx < subCategories.length; subIx++) {
-                const subCategory = W.Config.venues.subcategories[topCategory][subIx];
-                html += ("<option value='" + subCategory + "'>--" + I18n.t("venues.categories." + subCategory) + "</option>");
+        const mainCategories = WMEWAL.sdk.DataModel.Venues.getVenueMainCategories();
+        const allSubCategories = WMEWAL.sdk.DataModel.Venues.getVenueSubCategories();
+        for (const mainCat of mainCategories) {
+            html += ("<option value='" + mainCat.id + "'>" + mainCat.localizedName + "</option>");
+            const subCats = allSubCategories.filter(sc => sc.categoryId === mainCat.id);
+            for (const subCat of subCats) {
+                html += ("<option value='" + subCat.subCategoryId + "'>--" + subCat.localizedName + "</option>");
             }
         }
         html += "<option value='" + rpp + "'>" + I18n.t("venues.categories." + rpp) + "</option>";
@@ -768,7 +768,12 @@ var WMEWAL_Places;
     function ScanExtent(segments, venues) {
         return new Promise(resolve => {
             setTimeout(function () {
-                const count = scan(segments, venues);
+                let count = 0;
+                try {
+                    count = scan(segments, venues);
+                } catch (e) {
+                    log('error', 'ScanExtent: scan() threw an exception', e);
+                }
                 resolve({ ID: 'P', count });
             });
         });

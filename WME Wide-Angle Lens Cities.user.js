@@ -270,8 +270,9 @@ var WMEWAL_Cities;
         const currentLayer = selectLayer.val();
         selectLayer.empty();
         const layers = [];
-        for (let ixLayer = 0; ixLayer < W.map.layers.length; ixLayer++) {
-            const layer = W.map.layers[ixLayer];
+        const olLayers = W.map.getOLMap().layers;
+        for (let ixLayer = 0; ixLayer < olLayers.length; ixLayer++) {
+            const layer = olLayers[ixLayer];
             if (layer.CLASS_NAME === "OL.Layer.Vector" || layer.CLASS_NAME === "OpenLayers.Layer.Vector") {
                 const vectorLayer = layer;
                 if (vectorLayer.features && vectorLayer.features.length > 0) {
