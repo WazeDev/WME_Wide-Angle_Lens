@@ -1,7 +1,7 @@
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Places
-// @version             2026.08.26.001
+// @version             2026.09.15.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find place that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -25,7 +25,7 @@ var WMEWAL_Places;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>SDK migration.</li>'
+        + '<li>Fix for some category checks.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40645';
     const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
@@ -173,12 +173,12 @@ var WMEWAL_Places;
         for (let topIx = 0; topIx < topCats.length; topIx++) {
             const topCategory = topCats[topIx].localizedName;
             const topId = topCats[topIx].id;
-            html += ("<option value='" + topCategory + "'>" + topCategory + "</option>");
+            html += ("<option value='" + topId + "'>" + topCategory + "</option>");
             //const subCategories = W.Config.venues.subcategories[topCategory];
             for (let subIx = 0; subIx < subCats.length; subIx++) {
                 const subCategory = subCats[subIx];
                 if (subCategory.categoryId == topId) {
-                    html += ("<option value='" + subCategory.localizedName + "'>--" + subCategory.localizedName + "</option>");
+                    html += ("<option value='" + subCategory.subCategoryId + "'>--" + subCategory.localizedName + "</option>");
                 }
             }
         }
