@@ -7,7 +7,7 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
-// @version             2026.08.28.001
+// @version             2026.10.23.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
@@ -32,7 +32,7 @@ var WMEWAL;
     const scriptId = 'wmewal';
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>SDK migration.</li>'
+        + '<li>Fix for disable/enable layers.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
     const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
@@ -209,7 +209,7 @@ var WMEWAL;
                     console.log('WAL: Waiting for WazeWrap...');
                 await new Promise(r => setTimeout(r, 200));
             }
-            console.error('WAL: WazeWrap loading failed. Giving up.');
+            log('error', 'WazeWrap loading failed. Giving up.');
         });
     });
     function loadScriptUpdateMonitor() {
@@ -223,6 +223,7 @@ var WMEWAL;
         }
     }
     async function init() {
+        log('log', 'Initializing...');
         const walAvailable = pageWindow.WMEWAL;
         loadScriptUpdateMonitor();
         if (typeof (localStorage) !== "undefined") {
@@ -419,12 +420,10 @@ var WMEWAL;
                 }
             } });
         await makeTab();
-        log('log', 'Initialized');
-        if (!walAvailable) {
-            pageWindow.WMEWAL = WMEWAL;
-        }
+        pageWindow.WMEWAL = WMEWAL;
         if (sandboxed)
             window.WMEWAL = WMEWAL;
+        log('log', 'Initialized');
     }
     async function makeTab() {
         const { tabLabel, tabPane } = await WMEWAL.sdk.Sidebar.registerScriptTab();
@@ -1101,7 +1100,7 @@ var WMEWAL;
         saveCenter = WMEWAL.sdk.Map.getMapCenter();
         currentZoom = WMEWAL.sdk.Map.getZoomLevel();
         layerToggle = [];
-        const groups = $("div.layer-switcher li[class^='group']");
+        const groups = $("li[class^='group-']");
         groups.each(function (ix, g) {
             const groupToggle = $(g).find("wz-toggle-switch");
             if (groupToggle.length > 0) {
