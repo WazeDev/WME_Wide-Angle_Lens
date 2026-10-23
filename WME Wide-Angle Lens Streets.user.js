@@ -1,7 +1,7 @@
 /// <reference path="WME Wide-Angle Lens.user.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens Streets
-// @version             2026.08.26.001
+// @version             2026.10.23.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Find streets that match filter criteria
 // @author              vtpearce and crazycaveman
@@ -26,7 +26,7 @@ var WMEWAL_Streets;
     const SCRIPT_VERSION = GM_info.script.version.toString();
     const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
-        + '<li>SDK migration.</li>'
+        + '<li>Minor fix.</li>'
         + '</ul>';
     const greasyForkPage = 'https://greasyfork.org/scripts/40646';
     const wazeForumThread = 'https://www.waze.com/discuss/t/script-wme-wide-angle-lens/77807';
@@ -1789,8 +1789,14 @@ var WMEWAL_Streets;
                                     nid = segment.toNodeId;
                                 //turns = sdk.DataModel.Turns.getTurnsThroughNode({ nodeId: segment.toNodeId });
                                 //turns = sdk.DataModel.Turns.getTurnsToSegment({ segmentId: segment.id });
-                                if (nid > 0)
-                                    turns = sdk.DataModel.Turns.getTurnsThroughNode({ nodeId: nid });
+                                if (nid > 0) {
+                                    try {
+                                        turns = sdk.DataModel.Turns.getTurnsThroughNode({ nodeId: nid });
+                                    }
+                                    catch (e) {
+                                        log('warn', 'caught error in getTurnsThruNode', e);
+                                    }
+                                }
                                 //const node = getNodeByDirection(segment, directions[ixDir]);
                                 if (turns && turns.length > 0) {
                                     //log('info', `seg ${segment.id} node ${nid} dir ${directions[ixDir]}`);

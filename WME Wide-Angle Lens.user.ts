@@ -7,7 +7,7 @@
 /// <reference path="../typescript-typings/greasyfork.d.ts" />
 // ==UserScript==
 // @name                WME Wide-Angle Lens
-// @version             2026.08.28.001
+// @version             2026.10.23.001
 // @namespace           https://greasyfork.org/en/users/19861-vtpearce
 // @description         Scan a large area
 // @author              vtpearce and crazycaveman (progress bar from dummyd2 & seb-d59)
@@ -40,7 +40,7 @@ namespace WMEWAL {
     const DOWNLOAD_URL = GM_info.script.downloadURL;
 
     const updateText = '<ul>'
-        + '<li>SDK migration.</li>'
+        + '<li>Fix for disable/enable layers.</li>'
         + '</ul>';
 
     const greasyForkPage = 'https://greasyfork.org/scripts/40641';
@@ -297,7 +297,7 @@ namespace WMEWAL {
 
                 await new Promise(r => setTimeout(r, 200));
             }
-            console.error('WAL: WazeWrap loading failed. Giving up.');
+            log('error', 'WazeWrap loading failed. Giving up.');
         });
     });
 
@@ -312,6 +312,7 @@ namespace WMEWAL {
     }
 
     async function init(): Promise<void> {
+        log('log', 'Initializing...');
         const walAvailable = pageWindow.WMEWAL;
 
         loadScriptUpdateMonitor();
@@ -522,12 +523,11 @@ namespace WMEWAL {
         } });
 
         await makeTab();
-        log('log', 'Initialized');
 
-        if (!walAvailable) {
-            pageWindow.WMEWAL = WMEWAL;
-        }
+        pageWindow.WMEWAL = WMEWAL;
         if (sandboxed) window.WMEWAL = WMEWAL;
+
+        log('log', 'Initialized');
     }
 
     async function makeTab(): Promise<void> {
@@ -1313,7 +1313,7 @@ namespace WMEWAL {
         currentZoom = sdk.Map.getZoomLevel();
         layerToggle = [];
 
-        const groups = $("div.layer-switcher li[class^='group']");
+        const groups = $("li[class^='group-']");
         groups.each(function (ix, g) {
             const groupToggle = $(g).find("wz-toggle-switch");
             if (groupToggle.length > 0) {
